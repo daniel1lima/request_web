@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "The sample Node.js project with Next.js frontend",
   "scripts": {
-    "start": "bun server/src/server.js",
-    "server": "bun server/src/server.js",
+    "start": "bun server/src/app.js",
+    "server": "bun server/src/app.js",
     "client": "cd client && bun run dev",
     "dev": "concurrently \"bun run server\" \"bun run client\"",
     "build": "cd client && bun run build",
@@ -14,8 +14,10 @@
     "clsx": "^2.1.1",
     "concurrently": "^8.2.2",
     "cors": "^2.8.5",
+    "debounce": "^2.2.0",
     "express": "^4.17.3",
     "pg": "^8.11.3",
+    "sequelize": "^6.37.5",
     "tailwind-merge": "^2.6.0"
   }
 }
