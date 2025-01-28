@@ -15,7 +15,7 @@ app.use(express.json());
 // Routes
 
 app.use('/events', require('./routes/events'));
-app.use('/requests', require('./routes/requests'));
+// app.use('/requests', require('./routes/requests'));
 
 
 const PORT = process.env.PORT || 3000;

@@ -1,5 +1,5 @@
 const User = require('./User');
-const DJ = require('./Dj');
+const DJ = require('./dj');
 const Event = require('./Event');
 const Request = require('./Request');
 const Payment = require('./Payment');
