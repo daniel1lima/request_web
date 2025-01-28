@@ -15,6 +15,7 @@ app.use(express.json());
 // Routes
 
 app.use('/events', require('./routes/events'));
+app.use('/spotify', require('./routes/spotify'));
 // app.use('/requests', require('./routes/requests'));
 
 

@@ -13,7 +13,22 @@ interface SpotifyTrack {
   };
 }
 
-export const SongForm = () => {
+interface SongFormProps {
+  accessToken: string | null;
+}
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'stripe-buy-button': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+        'buy-button-id': string;
+        'publishable-key': string;
+      };
+    }
+  }
+}
+
+export const SongForm: React.FC<SongFormProps> = ({ accessToken }) => {
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
@@ -36,7 +51,7 @@ export const SongForm = () => {
         {
           headers: {
             Authorization:
-              "Bearer BQDWQ9KM5xV42qmoHr5x7vpfnPtIDYsWvgIcAeoDCnAvr3XL0UFH6XxyN77QvH3HKaNSe2Rl4Pc2v98GiLQ-qkIfoF2ZNC8MhquR4J1SoKN1rRjH3no",
+              `Bearer ${accessToken}`,
           },
         }
       );
@@ -63,6 +78,18 @@ export const SongForm = () => {
     searchSpotify();
   }, [debouncedSearch]);
 
+  useEffect(() => {
+    // Load Stripe buy button script
+    const script = document.createElement('script');
+    script.src = 'https://js.stripe.com/v3/buy-button.js';
+    script.async = true;
+    document.body.appendChild(script);
+
+    return () => {
+      document.body.removeChild(script);
+    };
+  }, []);
+
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
     if (
@@ -76,7 +103,7 @@ export const SongForm = () => {
 
   return (
     <form className="flex flex-col w-full">
-      <div className="relative bg-white border-neutral-200 border flex items-stretch gap-5 text-base text-[rgba(147,147,147,1)] font-normal leading-loose justify-between mt-3 px-3.5 py-[18px] rounded-[15px] border-solid">
+      <div className="relative bg-white dark:bg-gray-800 border-neutral-200 dark:border-gray-700 border flex items-stretch gap-5 text-base text-neutral-500 dark:text-gray-400 font-normal leading-loose justify-between mt-3 px-3.5 py-[18px] rounded-[15px] border-solid">
         <input
           id="song-input"
           type="text"
@@ -90,7 +117,7 @@ export const SongForm = () => {
             setSelectedTrack(null);
           }}
           placeholder="Search for a song"
-          className="bg-transparent outline-none w-full"
+          className="bg-transparent outline-none w-full dark:text-white"
         />
         {selectedTrack ? (
           <img
@@ -109,7 +136,7 @@ export const SongForm = () => {
           <div
             ref={resultsContainerRef}
             onScroll={handleScroll}
-            className="absolute left-0 right-0 top-full mt-1 bg-white border border-neutral-200 rounded-lg shadow-lg z-10 max-h-[300px] overflow-y-auto"
+            className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-neutral-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-[300px] overflow-y-auto"
           >
             {searchResults.map((track) => (
               <div
@@ -119,7 +146,7 @@ export const SongForm = () => {
                   setSearchInput(`${track.name} - ${track.artists[0].name}`);
                   setSearchResults([]);
                 }}
-                className="flex items-center gap-3 p-3 hover:bg-gray-50 cursor-pointer"
+                className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
               >
                 <img
                   src={track.album.images[2]?.url}
@@ -127,15 +154,15 @@ export const SongForm = () => {
                   className="w-10 h-10 rounded"
                 />
                 <div>
-                  <div className="font-medium text-gray-900">{track.name}</div>
-                  <div className="text-sm text-gray-500">
+                  <div className="font-medium text-gray-900 dark:text-white">{track.name}</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400">
                     {track.artists[0].name}
                   </div>
                 </div>
               </div>
             ))}
             {isLoading && (
-              <div className="text-center p-2 text-gray-500">
+              <div className="text-center p-2 text-gray-500 dark:text-gray-400">
                 Loading more...
               </div>
             )}
@@ -157,11 +184,11 @@ export const SongForm = () => {
         )}
 
         {selectedTrack ? (
-          <h2 className="text-[rgba(52,75,103,1)] text-lg font-medium leading-[34px] text-center self-center mt-[17px]">
+          <h2 className="text-gray-800 dark:text-gray-200 text-lg font-medium leading-[34px] text-center self-center mt-[17px]">
             {selectedTrack.name}
           </h2>
         ) : (
-          <h2 className="text-[rgba(52,75,103,1)] text-lg font-medium leading-[34px] text-center self-center mt-[17px]">
+          <h2 className="text-gray-800 dark:text-gray-200 text-lg font-medium leading-[34px] text-center self-center mt-[17px]">
             No Song Selected
           </h2>
         )}
@@ -176,19 +203,29 @@ export const SongForm = () => {
         </div>
       </div> */}
 
-      <p className="text-black text-xs font-normal leading-none text-center mt-[18px]">
+      <p className="text-gray-900 dark:text-gray-100 text-xs font-normal leading-none text-center mt-[18px]">
         You will not be charged until your song is played.
       </p>
 
       <div className="flex flex-col items-center mt-4 fixed bottom-10 left-0 right-0">
-        <button
-          type="submit"
-          className="bg-[rgba(86,105,255,1)] shadow-[0px_15px_25px_rgba(84,104,255,0.25)] self-center w-[185px] max-w-full text-base text-white font-bold text-center uppercase tracking-[1px] fill-[#5669FF] mt-[27px] px-[23px] py-[19px] rounded-[14px]"
-        >
-          Request now
-        </button>
-        <p className="bg-blend-normal text-[rgba(52,75,103,1)] text-base font-light leading-7 text-center self-center mt-[7px]">
-          Select any song to request from the button above.
+        {selectedTrack ? (
+          <stripe-buy-button
+            buy-button-id="buy_btn_1QmNacIxGe3lgVLrfSAxDksx"
+            publishable-key="pk_live_51QmNAjIxGe3lgVLrzftNbBXr9LNNY3MbIWlupy3geBMzzpYLxL8DkPRWhZhi7U5YIXWgfQggwEUV9X4JvDkQpJPH006CXImO1h"
+            className="w-full flex justify-center"
+          />
+        ) : (
+          <button
+            disabled
+            className="bg-gray-400 self-center w-[250px] text-base text-white font-bold text-center uppercase tracking-[1px] mt-[27px] px-[23px] py-[19px] rounded-[14px]"
+          >
+            Select a Song
+          </button>
+        )}
+        <p className="bg-blend-normal text-gray-800 dark:text-gray-200 text-base font-light leading-7 text-center self-center mt-[7px]">
+          {selectedTrack 
+            ? "Click the button above to request this song"
+            : "Select any song to request from the search above"}
         </p>
       </div>
     </form>
