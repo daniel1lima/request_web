@@ -4,9 +4,9 @@ const sequelize = require('../config/database');
 const Request = sequelize.define('Request', {
   requestID: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
   fileChanged: { type: DataTypes.INTEGER },
-  scopName: { type: DataTypes.STRING(50) },
-  scopArtist: { type: DataTypes.STRING(50) },
-  scopImage: { type: DataTypes.STRING },
+  songName: { type: DataTypes.STRING(50) },
+  songArtist: { type: DataTypes.STRING(50) },
+  songImage: { type: DataTypes.STRING },
   accepted: { type: DataTypes.BOOLEAN, defaultValue: false },
   played: { type: DataTypes.BOOLEAN, defaultValue: false },
   requestUpvotes: { type: DataTypes.INTEGER, defaultValue: 0 },
