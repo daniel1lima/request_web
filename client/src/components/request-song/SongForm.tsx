@@ -207,12 +207,12 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken }) => {
         You will not be charged until your song is played.
       </p>
 
-      <div className="flex flex-col items-center mt-4 fixed bottom-10 left-0 right-0">
+      <div className="flex flex-col items-end mt-4 fixed bottom-20 left-0 right-0 z-50">
         {selectedTrack ? (
           <stripe-buy-button
             buy-button-id="buy_btn_1QmNacIxGe3lgVLrfSAxDksx"
             publishable-key="pk_live_51QmNAjIxGe3lgVLrzftNbBXr9LNNY3MbIWlupy3geBMzzpYLxL8DkPRWhZhi7U5YIXWgfQggwEUV9X4JvDkQpJPH006CXImO1h"
-            className="w-full flex justify-center"
+            className="w-full flex justify-center relative"
           />
         ) : (
           <button

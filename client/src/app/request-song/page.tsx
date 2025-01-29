@@ -1,4 +1,4 @@
-import { RequestSong } from "@/components/request-song/RequestSong";
+import { RequestSong } from "../../components/request-song/RequestSong";
 
 const Index = () => {
   return (
