@@ -5,6 +5,7 @@ const eventRoutes = require('./routes/events');
 const djRoutes = require('./routes/djs')
 const requestRoutes = require('./routes/requests');
 const userRoutes = require('./routes/users');
+const spotifyRoutes = require('./routes/spotify');
 
 
 
@@ -19,6 +20,7 @@ app.use('/events', eventRoutes);
 app.use('/djs', djRoutes);
 app.use('/requests', requestRoutes);
 app.use('/users', userRoutes);
+app.use('/spotify', spotifyRoutes);
 
 
 
