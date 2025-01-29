@@ -11,6 +11,7 @@
     "install:all": "bun install && cd client && bun install"
   },
   "dependencies": {
+    "all": "^0.0.0",
     "axios": "^1.7.9",
     "clsx": "^2.1.1",
     "concurrently": "^8.2.2",
