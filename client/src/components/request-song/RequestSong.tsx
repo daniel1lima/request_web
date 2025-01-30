@@ -42,7 +42,7 @@ export const RequestSong = () => {
   };
 
   return (
-    <div className="bg-white dark:bg-gray-900 max-w-[480px] w-full min-h-screen overflow-x-hidden">
+    <div className="bg-gray-900 dark:bg-gray-900 max-w-[480px] w-full min-h-screen overflow-x-hidden">
       {/* Logo and Title Sections with animation */}
       <div 
         className={`transition-all duration-500 ease-in-out transform ${
@@ -52,22 +52,21 @@ export const RequestSong = () => {
         }`}
       >
         {/* Logo Section */}
-        <div className="flex justify-center pt-6 pb-2 px-4">
+        <div className="flex justify-center pt-6 pb-2 px-4 h-[200px] w-[200px] mx-auto">
           <Image
             src="/RequestLogoLight.png"
             alt="DJ Request Logo"
-            width={120}
-            height={40}
-            className="dark:invert"
+            width={300}
+            height={300}
+            className="invert dark:invert"
+            priority
+            style={{ objectFit: 'contain' }}
           />
         </div>
 
         {/* Title Section */}
-        <div className="flex flex-col w-full text-center pb-6 px-4">
-          <h1 className="relative font-bold text-[32px] tracking-tight text-gray-900 dark:text-white">
-            Request a Song
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+        <div className="flex flex-col w-full text-center pb-3 px-4">
+          <p className="text-sm text-gray-400 dark:text-gray-400 mt-2">
             Find and request your favorite tracks
           </p>
         </div>
@@ -75,7 +74,7 @@ export const RequestSong = () => {
 
       {/* Form Section */}
       <div 
-        className={`flex w-full flex-col px-4 transition-all duration-500 ease-in-out ${
+        className={` flex w-full flex-col px-4 transition-all duration-500 ease-in-out ${
           !showHeader ? 'mt-10' : 'mt-0'
         }`}
       >

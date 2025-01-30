@@ -145,9 +145,16 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
   };
 
   return (
-    <form className="flex flex-col w-full h-full relative pb-20" onSubmit={(e) => e.preventDefault()}>
+    <form 
+      className="flex flex-col w-full h-full relative pb-20" 
+      onSubmit={(e) => e.preventDefault()}
+      suppressHydrationWarning
+    >
       {/* Search Input */}
-      <div className="relative bg-white dark:bg-gray-800 border-neutral-200 dark:border-gray-700 border flex items-stretch gap-5 text-base text-neutral-500 dark:text-gray-400 font-normal leading-loose justify-between px-3.5 py-[18px] rounded-[15px] border-solid">
+      <div 
+        className="relative bg-gray-800 dark:bg-gray-800 border-gray-700 dark:border-gray-700 border flex items-stretch gap-5 text-base text-neutral-500 dark:text-gray-400 font-normal leading-loose justify-between px-3.5 py-[18px] rounded-[15px] border-solid"
+        suppressHydrationWarning
+      >
         <input
           id="song-input"
           type="text"
@@ -166,12 +173,12 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
         <button
           type="button"
           onClick={searchInput || selectedTrack ? handleClear : undefined}
-          className="mt-2 p-1 -mr-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          className="mt-1 p-1 -mr-1 rounded-full  transition-colors"
         >
           {searchInput || selectedTrack ? (
-            <FaTimes className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
+            <FaTimes className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
           ) : (
-            <FaSearch className="w-4 h-4" />
+            <FaSearch className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
           )}
         </button>
 
@@ -219,10 +226,10 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
       {/* Empty State - Only show when no search and no selection */}
       {!searchInput && !selectedTrack && !searchResults.length && (
         <div className="flex flex-col items-center justify-center mt-10">
-          <div className="text-gray-400 dark:text-gray-600 text-6xl mb-4">
+          <div className="text-gray-600 dark:text-gray-600 text-6xl mb-4">
             <FaSearch />
           </div>
-          <p className="text-gray-500 dark:text-gray-400 text-center">
+          <p className="text-gray-400 dark:text-gray-400 text-center">
             Search for a song to request
           </p>
         </div>
@@ -247,8 +254,8 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
       )}
 
       {/* Bottom Action Section */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-900/80 
-        backdrop-blur-md border-t border-gray-200 dark:border-gray-800 p-4 pb-8 z-50">
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900/80 
+        backdrop-blur-md border-t dark:border-gray-900 p-4 pb-8 z-50">
         <div className="max-w-[480px] mx-auto">
           {selectedTrack && (
             <>
