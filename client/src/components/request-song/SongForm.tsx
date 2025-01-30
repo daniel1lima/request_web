@@ -1,8 +1,9 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect } from "react";
 import { useDebounce } from "use-debounce";
 import { FaSearch, FaTimes } from "react-icons/fa";
+import { loadStripe } from "@stripe/stripe-js";
 
 interface SpotifyTrack {
   id: string;
@@ -21,15 +22,21 @@ interface SongFormProps {
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      'stripe-buy-button': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
-        'buy-button-id': string;
-        'publishable-key': string;
+      "stripe-buy-button": React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement>,
+        HTMLElement
+      > & {
+        "buy-button-id": string;
+        "publishable-key": string;
       };
     }
   }
 }
 
-export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect }) => {
+export const SongForm: React.FC<SongFormProps> = ({
+  accessToken,
+  onSongSelect,
+}) => {
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
@@ -38,6 +45,19 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const resultsContainerRef = React.useRef<HTMLDivElement>(null);
+  const expressCheckoutElementRef = React.useRef<HTMLElement | null>(null);
+
+  const appearance = {
+    // Define your appearance options here
+  };
+
+  const options = {
+    // Define your options here
+  };
+
+  const stripePromise = loadStripe(
+    "pk_test_51QmNAjIxGe3lgVLrIecsxmnxNmQwKyEYFW3eU9rCJBgThBrEZhz41EiGrPwA5quMz1ksbj4SnjCvbXBYBzIdUvxm00qFUY5Kuz"
+  );
 
   const searchSpotify = async (isLoadingMore = false) => {
     if (!debouncedSearch || isLoading) return;
@@ -51,8 +71,7 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
         )}&type=track&limit=20&offset=${currentOffset}`,
         {
           headers: {
-            Authorization:
-              `Bearer ${accessToken}`,
+            Authorization: `Bearer ${accessToken}`,
           },
         }
       );
@@ -81,15 +100,58 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
 
   useEffect(() => {
     // Load Stripe buy button script
-    const script = document.createElement('script');
-    script.src = 'https://js.stripe.com/v3/buy-button.js';
+    const script = document.createElement("script");
+    script.src = "https://js.stripe.com/v3/buy-button.js";
     script.async = true;
+    script.onload = () => {
+      console.log("Stripe script loaded successfully.");
+    };
+    script.onerror = () => {
+      console.error("Error loading Stripe script.");
+    };
     document.body.appendChild(script);
+
+    const setupExpressCheckout = async () => {
+      try {
+        const stripe = await stripePromise;
+        if (!stripe) {
+          console.error("Stripe not initialized.");
+          return;
+        }
+
+        const elements = stripe.elements({
+          mode: "payment",
+          amount: 50,
+          currency: "cad",
+          appearance,
+        });
+
+        const expressCheckoutElement = elements.create(
+          "expressCheckout",
+          options
+        );
+
+        // Mount the element only if it hasn't been mounted yet
+        if (!expressCheckoutElementRef.current) {
+          expressCheckoutElementRef.current = document.getElementById("express-checkout-element");
+          if (expressCheckoutElementRef.current) {
+            expressCheckoutElement.mount(expressCheckoutElementRef.current);
+            console.log("Express checkout element mounted successfully.");
+          } else {
+            console.error("Mount element not found.");
+          }
+        }
+      } catch (error) {
+        console.error("Error setting up Express Checkout:", error);
+      }
+    };
+
+    setupExpressCheckout();
 
     return () => {
       document.body.removeChild(script);
     };
-  }, []);
+  }, [stripePromise]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
@@ -103,7 +165,7 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
   };
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSearchResultClick = (track: SpotifyTrack) => {
@@ -112,58 +174,67 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
     setSearchResults([]);
     onSongSelect?.(false);
     scrollToTop();
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
+    const inputElement = document.getElementById("song-input") as HTMLInputElement;
+    if (inputElement) {
+      inputElement.blur();
     }
   };
 
   const handleSearchContainerTouch = () => {
     // Dismiss keyboard when touching search results
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
+    const inputElement = document.getElementById("song-input") as HTMLInputElement;
+    if (inputElement) {
+      inputElement.blur();
     }
   };
 
   const handleClear = () => {
-    setSearchInput('');
+    setSearchInput("");
     setSearchResults([]);
     setSelectedTrack(null);
     onSongSelect?.(false);
     scrollToTop();
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
+    const inputElement = document.getElementById("song-input") as HTMLInputElement;
+    if (inputElement) {
+      inputElement.blur();
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
+      const inputElement = document.getElementById("song-input") as HTMLInputElement;
+      if (inputElement) {
+        inputElement.blur();
       }
     }
   };
 
   return (
-    <form 
-      className="flex flex-col w-full h-full relative pb-20" 
+    <div>
+      <form
+      className="flex flex-col w-full h-full relative pb-20"
       onSubmit={(e) => e.preventDefault()}
       suppressHydrationWarning
     >
       {/* Search Input */}
-      <div 
+      <div
         className="relative bg-gray-800 dark:bg-gray-800 border-gray-700 dark:border-gray-700 border flex items-stretch gap-5 text-base text-neutral-500 dark:text-gray-400 font-normal leading-loose justify-between px-3.5 py-[18px] rounded-[15px] border-solid"
         suppressHydrationWarning
       >
         <input
           id="song-input"
           type="text"
-          value={selectedTrack ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}` : searchInput}
+          value={
+            selectedTrack
+              ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}`
+              : searchInput
+          }
           onChange={(e) => {
             const newValue = e.target.value;
             setSearchInput(newValue);
             setSelectedTrack(null);
-            if (newValue === '') {
+            if (newValue === "") {
               setSearchResults([]);
               onSongSelect?.(false);
             } else if (onSongSelect) {
@@ -193,7 +264,7 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
             onScroll={handleScroll}
             onTouchStart={handleSearchContainerTouch}
             className="absolute left-4 right-4 top-full mt-2 bg-white dark:bg-gray-800 
-              border border-neutral-200 dark:border-gray-700 rounded-2xl shadow-xl z-50 
+              border  dark:border-gray-700 rounded-2xl shadow-xl z-50 
               max-h-[70vh] overflow-y-auto backdrop-blur-sm"
           >
             {searchResults.map((track) => (
@@ -229,7 +300,7 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
 
       {/* Empty State - Only show when no search and no selection */}
       {!searchInput && !selectedTrack && !searchResults.length && (
-        <div className="flex flex-col items-center justify-center mt-10">
+        <div className="flex flex-col items-center justify-center mt-10" suppressHydrationWarning>
           <div className="text-gray-600 dark:text-gray-600 text-6xl mb-4">
             <FaSearch />
           </div>
@@ -241,7 +312,7 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
 
       {/* Selected Song Display */}
       {selectedTrack && (
-        <div className="flex flex-col items-center mt-6 mb-32">
+        <div className="flex flex-col items-center mt-6 mb-32" suppressHydrationWarning>
           <img
             loading="lazy"
             src={selectedTrack.album.images[1]?.url || ""}
@@ -257,24 +328,24 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
         </div>
       )}
 
-      {/* Bottom Action Section */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900 
-        backdrop-blur-md border-t dark:border-gray-900 p-4 pb-8 z-50">
+      
+    </form>
+    {/* Bottom Action Section */}
+    <div
+        className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900 
+         p-4 pb-8 z-50"
+        suppressHydrationWarning
+      >
         <div className="max-w-[480px] mx-auto">
-          {selectedTrack && (
-            <>
-              <stripe-buy-button
-                buy-button-id="buy_btn_1QmNacIxGe3lgVLrfSAxDksx"
-                publishable-key="pk_live_51QmNAjIxGe3lgVLrzftNbBXr9LNNY3MbIWlupy3geBMzzpYLxL8DkPRWhZhi7U5YIXWgfQggwEUV9X4JvDkQpJPH006CXImO1h"
-                className="w-full flex justify-center [&>iframe]:!w-full [&>iframe]:!max-w-none [&>iframe]:!h-[42px] [&>iframe]:!min-h-0 [&>iframe]:rounded-xl [&>iframe]:shadow-lg [&>iframe]:transition-transform [&>iframe]:duration-200 [&>iframe]:hover:scale-[1.02] [&>iframe]:active:scale-[0.98]"
-              />
-              <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
-                You will not be charged until your song is played
-              </p>
-            </>
-          )}
+          <div id="express-checkout-element"></div>
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
+            You will not be charged until your song is played
+          </p>
         </div>
       </div>
-    </form>
+
+    </div>
+    
+    
   );
 };

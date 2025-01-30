@@ -11,6 +11,7 @@ export const RequestSong = () => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [showHeader, setShowHeader] = useState(true);
 
+
   const getSpotifyToken = async () => {
     try {
       const response = await fetch('/api/spotify/auth', {
