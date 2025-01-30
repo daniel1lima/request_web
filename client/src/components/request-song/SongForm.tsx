@@ -258,7 +258,7 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
       )}
 
       {/* Bottom Action Section */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900/80 
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900 
         backdrop-blur-md border-t dark:border-gray-900 p-4 pb-8 z-50">
         <div className="max-w-[480px] mx-auto">
           {selectedTrack && (

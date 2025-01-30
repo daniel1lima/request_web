@@ -29,7 +29,7 @@ const SongCard: React.FC<SongCardProps> = ({ image, title, artist, reactions, is
           </div>
         </div>
       </div>
-      {isQueued ? (
+      {/* {isQueued ? (
         <div className="text-[rgba(155,155,155,1)] dark:text-gray-400 text-xl mt-3.5">
           +
         </div>
@@ -39,7 +39,7 @@ const SongCard: React.FC<SongCardProps> = ({ image, title, artist, reactions, is
           <br />
           <span className="text-[rgba(147,147,147,1)] dark:text-gray-400 text-[10px]"> {reactions}</span>
         </div>
-      )}
+      )} */}
     </div>
   );
 };
