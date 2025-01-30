@@ -160,9 +160,13 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
           type="text"
           value={selectedTrack ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}` : searchInput}
           onChange={(e) => {
-            setSearchInput(e.target.value);
+            const newValue = e.target.value;
+            setSearchInput(newValue);
             setSelectedTrack(null);
-            if (e.target.value && onSongSelect) {
+            if (newValue === '') {
+              setSearchResults([]);
+              onSongSelect?.(false);
+            } else if (onSongSelect) {
               onSongSelect(true);
             }
           }}
