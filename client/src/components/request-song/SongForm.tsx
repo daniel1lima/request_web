@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useDebounce } from "use-debounce";
-import { FaSearch } from "react-icons/fa";
+import { FaSearch, FaTimes } from "react-icons/fa";
 
 interface SpotifyTrack {
   id: string;
@@ -15,6 +15,7 @@ interface SpotifyTrack {
 
 interface SongFormProps {
   accessToken: string | null;
+  onSongSelect?: (selected: boolean) => void;
 }
 
 declare global {
@@ -28,7 +29,7 @@ declare global {
   }
 }
 
-export const SongForm: React.FC<SongFormProps> = ({ accessToken }) => {
+export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect }) => {
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
@@ -101,132 +102,167 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken }) => {
     }
   };
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleSearchResultClick = (track: SpotifyTrack) => {
+    setSelectedTrack(track);
+    setSearchInput(`${track.name} - ${track.artists[0].name}`);
+    setSearchResults([]);
+    onSongSelect?.(false);
+    scrollToTop();
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  };
+
+  const handleSearchContainerTouch = () => {
+    // Dismiss keyboard when touching search results
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  };
+
+  const handleClear = () => {
+    setSearchInput('');
+    setSearchResults([]);
+    setSelectedTrack(null);
+    onSongSelect?.(false);
+    scrollToTop();
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (document.activeElement instanceof HTMLElement) {
+        document.activeElement.blur();
+      }
+    }
+  };
+
   return (
-    <form className="flex flex-col w-full">
-      <div className="relative bg-white dark:bg-gray-800 border-neutral-200 dark:border-gray-700 border flex items-stretch gap-5 text-base text-neutral-500 dark:text-gray-400 font-normal leading-loose justify-between mt-3 px-3.5 py-[18px] rounded-[15px] border-solid">
+    <form className="flex flex-col w-full h-full relative pb-20" onSubmit={(e) => e.preventDefault()}>
+      {/* Search Input */}
+      <div className="relative bg-white dark:bg-gray-800 border-neutral-200 dark:border-gray-700 border flex items-stretch gap-5 text-base text-neutral-500 dark:text-gray-400 font-normal leading-loose justify-between px-3.5 py-[18px] rounded-[15px] border-solid">
         <input
           id="song-input"
           type="text"
-          value={
-            selectedTrack
-              ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}`
-              : searchInput
-          }
+          value={selectedTrack ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}` : searchInput}
           onChange={(e) => {
             setSearchInput(e.target.value);
             setSelectedTrack(null);
+            if (e.target.value && onSongSelect) {
+              onSongSelect(true);
+            }
           }}
+          onKeyDown={handleKeyDown}
           placeholder="Search for a song"
           className="bg-transparent outline-none w-full dark:text-white"
         />
-        {selectedTrack ? (
-          <img
-            loading="lazy"
-            src={selectedTrack.album.images[2]?.url || ""}
-            className="w-7 h-7 rounded object-cover shrink-0 my-auto"
-          />
-        ) : (
-          <div className="mt-2">
-            <FaSearch />
-          </div>
-        )}
+        <button
+          type="button"
+          onClick={searchInput || selectedTrack ? handleClear : undefined}
+          className="mt-2 p-1 -mr-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+        >
+          {searchInput || selectedTrack ? (
+            <FaTimes className="w-4 h-4 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
+          ) : (
+            <FaSearch className="w-4 h-4" />
+          )}
+        </button>
 
         {/* Search Results Dropdown */}
         {searchResults.length > 0 && !selectedTrack && (
           <div
             ref={resultsContainerRef}
             onScroll={handleScroll}
-            className="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-gray-800 border border-neutral-200 dark:border-gray-700 rounded-lg shadow-lg z-10 max-h-[300px] overflow-y-auto"
+            onTouchStart={handleSearchContainerTouch}
+            className="absolute left-4 right-4 top-full mt-2 bg-white dark:bg-gray-800 
+              border border-neutral-200 dark:border-gray-700 rounded-2xl shadow-xl z-50 
+              max-h-[70vh] overflow-y-auto backdrop-blur-sm"
           >
             {searchResults.map((track) => (
               <div
                 key={track.id}
-                onClick={() => {
-                  setSelectedTrack(track);
-                  setSearchInput(`${track.name} - ${track.artists[0].name}`);
-                  setSearchResults([]);
-                }}
-                className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                onClick={() => handleSearchResultClick(track)}
+                className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 
+                  cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
               >
                 <img
                   src={track.album.images[2]?.url}
                   alt={track.name}
-                  className="w-10 h-10 rounded"
+                  className="w-12 h-12 rounded-lg shadow-sm"
                 />
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-white">{track.name}</div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-gray-900 dark:text-white truncate">
+                    {track.name}
+                  </div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
                     {track.artists[0].name}
                   </div>
                 </div>
               </div>
             ))}
             {isLoading && (
-              <div className="text-center p-2 text-gray-500 dark:text-gray-400">
-                Loading more...
+              <div className="text-center p-4 text-gray-500 dark:text-gray-400">
+                <div className="animate-pulse">Loading more songs...</div>
               </div>
             )}
           </div>
         )}
       </div>
 
-      <div className="flex flex-col items-center mt-10">
-        {selectedTrack ? (
+      {/* Empty State - Only show when no search and no selection */}
+      {!searchInput && !selectedTrack && !searchResults.length && (
+        <div className="flex flex-col items-center justify-center mt-10">
+          <div className="text-gray-400 dark:text-gray-600 text-6xl mb-4">
+            <FaSearch />
+          </div>
+          <p className="text-gray-500 dark:text-gray-400 text-center">
+            Search for a song to request
+          </p>
+        </div>
+      )}
+
+      {/* Selected Song Display */}
+      {selectedTrack && (
+        <div className="flex flex-col items-center mt-6 mb-32">
           <img
             loading="lazy"
             src={selectedTrack.album.images[1]?.url || ""}
-            className="w-54 h-54 rounded object-cover shrink-0 my-auto"
+            className="w-48 h-48 rounded-lg object-cover shadow-lg"
+            alt={selectedTrack.name}
           />
-        ) : (
-          <div className="mt-2">
-            <FaSearch />
-          </div>
-        )}
-
-        {selectedTrack ? (
-          <h2 className="text-gray-800 dark:text-gray-200 text-lg font-medium leading-[34px] text-center self-center mt-[17px]">
+          <h2 className="text-gray-800 dark:text-gray-200 text-lg font-medium mt-4 text-center px-4">
             {selectedTrack.name}
           </h2>
-        ) : (
-          <h2 className="text-gray-800 dark:text-gray-200 text-lg font-medium leading-[34px] text-center self-center mt-[17px]">
-            No Song Selected
-          </h2>
-        )}
-      </div>
-
-      {/* <div className="flex items-stretch gap-5 leading-[34px] justify-between mt-[47px]">
-        <div className="text-[#120D26] text-base font-medium">
-          Current Request Fee
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+            {selectedTrack.artists[0].name}
+          </p>
         </div>
-        <div className="text-[rgba(63,56,221,1)] text-lg font-bold text-right">
-          24.99 AED
+      )}
+
+      {/* Bottom Action Section */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-900/80 
+        backdrop-blur-md border-t border-gray-200 dark:border-gray-800 p-4 pb-8 z-50">
+        <div className="max-w-[480px] mx-auto">
+          {selectedTrack && (
+            <>
+              <stripe-buy-button
+                buy-button-id="buy_btn_1QmNacIxGe3lgVLrfSAxDksx"
+                publishable-key="pk_live_51QmNAjIxGe3lgVLrzftNbBXr9LNNY3MbIWlupy3geBMzzpYLxL8DkPRWhZhi7U5YIXWgfQggwEUV9X4JvDkQpJPH006CXImO1h"
+                className="w-full flex justify-center [&>iframe]:!w-full [&>iframe]:!max-w-none [&>iframe]:!h-[42px] [&>iframe]:!min-h-0 [&>iframe]:rounded-xl [&>iframe]:shadow-lg [&>iframe]:transition-transform [&>iframe]:duration-200 [&>iframe]:hover:scale-[1.02] [&>iframe]:active:scale-[0.98]"
+              />
+              <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
+                You will not be charged until your song is played
+              </p>
+            </>
+          )}
         </div>
-      </div> */}
-
-      <p className="text-gray-900 dark:text-gray-100 text-xs font-normal leading-none text-center mt-[18px]">
-        You will not be charged until your song is played.
-      </p>
-
-      <div className="flex flex-col items-end mt-4 fixed bottom-20 left-0 right-0 z-50">
-        {selectedTrack ? (
-          <stripe-buy-button
-            buy-button-id="buy_btn_1QmNacIxGe3lgVLrfSAxDksx"
-            publishable-key="pk_live_51QmNAjIxGe3lgVLrzftNbBXr9LNNY3MbIWlupy3geBMzzpYLxL8DkPRWhZhi7U5YIXWgfQggwEUV9X4JvDkQpJPH006CXImO1h"
-            className="w-full flex justify-center relative"
-          />
-        ) : (
-          <button
-            disabled
-            className="bg-gray-400 self-center w-[250px] text-base text-white font-bold text-center uppercase tracking-[1px] mt-[27px] px-[23px] py-[19px] rounded-[14px]"
-          >
-            Select a Song
-          </button>
-        )}
-        <p className="bg-blend-normal text-gray-800 dark:text-gray-200 text-base font-light leading-7 text-center self-center mt-[7px]">
-          {selectedTrack 
-            ? "Click the button above to request this song"
-            : "Select any song to request from the search above"}
-        </p>
       </div>
     </form>
   );
