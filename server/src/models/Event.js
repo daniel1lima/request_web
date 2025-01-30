@@ -13,6 +13,6 @@ const Event = sequelize.define('Event', {
   eventLocation: { type: DataTypes.STRING, allowNull: false },
   requestFee: { type: DataTypes.FLOAT, allowNull: false },
   djId: { type: DataTypes.UUID, allowNull: false }, // Foreign key
-}, { timestamps: false });
+}, { timestamps: true });
 
 module.exports = Event;

@@ -11,6 +11,6 @@ const DJ = sequelize.define('DJ', {
   djEmail: { type: DataTypes.STRING, allowNull: false },
   djPhone: { type: DataTypes.STRING },
   djInsta: { type: DataTypes.STRING },
-}, { timestamps: false });
+}, { timestamps: true });
 
 module.exports = DJ;

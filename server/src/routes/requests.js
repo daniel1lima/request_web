@@ -293,9 +293,10 @@ router.get('/webhook/getByEvent', async (req, res) => {
     }
 
     try {
-        // Verify event exists
+        // Verify event exists - only fetch necessary fields
         const event = await Event.findOne({ 
-            where: { eventId }
+            where: { eventId },
+            attributes: ['eventId'] // Only fetch the ID for verification
         });
 
         if (!event) {
@@ -305,6 +306,7 @@ router.get('/webhook/getByEvent', async (req, res) => {
             });
         }
 
+        // Set headers immediately to start the connection
         res.writeHead(200, {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
@@ -312,22 +314,48 @@ router.get('/webhook/getByEvent', async (req, res) => {
             'X-Accel-Buffering': 'no'
         });
 
-        const requests = await Request.findAll({
-            where: { eventId },
-            include: [
-                { model: User, attributes: ['userName'] },
-                { model: Event, attributes: ['eventName'] }
-            ]
-        });
-        
-        const initialData = { type: 'initial', requests };
-        res.write(`data: ${JSON.stringify(initialData)}\n\n`);
+        // Send an immediate connection confirmation
+        res.write(`data: ${JSON.stringify({ type: 'connected' })}\n\n`);
 
+        // Set up the client connection before fetching data
         if (!eventClients.has(eventId)) {
             eventClients.set(eventId, new Set());
         }
         eventClients.get(eventId).add(res);
 
+        // Fetch requests with limited fields and batch size
+        const requests = await Request.findAll({
+            where: { eventId },
+            include: [
+                { 
+                    model: User,
+                    attributes: ['userName'],
+                    required: false
+                },
+                { 
+                    model: Event,
+                    attributes: ['eventName'],
+                    required: false
+                }
+            ],
+            attributes: [
+                'requestId',
+                'songName',
+                'songArtist',
+                'songImage',
+                'accepted',
+                'played',
+                'requestUpvotes'
+            ],
+            limit: 100, // Limit the number of requests
+            order: [['createdAt', 'DESC']] // Get most recent first
+        });
+        
+        // Send the initial data after connection is established
+        const initialData = { type: 'initial', requests };
+        res.write(`data: ${JSON.stringify(initialData)}\n\n`);
+
+        // Set up keep-alive
         const keepAlive = setInterval(() => {
             if (res.writableEnded) {
                 clearInterval(keepAlive);
@@ -336,6 +364,7 @@ router.get('/webhook/getByEvent', async (req, res) => {
             res.write(': keepalive\n\n');
         }, 30000);
 
+        // Clean up on connection close
         req.on('close', () => {
             clearInterval(keepAlive);
             if (eventClients.has(eventId)) {

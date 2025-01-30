@@ -10,6 +10,6 @@ const User = sequelize.define('User', {
   userName: { type: DataTypes.STRING(50), allowNull: false },
   userEmail: { type: DataTypes.STRING(50), allowNull: false, unique: true },
   password: { type: DataTypes.STRING(50), allowNull: false },
-}, { timestamps: false });
+}, { timestamps: true });
 
 module.exports = User;

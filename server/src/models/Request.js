@@ -7,7 +7,6 @@ const Request = sequelize.define('Request', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
-  fileChanged: { type: DataTypes.INTEGER },
   songName: { type: DataTypes.STRING(50) },
   songArtist: { type: DataTypes.STRING(50) },
   songImage: { type: DataTypes.STRING },
@@ -17,6 +16,8 @@ const Request = sequelize.define('Request', {
   userId: { type: DataTypes.UUID }, // Foreign key
   eventId: { type: DataTypes.UUID }, // Foreign key
   paymentId: { type: DataTypes.UUID }, // Foreign key
-}, { timestamps: false });
+}, { 
+  timestamps: true  // This will add createdAt and updatedAt
+});
 
 module.exports = Request;
