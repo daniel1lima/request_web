@@ -2,11 +2,15 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
 
 const Payment = sequelize.define('Payment', {
-  paymentID: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  amount: { type: DataTypes.INTEGER, allowNull: false },
+  paymentId: {
+    type: DataTypes.UUID,
+    defaultValue: DataTypes.UUIDV4,
+    primaryKey: true
+  },
+  amount: { type: DataTypes.FLOAT, allowNull: false },
   paymentDate: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   status: { type: DataTypes.STRING, defaultValue: 'pending' },
-  DJID: { type: DataTypes.INTEGER, allowNull: false }, // Foreign key
+  djId: { type: DataTypes.UUID, allowNull: false }, // Foreign key
 }, { timestamps: false });
 
 module.exports = Payment;

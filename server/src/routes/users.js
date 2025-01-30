@@ -5,7 +5,9 @@ const { User, Request, Event } = require('../models/Index');
 // Get all users
 router.get('/all', async (req, res) => {
     try {
-        const users = await User.findAll();
+        const users = await User.findAll({
+            attributes: ['userId', 'userName', 'userEmail'] // Explicitly specify the columns
+        });
         res.json(users);
     } catch (error) {
         res.status(500).json({
@@ -18,8 +20,8 @@ router.get('/all', async (req, res) => {
 // Get specific user by ID (with their requests)
 router.get('/getById', async (req, res) => {
     try {
-        const userId = parseInt(req.query.userId, 10);
-        
+        const { userId } = req.query;
+
         if (!userId) {
             return res.status(400).json({ 
                 error: 'Missing user ID',
@@ -50,10 +52,10 @@ router.get('/getById', async (req, res) => {
 // Create new user
 router.post('/create', async (req, res) => {
     try {
-        const { UserName, userEmail, password } = req.body;
+        const { userName, userEmail, password } = req.body;
 
         // Validate required fields
-        if (!UserName || !userEmail || !password) {
+        if (!userName || !userEmail || !password) {
             return res.status(400).json({
                 error: 'All fields are required'
             });
@@ -68,7 +70,7 @@ router.post('/create', async (req, res) => {
         }
 
         const newUser = await User.create({
-            UserName,
+            userName,
             userEmail,
             password // Note: In a real application, you should hash the password
         });
@@ -82,10 +84,10 @@ router.post('/create', async (req, res) => {
     }
 });
 
-// Update user information
+// Update user
 router.put('/update', async (req, res) => {
     try {
-        const userId = parseInt(req.query.userId, 10);
+        const { userId } = req.query;
         
         if (!userId) {
             return res.status(400).json({ 
@@ -94,7 +96,7 @@ router.put('/update', async (req, res) => {
             });
         }
 
-        const { UserName, userEmail, password } = req.body;
+        const { userName, userEmail, password } = req.body;
         const user = await User.findByPk(userId);
 
         if (!user) {
@@ -102,7 +104,7 @@ router.put('/update', async (req, res) => {
         }
 
         await user.update({
-            UserName: UserName || user.UserName,
+            userName: userName || user.userName,
             userEmail: userEmail || user.userEmail,
             password: password || user.password
         });
@@ -119,8 +121,8 @@ router.put('/update', async (req, res) => {
 // Delete user
 router.delete('/delete', async (req, res) => {
     try {
-        const userId = parseInt(req.query.userId, 10);
-        
+        const { userId } = req.query;
+
         if (!userId) {
             return res.status(400).json({ 
                 error: 'Missing user ID',
@@ -147,7 +149,7 @@ router.delete('/delete', async (req, res) => {
 // Get user's requests
 router.get('/getRequests', async (req, res) => {
     try {
-        const userId = parseInt(req.query.userId, 10);
+        const { userId } = req.query;
         
         if (!userId) {
             return res.status(400).json({ 
@@ -157,7 +159,7 @@ router.get('/getRequests', async (req, res) => {
         }
 
         const requests = await Request.findAll({
-            where: { userID: userId },
+            where: { userId },
             include: [{ 
                 model: Event,
                 attributes: ['eventName', 'eventDateTime', 'eventLocation']

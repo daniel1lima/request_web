@@ -18,7 +18,7 @@ router.get('/all', async (req, res) => {
 // Get specific DJ by ID (with their events and payments)
 router.get('/getById', async (req, res) => {
     try {
-        const djId = parseInt(req.query.djId, 10);
+        const { djId } = req.query;
         
         if (!djId) {
             return res.status(400).json({ 
@@ -50,20 +50,20 @@ router.get('/getById', async (req, res) => {
 // Create new DJ
 router.post('/create', async (req, res) => {
     try {
-        const { DJName, DJEmail, DJPhone, DJInsta } = req.body;
+        const { djName, djEmail, djPhone, djInsta } = req.body;
 
         // Validate required fields
-        if (!DJName || !DJEmail) {
+        if (!djName || !djEmail) {
             return res.status(400).json({ 
                 error: 'Name and email are required' 
             });
         }
 
         const newDJ = await DJ.create({
-            DJName,
-            DJEmail,
-            DJPhone,
-            DJInsta
+            djName,
+            djEmail,
+            djPhone,
+            djInsta
         });
 
         res.status(201).json(newDJ);
@@ -78,7 +78,7 @@ router.post('/create', async (req, res) => {
 // Update DJ information
 router.put('/update', async (req, res) => {
     try {
-        const djId = parseInt(req.query.djId, 10);
+        const { djId } = req.query;
         
         if (!djId) {
             return res.status(400).json({ 
@@ -87,7 +87,7 @@ router.put('/update', async (req, res) => {
             });
         }
 
-        const { DJName, DJEmail, DJPhone, DJInsta } = req.body;
+        const { djName, djEmail, djPhone, djInsta } = req.body;
         const dj = await DJ.findByPk(djId);
 
         if (!dj) {
@@ -95,10 +95,10 @@ router.put('/update', async (req, res) => {
         }
 
         await dj.update({
-            DJName: DJName || dj.DJName,
-            DJEmail: DJEmail || dj.DJEmail,
-            DJPhone: DJPhone || dj.DJPhone,
-            DJInsta: DJInsta || dj.DJInsta
+            djName: djName || dj.djName,
+            djEmail: djEmail || dj.djEmail,
+            djPhone: djPhone || dj.djPhone,
+            djInsta: djInsta || dj.djInsta
         });
 
         res.json(dj);
@@ -113,7 +113,7 @@ router.put('/update', async (req, res) => {
 // Delete DJ
 router.delete('/delete', async (req, res) => {
     try {
-        const djId = parseInt(req.query.djId, 10);
+        const { djId } = req.query;
         
         if (!djId) {
             return res.status(400).json({ 
@@ -141,7 +141,7 @@ router.delete('/delete', async (req, res) => {
 // Get DJ's events
 router.get('/getEvents', async (req, res) => {
     try {
-        const djId = parseInt(req.query.djId, 10);
+        const { djId } = req.query;
         
         if (!djId) {
             return res.status(400).json({ 
@@ -151,7 +151,11 @@ router.get('/getEvents', async (req, res) => {
         }
 
         const events = await Event.findAll({
-            where: { DJID: djId }
+            where: { djId },
+            include: [{ 
+                model: DJ,
+                attributes: ['djName', 'djEmail', 'djPhone', 'djInsta']
+            }]
         });
         res.json(events);
     } catch (error) {
@@ -185,6 +189,7 @@ router.get('/getEvents', async (req, res) => {
 //         });
 //     }
 // });
+
 
 
 module.exports = router;
