@@ -7,8 +7,6 @@ const requestRoutes = require('./routes/requests');
 const userRoutes = require('./routes/users');
 const spotifyRoutes = require('./routes/spotify');
 
-
-
 const app = express();
 
 // Middleware

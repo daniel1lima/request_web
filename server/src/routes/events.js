@@ -9,7 +9,6 @@ router.get('/all', async (req, res) => {
   res.json(events);
 });
 
-
 // Create an event
 router.post('/create', async (req, res) => {
   try {
@@ -19,18 +18,18 @@ router.post('/create', async (req, res) => {
           eventDateTime, 
           eventLocation, 
           requestFee, 
-          DJID 
+          djId 
       } = req.body;
 
       // Validate required fields
-      if (!eventName || !eventDateTime || !eventLocation || !requestFee || !DJID) {
+      if (!eventName || !eventDateTime || !eventLocation || !requestFee || !djId) {
           return res.status(400).json({ 
               error: 'Missing required fields' 
           });
       }
 
       // Verify DJ exists
-      const djExists = await DJ.findByPk(DJID);
+      const djExists = await DJ.findByPk(djId);
       if (!djExists) {
           return res.status(404).json({ 
               error: 'DJ not found' 
@@ -44,7 +43,7 @@ router.post('/create', async (req, res) => {
           eventDateTime,
           eventLocation,
           requestFee,
-          DJID
+          djId
       });
 
       res.status(201).json(newEvent);
@@ -60,7 +59,7 @@ router.post('/create', async (req, res) => {
 // Get event by ID
 router.get('/getById', async (req, res) => {
     try {
-        const eventId = parseInt(req.query.eventId, 10);
+        const { eventId } = req.query;
 
         if (!eventId) {
             return res.status(400).json({ 
@@ -70,10 +69,10 @@ router.get('/getById', async (req, res) => {
         }
 
         const event = await Event.findOne({
-            where: { eventID: eventId },
+            where: { eventId },
             include: [{ 
                 model: DJ,
-                attributes: ['DJName', 'DJEmail', 'DJPhone', 'DJInsta']
+                attributes: ['djName', 'djEmail', 'djPhone', 'djInsta']
             }]
         });
 
@@ -97,7 +96,7 @@ router.get('/getById', async (req, res) => {
 // Get all events for a specific DJ
 router.get('/getByDj', async (req, res) => {
     try {
-        const djId = parseInt(req.query.djId, 10);
+        const { djId } = req.query;
 
         if (!djId) {
             return res.status(400).json({ 
@@ -107,10 +106,10 @@ router.get('/getByDj', async (req, res) => {
         }
 
         const events = await Event.findAll({
-            where: { DJID: djId },
+            where: { djId },
             include: [{ 
                 model: DJ,
-                attributes: ['DJName', 'DJEmail', 'DJPhone', 'DJInsta']
+                attributes: ['djName', 'djEmail', 'djPhone', 'djInsta']
             }]
         });
 
@@ -127,8 +126,8 @@ router.get('/getByDj', async (req, res) => {
 // Update event details
 router.put('/update', async (req, res) => {
     try {
-        const eventId = parseInt(req.query.eventId, 10);
-        const { eventName, eventImage, eventDateTime, eventLocation, requestFee, DJID } = req.body;
+        const { eventId } = req.query;
+        const { eventName, eventImage, eventDateTime, eventLocation, requestFee, djId } = req.body;
 
         if (!eventId) {
             return res.status(400).json({ 
@@ -146,9 +145,9 @@ router.put('/update', async (req, res) => {
             });
         }
 
-        // If DJID is being updated, verify new DJ exists
-        if (DJID && DJID !== event.DJID) {
-            const djExists = await DJ.findByPk(DJID);
+        // If djId is being updated, verify new DJ exists
+        if (djId && djId !== event.djId) {
+            const djExists = await DJ.findByPk(djId);
             if (!djExists) {
                 return res.status(404).json({ 
                     error: 'DJ not found' 
@@ -162,7 +161,7 @@ router.put('/update', async (req, res) => {
             eventDateTime: eventDateTime || event.eventDateTime,
             eventLocation: eventLocation || event.eventLocation,
             requestFee: requestFee || event.requestFee,
-            DJID: DJID || event.DJID
+            djId: djId || event.djId
         });
 
         res.json(event);
@@ -178,7 +177,7 @@ router.put('/update', async (req, res) => {
 // Delete an event
 router.delete('/delete', async (req, res) => {
     try {
-        const eventId = parseInt(req.query.eventId, 10);
+        const { eventId } = req.query;
 
         if (!eventId) {
             return res.status(400).json({ 
@@ -218,7 +217,7 @@ router.get('/getUpcoming', async (req, res) => {
             },
             include: [{ 
                 model: DJ,
-                attributes: ['DJName', 'DJEmail', 'DJPhone', 'DJInsta']
+                attributes: ['djName', 'djEmail', 'djPhone', 'djInsta']
             }],
             order: [['eventDateTime', 'ASC']] // Sort by date ascending
         });
@@ -233,5 +232,4 @@ router.get('/getUpcoming', async (req, res) => {
     }
 });
 
-// Make sure to export the router
 module.exports = router;

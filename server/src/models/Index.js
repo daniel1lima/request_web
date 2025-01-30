@@ -6,42 +6,42 @@ const Payment = require('./Payment');
 
 // DJ-Event (One-to-Many)
 DJ.hasMany(Event, { 
-    foreignKey: 'DJID',
+    foreignKey: 'djId',
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE'
 });
-Event.belongsTo(DJ, { foreignKey: 'DJID' });
+Event.belongsTo(DJ, { foreignKey: 'djId' });
 
 // DJ-Payment (One-to-Many)
 DJ.hasMany(Payment, { 
-    foreignKey: 'DJID',
+    foreignKey: 'djId',
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE'
 });
-Payment.belongsTo(DJ, { foreignKey: 'DJID' });
+Payment.belongsTo(DJ, { foreignKey: 'djId' });
 
 // User-Request (One-to-Many)
 User.hasMany(Request, { 
-    foreignKey: 'userID',
+    foreignKey: 'userId',
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE'
 });
-Request.belongsTo(User, { foreignKey: 'userID' });
+Request.belongsTo(User, { foreignKey: 'userId' });
 
 // Event-Request (One-to-Many)
 Event.hasMany(Request, { 
-    foreignKey: 'eventID',
+    foreignKey: 'eventId',
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE'
 });
-Request.belongsTo(Event, { foreignKey: 'eventID' });
+Request.belongsTo(Event, { foreignKey: 'eventId' });
 
 // Payment-Request (One-to-One)
 Payment.hasOne(Request, { 
-    foreignKey: 'paymentID',
+    foreignKey: 'paymentId',
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE'
 });
-Request.belongsTo(Payment, { foreignKey: 'paymentID' });
+Request.belongsTo(Payment, { foreignKey: 'paymentId' });
 
 module.exports = { User, DJ, Event, Request, Payment };

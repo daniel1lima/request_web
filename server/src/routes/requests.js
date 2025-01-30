@@ -49,7 +49,7 @@ router.get('/all', async (req, res) => {
     try {
         const requests = await Request.findAll({
             include: [
-                { model: User, attributes: ['UserName'] },
+                { model: User, attributes: ['userName'] },
                 { model: Event, attributes: ['eventName'] }
             ]
         });
@@ -65,7 +65,7 @@ router.get('/all', async (req, res) => {
 // Get specific request by ID
 router.get('/getById', async (req, res) => {
     try {
-        const requestId = req.query.requestId;
+        const { requestId } = req.query;
         
         if (!requestId) {
             return res.status(400).json({ 
@@ -75,9 +75,9 @@ router.get('/getById', async (req, res) => {
         }
 
         const request = await Request.findOne({
-            where: { requestID: requestId },
+            where: { requestId },
             include: [
-                { model: User, attributes: ['UserName'] },
+                { model: User, attributes: ['userName'] },
                 { model: Event, attributes: ['eventName'] }
             ]
         });
@@ -98,38 +98,44 @@ router.get('/getById', async (req, res) => {
 // Create new request
 router.post('/create', async (req, res) => {
     try {
-        const { songName, songArtist, songImage, userID, eventID, paymentID } = req.body;
+        const { songName, songArtist, songImage, userId, eventId, paymentId } = req.body;
 
-        if (!songName || !songArtist || !eventID) {
+        if (!songName || !songArtist || !eventId) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
         const newRequest = await Request.create({
-            songName, songArtist, songImage, userID, eventID, paymentID,
-            accepted: false, played: false, requestUpvotes: 0
+            songName, 
+            songArtist, 
+            songImage, 
+            userId, 
+            eventId, 
+            paymentId,
+            accepted: false, 
+            played: false, 
+            requestUpvotes: 0
         });
 
         console.log('New request created:', newRequest.toJSON());
 
         const fullRequest = await Request.findOne({
-            where: { requestID: newRequest.requestID },
+            where: { requestId: newRequest.requestId },
             include: [
-                { model: User, attributes: ['UserName'] },
+                { model: User, attributes: ['userName'] },
                 { model: Event, attributes: ['eventName'] }
             ]
         });
 
         if (!fullRequest) {
-            console.error('Failed to fetch created request with ID:', newRequest.requestID);
+            console.error('Failed to fetch created request with ID:', newRequest.requestId);
             return res.status(500).json({ error: 'Request created but failed to fetch details' });
         }
 
         res.status(201).json(fullRequest);
 
-        const eventIdNum = parseInt(eventID, 10);
-        if (eventClients.has(eventIdNum)) {
-            console.log(`Found ${eventClients.get(eventIdNum).size} clients to notify for event ${eventIdNum}`);
-            notifyEventClients(eventIdNum, { type: 'create', request: fullRequest });
+        if (eventClients.has(eventId)) {
+            console.log(`Found ${eventClients.get(eventId).size} clients to notify for event ${eventId}`);
+            notifyEventClients(eventId, { type: 'create', request: fullRequest });
         }
     } catch (error) {
         console.error('Create request error:', error);
@@ -143,7 +149,7 @@ router.post('/create', async (req, res) => {
 // Accept a request
 router.put('/accept', async (req, res) => {
     try {
-        const requestId = req.query.requestId;
+        const { requestId } = req.query;
         console.log('Attempting to accept request:', requestId);
         
         if (!requestId) {
@@ -153,7 +159,7 @@ router.put('/accept', async (req, res) => {
             });
         }
 
-        const request = await Request.findOne({ where: { requestID: requestId } });
+        const request = await Request.findOne({ where: { requestId } });
         
         if (!request) {
             console.log('Request not found:', requestId);
@@ -163,18 +169,17 @@ router.put('/accept', async (req, res) => {
         await request.update({ accepted: true });
 
         const fullRequest = await Request.findOne({
-            where: { requestID: requestId },
+            where: { requestId },
             include: [
-                { model: User, attributes: ['UserName'] },
+                { model: User, attributes: ['userName'] },
                 { model: Event, attributes: ['eventName'] }
             ]
         });
 
         res.json(fullRequest);
 
-        const eventIdNum = parseInt(request.eventID, 10);
-        if (eventClients.has(eventIdNum)) {
-            notifyEventClients(eventIdNum, { type: 'update', request: fullRequest });
+        if (eventClients.has(request.eventId)) {
+            notifyEventClients(request.eventId, { type: 'update', request: fullRequest });
         }
     } catch (error) {
         console.error('Accept request error:', error);
@@ -188,7 +193,7 @@ router.put('/accept', async (req, res) => {
 // Mark request as played
 router.put('/played', async (req, res) => {
     try {
-        const requestId = req.query.requestId;
+        const { requestId } = req.query;
         console.log('Attempting to mark request as played:', requestId);
         
         if (!requestId) {
@@ -198,7 +203,7 @@ router.put('/played', async (req, res) => {
             });
         }
 
-        const request = await Request.findOne({ where: { requestID: requestId } });
+        const request = await Request.findOne({ where: { requestId } });
         
         if (!request) {
             console.log('Request not found:', requestId);
@@ -216,18 +221,17 @@ router.put('/played', async (req, res) => {
         await request.update({ played: true });
 
         const fullRequest = await Request.findOne({
-            where: { requestID: requestId },
+            where: { requestId },
             include: [
-                { model: User, attributes: ['UserName'] },
+                { model: User, attributes: ['userName'] },
                 { model: Event, attributes: ['eventName'] }
             ]
         });
 
         res.json(fullRequest);
 
-        const eventIdNum = parseInt(request.eventID, 10);
-        if (eventClients.has(eventIdNum)) {
-            notifyEventClients(eventIdNum, { type: 'update', request: fullRequest });
+        if (eventClients.has(request.eventId)) {
+            notifyEventClients(request.eventId, { type: 'update', request: fullRequest });
         }
     } catch (error) {
         console.error('Mark played error:', error);
@@ -241,7 +245,7 @@ router.put('/played', async (req, res) => {
 // Delete request
 router.delete('/delete', async (req, res) => {
     try {
-        const requestId = req.query.requestId;
+        const { requestId } = req.query;
         
         if (!requestId) {
             return res.status(400).json({ 
@@ -250,23 +254,22 @@ router.delete('/delete', async (req, res) => {
             });
         }
 
-        const request = await Request.findOne({ where: { requestID: requestId } });
+        const request = await Request.findOne({ where: { requestId } });
         
         if (!request) {
             return res.status(404).json({ error: 'Request not found' });
         }
 
-        const eventIdNum = parseInt(request.eventID, 10);
         const deletedRequest = {
-            requestID: request.requestID,
-            eventID: request.eventID
+            requestId: request.requestId,
+            eventId: request.eventId
         };
 
         await request.destroy();
         res.json({ message: 'Request deleted successfully' });
 
-        if (eventClients.has(eventIdNum)) {
-            notifyEventClients(eventIdNum, { type: 'delete', request: deletedRequest });
+        if (eventClients.has(request.eventId)) {
+            notifyEventClients(request.eventId, { type: 'delete', request: deletedRequest });
         }
     } catch (error) {
         console.error('Delete request error:', error);
@@ -279,7 +282,7 @@ router.delete('/delete', async (req, res) => {
 
 // Webhook endpoint for real-time request updates
 router.get('/webhook/getByEvent', async (req, res) => {
-    const eventId = parseInt(req.query.eventId, 10);
+    const { eventId } = req.query;
     console.log('New webhook connection requested for event:', eventId);
     
     if (!eventId) {
@@ -290,9 +293,10 @@ router.get('/webhook/getByEvent', async (req, res) => {
     }
 
     try {
-        // Verify event exists
+        // Verify event exists - only fetch necessary fields
         const event = await Event.findOne({ 
-            where: { eventID: eventId }
+            where: { eventId },
+            attributes: ['eventId'] // Only fetch the ID for verification
         });
 
         if (!event) {
@@ -302,6 +306,7 @@ router.get('/webhook/getByEvent', async (req, res) => {
             });
         }
 
+        // Set headers immediately to start the connection
         res.writeHead(200, {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
@@ -309,22 +314,48 @@ router.get('/webhook/getByEvent', async (req, res) => {
             'X-Accel-Buffering': 'no'
         });
 
-        const requests = await Request.findAll({
-            where: { eventID: eventId },
-            include: [
-                { model: User, attributes: ['UserName'] },
-                { model: Event, attributes: ['eventName'] }
-            ]
-        });
-        
-        const initialData = { type: 'initial', requests };
-        res.write(`data: ${JSON.stringify(initialData)}\n\n`);
+        // Send an immediate connection confirmation
+        res.write(`data: ${JSON.stringify({ type: 'connected' })}\n\n`);
 
+        // Set up the client connection before fetching data
         if (!eventClients.has(eventId)) {
             eventClients.set(eventId, new Set());
         }
         eventClients.get(eventId).add(res);
 
+        // Fetch requests with limited fields and batch size
+        const requests = await Request.findAll({
+            where: { eventId },
+            include: [
+                { 
+                    model: User,
+                    attributes: ['userName'],
+                    required: false
+                },
+                { 
+                    model: Event,
+                    attributes: ['eventName'],
+                    required: false
+                }
+            ],
+            attributes: [
+                'requestId',
+                'songName',
+                'songArtist',
+                'songImage',
+                'accepted',
+                'played',
+                'requestUpvotes'
+            ],
+            limit: 100, // Limit the number of requests
+            order: [['createdAt', 'DESC']] // Get most recent first
+        });
+        
+        // Send the initial data after connection is established
+        const initialData = { type: 'initial', requests };
+        res.write(`data: ${JSON.stringify(initialData)}\n\n`);
+
+        // Set up keep-alive
         const keepAlive = setInterval(() => {
             if (res.writableEnded) {
                 clearInterval(keepAlive);
@@ -333,6 +364,7 @@ router.get('/webhook/getByEvent', async (req, res) => {
             res.write(': keepalive\n\n');
         }, 30000);
 
+        // Clean up on connection close
         req.on('close', () => {
             clearInterval(keepAlive);
             if (eventClients.has(eventId)) {
@@ -369,7 +401,7 @@ router.get('/webhook/getByEvent', async (req, res) => {
 //         const requests = await Request.findAll({
 //             where: { eventID: eventId },
 //             include: [
-//                 { model: User, attributes: ['UserName'] }
+//                 { model: User, attributes: ['userName'] }
 //             ]
 //         });
 //         res.json(requests);
@@ -399,7 +431,7 @@ router.get('/webhook/getByEvent', async (req, res) => {
 //                 eventID: eventId
 //             },
 //             include: [
-//                 { model: User, attributes: ['UserName'] }
+//                 { model: User, attributes: ['userName'] }
 //             ]
 //         });
 //         res.json(requests);
