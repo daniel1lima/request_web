@@ -4,6 +4,8 @@ import React, { useState, useEffect } from "react";
 import { useDebounce } from "use-debounce";
 import { FaSearch, FaTimes } from "react-icons/fa";
 import { loadStripe } from "@stripe/stripe-js";
+import {Elements, ExpressCheckoutElement} from '@stripe/react-stripe-js';
+import { StripeElementsOptions } from '@stripe/stripe-js';
 
 interface SpotifyTrack {
   id: string;
@@ -45,15 +47,26 @@ export const SongForm: React.FC<SongFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const resultsContainerRef = React.useRef<HTMLDivElement>(null);
-  const expressCheckoutElementRef = React.useRef<HTMLElement | null>(null);
 
-  const appearance = {
-    // Define your appearance options here
+  const onClick = () => {
+    const options = {
+      emailRequired: true
+    };
   };
 
-  const options = {
-    // Define your options here
+  const onConfirm = () => {
+    const options = {
+      emailRequired: true
+    };
   };
+
+  const options: StripeElementsOptions = {
+    mode: 'payment' as const,
+    amount: 50,
+    currency: 'cad',
+  };
+
+  
 
   const stripePromise = loadStripe(
     "pk_test_51QmNAjIxGe3lgVLrIecsxmnxNmQwKyEYFW3eU9rCJBgThBrEZhz41EiGrPwA5quMz1ksbj4SnjCvbXBYBzIdUvxm00qFUY5Kuz"
@@ -98,60 +111,60 @@ export const SongForm: React.FC<SongFormProps> = ({
     searchSpotify();
   }, [debouncedSearch]);
 
-  useEffect(() => {
-    // Load Stripe buy button script
-    const script = document.createElement("script");
-    script.src = "https://js.stripe.com/v3/buy-button.js";
-    script.async = true;
-    script.onload = () => {
-      console.log("Stripe script loaded successfully.");
-    };
-    script.onerror = () => {
-      console.error("Error loading Stripe script.");
-    };
-    document.body.appendChild(script);
+  // useEffect(() => {
+  //   // Load Stripe buy button script
+  //   const script = document.createElement("script");
+  //   script.src = "https://js.stripe.com/v3/buy-button.js";
+  //   script.async = true;
+  //   script.onload = () => {
+  //     console.log("Stripe script loaded successfully.");
+  //   };
+  //   script.onerror = () => {
+  //     console.error("Error loading Stripe script.");
+  //   };
+  //   document.body.appendChild(script);
 
-    const setupExpressCheckout = async () => {
-      try {
-        const stripe = await stripePromise;
-        if (!stripe) {
-          console.error("Stripe not initialized.");
-          return;
-        }
+  //   // const setupExpressCheckout = async () => {
+  //   //   try {
+  //   //     const stripe = await stripePromise;
+  //   //     if (!stripe) {
+  //   //       console.error("Stripe not initialized.");
+  //   //       return;
+  //   //     }
 
-        const elements = stripe.elements({
-          mode: "payment",
-          amount: 50,
-          currency: "cad",
-          appearance,
-        });
+  //   //     const elements = stripe.elements({
+  //   //       mode: "payment",
+  //   //       amount: 50,
+  //   //       currency: "cad",
+  //   //       appearance,
+  //   //     });
 
-        const expressCheckoutElement = elements.create(
-          "expressCheckout",
-          options
-        );
+  //   //     const expressCheckoutElement = elements.create(
+  //   //       "expressCheckout",
+  //   //       options
+  //   //     );
 
-        // Mount the element only if it hasn't been mounted yet
-        if (!expressCheckoutElementRef.current) {
-          expressCheckoutElementRef.current = document.getElementById("express-checkout-element");
-          if (expressCheckoutElementRef.current) {
-            expressCheckoutElement.mount(expressCheckoutElementRef.current);
-            console.log("Express checkout element mounted successfully.");
-          } else {
-            console.error("Mount element not found.");
-          }
-        }
-      } catch (error) {
-        console.error("Error setting up Express Checkout:", error);
-      }
-    };
+  //   //     // Mount the element only if it hasn't been mounted yet
+  //   //     if (!expressCheckoutElementRef.current) {
+  //   //       expressCheckoutElementRef.current = document.getElementById("express-checkout-element");
+  //   //       if (expressCheckoutElementRef.current) {
+  //   //         expressCheckoutElement.mount(expressCheckoutElementRef.current);
+  //   //         console.log("Express checkout element mounted successfully.");
+  //   //       } else {
+  //   //         console.error("Mount element not found.");
+  //   //       }
+  //   //     }
+  //   //   } catch (error) {
+  //   //     console.error("Error setting up Express Checkout:", error);
+  //   //   }
+  //   // };
 
-    setupExpressCheckout();
+  //   setupExpressCheckout();
 
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, [stripePromise]);
+  //   return () => {
+  //     document.body.removeChild(script);
+  //   };
+  // }, [stripePromise]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
@@ -175,16 +188,16 @@ export const SongForm: React.FC<SongFormProps> = ({
     onSongSelect?.(false);
     scrollToTop();
     const inputElement = document.getElementById("song-input") as HTMLInputElement;
+    inputElement.blur();
     if (inputElement) {
-      inputElement.blur();
     }
   };
 
   const handleSearchContainerTouch = () => {
     // Dismiss keyboard when touching search results
     const inputElement = document.getElementById("song-input") as HTMLInputElement;
+    inputElement.blur();
     if (inputElement) {
-      inputElement.blur();
     }
   };
 
@@ -195,8 +208,8 @@ export const SongForm: React.FC<SongFormProps> = ({
     onSongSelect?.(false);
     scrollToTop();
     const inputElement = document.getElementById("song-input") as HTMLInputElement;
+    inputElement.blur();
     if (inputElement) {
-      inputElement.blur();
     }
   };
 
@@ -204,8 +217,8 @@ export const SongForm: React.FC<SongFormProps> = ({
     if (e.key === "Enter") {
       e.preventDefault();
       const inputElement = document.getElementById("song-input") as HTMLInputElement;
+      inputElement.blur();
       if (inputElement) {
-        inputElement.blur();
       }
     }
   };
@@ -337,7 +350,9 @@ export const SongForm: React.FC<SongFormProps> = ({
         suppressHydrationWarning
       >
         <div className="max-w-[480px] mx-auto">
-          <div id="express-checkout-element"></div>
+        <Elements stripe={stripePromise} options={options}>
+          <ExpressCheckoutElement onConfirm={onConfirm}/>
+        </Elements>
           <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
             You will not be charged until your song is played
           </p>
