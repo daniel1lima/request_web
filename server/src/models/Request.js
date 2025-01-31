@@ -15,7 +15,7 @@ const Request = sequelize.define('Request', {
   requestUpvotes: { type: DataTypes.INTEGER, defaultValue: 0 },
   userId: { type: DataTypes.UUID }, // Foreign key
   eventId: { type: DataTypes.UUID }, // Foreign key
-  paymentId: { type: DataTypes.UUID }, // Foreign key
+  paymentId: { type: DataTypes.STRING }, // Foreign key
 }, { 
   timestamps: true  // This will add createdAt and updatedAt
 });

@@ -34,16 +34,35 @@ const Index = () => {
       return;
     }
 
+    // Fetch song requests
     fetch(`api/requests/getByEvent?eventId=${eventId}`)
       .then(response => response.json())
       .then(data => {
-        setSongRequests(data);
+        if (Array.isArray(data)) {
+          setSongRequests(data);
+        } else {
+          console.log("Fetched data is not an array:", data);
+          setSongRequests([]);
+        }
         setLoading(false);
       })
       .catch(error => {
         console.log("Error fetching initial requests:", error);
         setLoading(false);
       });
+
+    // Fetch event details to get djId
+    fetch(`api/events/getById?eventId=${eventId}`)
+      .then(response => response.json())
+      .then(eventData => {
+        const djId = eventData.djId; // Assuming djId is directly available
+        localStorage.setItem("djId", djId);
+      })
+      .catch(error => {
+        console.log("Error fetching event details:", error);
+      });
+
+    localStorage.setItem("eventId", eventId);
 
     // // Set up WebSocket connection for real-time updates
     // const socket = new WebSocket(`ws://localhost:65534/requests/webhook/getByEvent?eventId=${eventId}`);
@@ -97,10 +116,10 @@ const Index = () => {
         </h2>
 
         <div
-          className="bg-gray-900 dark:bg-gray-900 flex flex-col gap-[13px] w-[80%] pt-4"
-          style={{ height: `${songRequests.length * 100}px` }}
+          className="bg-gray-900 dark:bg-gray-900 flex flex-col gap-[13px] w-[80%] pt-5"
+          style={{ height: `${songRequests.length * 150}px` }}
         >
-          {songRequests.map((request) => (
+          {songRequests && songRequests.map((request) => (
             <SongCard
               key={request.requestId}
               image={request.songImage}

@@ -18,7 +18,7 @@ router.get('/status', async (req, res) => {
   });
 
 router.post('/createPaymentIntent', async (req, res) => {
-  const {currency, amount} = req.query;
+  const {currency, amount, requestId} = req.query;
   
   try {
     const paymentIntent = await stripe.paymentIntents.create({
@@ -29,7 +29,7 @@ router.post('/createPaymentIntent', async (req, res) => {
           },
         capture_method: 'manual',
         metadata: {
-            song_request_id: '12345', // Link to your song request
+            song_request_id: requestId, // Link to your song request
           },
       });
     res.status(200).json(paymentIntent);

@@ -18,6 +18,7 @@ export const RequestSong = () => {
 
   console.log(stripePromise)
 
+  // TODO: Change this so that it is responsive to the event rate
   const options: StripeElementsOptions = {
     mode: 'payment' as const,
     amount: 50,

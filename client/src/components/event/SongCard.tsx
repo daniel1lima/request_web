@@ -17,7 +17,7 @@ const SongCard: React.FC<SongCardProps> = ({ image, title, artist, reactions, is
         <img
           loading="lazy"
           srcSet={image}
-          className="aspect-[1.8] object-contain w-[79px] shrink-0 rounded-[0px_0px_0px_0px]"
+          className="aspect-[1.8] object-contain w-[79px] shrink-0 border rounded-[16px]"
           alt={title}
         />
         <div className="flex flex-col items-stretch mt-[9px]">

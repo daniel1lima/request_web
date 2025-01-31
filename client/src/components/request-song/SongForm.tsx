@@ -56,7 +56,7 @@ export const SongForm: React.FC<SongFormProps> = ({
   const stripe = useStripe()
 
   
-
+  // TODO: If we want to link the request ID in the stripe metadata we need to allow the Request UUID to be selected in the post request
   const fetchPaymentIntent = async (amount: number, currency: string) => {
     const response = await fetch(`api/stripe/createPaymentIntent?amount=${amount}&currency=${currency}`, {
       method: 'POST', // Specify the method if needed
@@ -68,7 +68,7 @@ export const SongForm: React.FC<SongFormProps> = ({
       throw new Error("Failed to fetch payment intent");
     }
     const data = await response.json();
-    return data.client_secret;
+    return { client_secret: data.client_secret, id: data.id };
   };
 
   const onConfirm = async () => {
@@ -81,37 +81,91 @@ export const SongForm: React.FC<SongFormProps> = ({
 
     setIsLoading(true);
     try {
-      const clientSecret = await fetchPaymentIntent(options.amount, options.currency);
-      console.log(clientSecret);
+      const { client_secret, id: pid } = await fetchPaymentIntent(options.amount, options.currency);
 
       const { error } = await stripe.confirmPayment({
         elements,
-        clientSecret,
+        clientSecret: client_secret,
         confirmParams: {
-          return_url: 'http://localhost:65545',
+          return_url: 'http://localhost:65545/',
         },
+        redirect: 'if_required',
       });
 
       if (error) {
         console.error("Payment confirmation error:", error.message);
-        alert(`Payment failed: ${error.message}`);
       } else {
         console.log("Payment successful");
         alert("Payment successful!");
+
+        // create payment
+        // Fetch request to create payment
+        const paymentResponse = await fetch('api/payment/createPayment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            paymentId: pid,
+            amount: options.amount,
+            djId: localStorage.getItem('djId'), // TODO: Change this so its dynamic, for now we can't fetch the DJID so I kept it this way
+          }),
+        });
+
+        const paymentData = await paymentResponse.json();
+
+        if (!paymentResponse.ok) {
+          throw new Error(paymentData.error || 'Failed to create payment');
+        }
+
+        console.log("Payment created successfully:", paymentData);
+
+
+        
+
+        // Save Request to the database
+        const requestBody = {
+          songName: selectedTrack?.name,
+          songArtist: selectedTrack?.artists[0].name,
+          songImage: selectedTrack?.album.images[1]?.url,
+          userId: "03715864-d919-4502-8e1f-977aae3b52c2", // TODO: This has to be able to be some sort of value for now since we aren't tracking users.
+          eventId: localStorage.getItem('eventId'), // Replace with actual event ID
+          paymentId: pid,
+        };
+
+        // Fetch request to create the request
+        const requestResponse = await fetch('api/requests/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        const requestData = await requestResponse.json();
+
+        if (!requestResponse.ok) {
+          throw new Error(requestData.error || 'Failed to create request');
+        }
+
+        console.log("Request created successfully:", requestData);
+
+        
+
+        
+
+        // setShowSuccessAnimation(true);
+        // setTimeout(() => {
+        //   window.location.href = '/event'; // Redirect to /event after the animation
+        // }, 2000); // Adjust the delay as needed
       }
     } catch (error) {
       console.error("Error confirming payment:", error);
-      alert(error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  
-
-  
-
-  
 
   const searchSpotify = async (isLoadingMore = false) => {
     if (!debouncedSearch || isLoading) return;
@@ -151,61 +205,6 @@ export const SongForm: React.FC<SongFormProps> = ({
     setHasMore(true);
     searchSpotify();
   }, [debouncedSearch]);
-
-  // useEffect(() => {
-  //   // Load Stripe buy button script
-  //   const script = document.createElement("script");
-  //   script.src = "https://js.stripe.com/v3/buy-button.js";
-  //   script.async = true;
-  //   script.onload = () => {
-  //     console.log("Stripe script loaded successfully.");
-  //   };
-  //   script.onerror = () => {
-  //     console.error("Error loading Stripe script.");
-  //   };
-  //   document.body.appendChild(script);
-
-  //   // const setupExpressCheckout = async () => {
-  //   //   try {
-  //   //     const stripe = await stripePromise;
-  //   //     if (!stripe) {
-  //   //       console.error("Stripe not initialized.");
-  //   //       return;
-  //   //     }
-
-  //   //     const elements = stripe.elements({
-  //   //       mode: "payment",
-  //   //       amount: 50,
-  //   //       currency: "cad",
-  //   //       appearance,
-  //   //     });
-
-  //   //     const expressCheckoutElement = elements.create(
-  //   //       "expressCheckout",
-  //   //       options
-  //   //     );
-
-  //   //     // Mount the element only if it hasn't been mounted yet
-  //   //     if (!expressCheckoutElementRef.current) {
-  //   //       expressCheckoutElementRef.current = document.getElementById("express-checkout-element");
-  //   //       if (expressCheckoutElementRef.current) {
-  //   //         expressCheckoutElement.mount(expressCheckoutElementRef.current);
-  //   //         console.log("Express checkout element mounted successfully.");
-  //   //       } else {
-  //   //         console.error("Mount element not found.");
-  //   //       }
-  //   //     }
-  //   //   } catch (error) {
-  //   //     console.error("Error setting up Express Checkout:", error);
-  //   //   }
-  //   // };
-
-  //   setupExpressCheckout();
-
-  //   return () => {
-  //     document.body.removeChild(script);
-  //   };
-  // }, [stripePromise]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;

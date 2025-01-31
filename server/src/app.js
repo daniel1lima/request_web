@@ -7,6 +7,7 @@ const requestRoutes = require('./routes/requests');
 const userRoutes = require('./routes/users');
 const spotifyRoutes = require('./routes/spotify');
 const stripeRoutes = require('./routes/stripe');
+const paymentRoutes = require('./routes/payment');
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use('/requests', requestRoutes);
 app.use('/users', userRoutes);
 app.use('/spotify', spotifyRoutes);
 app.use('/stripe', stripeRoutes);
+app.use('/payment', paymentRoutes);
 
 
 
