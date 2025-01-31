@@ -382,36 +382,39 @@ router.get('/webhook/getByEvent', async (req, res) => {
     }
 });
 
+// Get all requests for a specific event
+router.get('/getByEvent', async (req, res) => {
+    try {
+        const { eventId } = req.query;
+        
+        if (!eventId) {
+            return res.status(400).json({ 
+                error: 'Missing event ID', 
+                details: 'eventId query parameter is required' 
+            });
+        }
+
+        const requests = await Request.findAll({
+            where: { eventId }, // Assuming 'eventId' is the correct field
+            include: [
+                { model: User, attributes: ['userName'] },
+                { model: Event, attributes: ['eventName'] }
+            ]
+        });
+
+        if (requests.length === 0) {
+            return res.status(404).json({ error: 'No requests found for this event' });
+        }
+        res.json(requests);
+    } catch (error) {
+        res.status(500).json({ 
+            error: 'Failed to fetch requests for event', 
+            details: error.message 
+        });
+    }
+});
 
 // REDUNDANT ROUTES
-
-
-// // Get all requests for a specific event
-// router.get('/getByEvent', async (req, res) => {
-//     try {
-//         const eventId = req.query.eventID;
-        
-//         if (!eventId) {
-//             return res.status(400).json({ 
-//                 error: 'Missing event ID', 
-//                 details: 'eventID query parameter is required' 
-//             });
-//         }
-
-//         const requests = await Request.findAll({
-//             where: { eventID: eventId },
-//             include: [
-//                 { model: User, attributes: ['userName'] }
-//             ]
-//         });
-//         res.json(requests);
-//     } catch (error) {
-//         res.status(500).json({ 
-//             error: 'Failed to fetch requests for event', 
-//             details: error.message 
-//         });
-//     }
-// });
 
 // Get all accepted requests within an event
 // router.get('/getaccepted', async (req, res) => {
@@ -442,6 +445,5 @@ router.get('/webhook/getByEvent', async (req, res) => {
 //         });
 //     }
 // });
-
 
 module.exports = router;

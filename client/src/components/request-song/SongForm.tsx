@@ -1,8 +1,11 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect } from "react";
 import { useDebounce } from "use-debounce";
 import { FaSearch, FaTimes } from "react-icons/fa";
+import { loadStripe, Stripe } from "@stripe/stripe-js";
+import {Elements, ExpressCheckoutElement, useElements, useStripe} from '@stripe/react-stripe-js';
+import { StripeElementsOptions } from '@stripe/stripe-js';
 
 interface SpotifyTrack {
   id: string;
@@ -16,20 +19,31 @@ interface SpotifyTrack {
 interface SongFormProps {
   accessToken: string | null;
   onSongSelect?: (selected: boolean) => void;
+  options: { // Define the structure of options here
+    amount: number;
+    currency: string;
+  };
 }
 
 declare global {
   namespace JSX {
     interface IntrinsicElements {
-      'stripe-buy-button': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
-        'buy-button-id': string;
-        'publishable-key': string;
+      "stripe-buy-button": React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement>,
+        HTMLElement
+      > & {
+        "buy-button-id": string;
+        "publishable-key": string;
       };
     }
   }
 }
 
-export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect }) => {
+export const SongForm: React.FC<SongFormProps> = ({
+  accessToken,
+  onSongSelect,
+  options
+}) => {
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
@@ -38,6 +52,120 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const resultsContainerRef = React.useRef<HTMLDivElement>(null);
+  const elements = useElements();
+  const stripe = useStripe()
+
+  
+  // TODO: If we want to link the request ID in the stripe metadata we need to allow the Request UUID to be selected in the post request
+  const fetchPaymentIntent = async (amount: number, currency: string) => {
+    const response = await fetch(`api/stripe/createPaymentIntent?amount=${amount}&currency=${currency}`, {
+      method: 'POST', // Specify the method if needed
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch payment intent");
+    }
+    const data = await response.json();
+    return { client_secret: data.client_secret, id: data.id };
+  };
+
+  const onConfirm = async () => {
+    
+
+    if (!stripe || !elements) {
+      console.error("Stripe.js or Elements has not loaded correctly.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { client_secret, id: pid } = await fetchPaymentIntent(options.amount, options.currency);
+
+      const { error } = await stripe.confirmPayment({
+        elements,
+        clientSecret: client_secret,
+        confirmParams: {
+          return_url: 'http://localhost:65545/',
+        },
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        console.error("Payment confirmation error:", error.message);
+      } else {
+        console.log("Payment successful");
+        alert("Payment successful!");
+
+        // create payment
+        // Fetch request to create payment
+        const paymentResponse = await fetch('api/payment/createPayment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            paymentId: pid,
+            amount: options.amount,
+            djId: localStorage.getItem('djId'), // TODO: Change this so its dynamic, for now we can't fetch the DJID so I kept it this way
+          }),
+        });
+
+        const paymentData = await paymentResponse.json();
+
+        if (!paymentResponse.ok) {
+          throw new Error(paymentData.error || 'Failed to create payment');
+        }
+
+        console.log("Payment created successfully:", paymentData);
+
+
+        
+
+        // Save Request to the database
+        const requestBody = {
+          songName: selectedTrack?.name,
+          songArtist: selectedTrack?.artists[0].name,
+          songImage: selectedTrack?.album.images[1]?.url,
+          userId: "03715864-d919-4502-8e1f-977aae3b52c2", // TODO: This has to be able to be some sort of value for now since we aren't tracking users.
+          eventId: localStorage.getItem('eventId'), // Replace with actual event ID
+          paymentId: pid,
+        };
+
+        // Fetch request to create the request
+        const requestResponse = await fetch('api/requests/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        const requestData = await requestResponse.json();
+
+        if (!requestResponse.ok) {
+          throw new Error(requestData.error || 'Failed to create request');
+        }
+
+        console.log("Request created successfully:", requestData);
+
+        
+
+        
+
+        // setShowSuccessAnimation(true);
+        // setTimeout(() => {
+        //   window.location.href = '/event'; // Redirect to /event after the animation
+        // }, 2000); // Adjust the delay as needed
+      }
+    } catch (error) {
+      console.error("Error confirming payment:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   const searchSpotify = async (isLoadingMore = false) => {
     if (!debouncedSearch || isLoading) return;
@@ -51,8 +179,7 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
         )}&type=track&limit=20&offset=${currentOffset}`,
         {
           headers: {
-            Authorization:
-              `Bearer ${accessToken}`,
+            Authorization: `Bearer ${accessToken}`,
           },
         }
       );
@@ -79,18 +206,6 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
     searchSpotify();
   }, [debouncedSearch]);
 
-  useEffect(() => {
-    // Load Stripe buy button script
-    const script = document.createElement('script');
-    script.src = 'https://js.stripe.com/v3/buy-button.js';
-    script.async = true;
-    document.body.appendChild(script);
-
-    return () => {
-      document.body.removeChild(script);
-    };
-  }, []);
-
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
     if (
@@ -103,7 +218,7 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
   };
 
   const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleSearchResultClick = (track: SpotifyTrack) => {
@@ -112,58 +227,67 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
     setSearchResults([]);
     onSongSelect?.(false);
     scrollToTop();
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
+    const inputElement = document.getElementById("song-input") as HTMLInputElement;
+    inputElement.blur();
+    if (inputElement) {
     }
   };
 
   const handleSearchContainerTouch = () => {
     // Dismiss keyboard when touching search results
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
+    const inputElement = document.getElementById("song-input") as HTMLInputElement;
+    inputElement.blur();
+    if (inputElement) {
     }
   };
 
   const handleClear = () => {
-    setSearchInput('');
+    setSearchInput("");
     setSearchResults([]);
     setSelectedTrack(null);
     onSongSelect?.(false);
     scrollToTop();
-    if (document.activeElement instanceof HTMLElement) {
-      document.activeElement.blur();
+    const inputElement = document.getElementById("song-input") as HTMLInputElement;
+    inputElement.blur();
+    if (inputElement) {
     }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === "Enter") {
       e.preventDefault();
-      if (document.activeElement instanceof HTMLElement) {
-        document.activeElement.blur();
+      const inputElement = document.getElementById("song-input") as HTMLInputElement;
+      inputElement.blur();
+      if (inputElement) {
       }
     }
   };
 
   return (
-    <form 
-      className="flex flex-col w-full h-full relative pb-20" 
+    <div>
+      <form
+      className="flex flex-col w-full h-full relative pb-20"
       onSubmit={(e) => e.preventDefault()}
       suppressHydrationWarning
     >
       {/* Search Input */}
-      <div 
+      <div
         className="relative bg-gray-800 dark:bg-gray-800 border-gray-700 dark:border-gray-700 border flex items-stretch gap-5 text-base text-neutral-500 dark:text-gray-400 font-normal leading-loose justify-between px-3.5 py-[18px] rounded-[15px] border-solid"
         suppressHydrationWarning
       >
         <input
           id="song-input"
           type="text"
-          value={selectedTrack ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}` : searchInput}
+          value={
+            selectedTrack
+              ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}`
+              : searchInput
+          }
           onChange={(e) => {
             const newValue = e.target.value;
             setSearchInput(newValue);
             setSelectedTrack(null);
-            if (newValue === '') {
+            if (newValue === "") {
               setSearchResults([]);
               onSongSelect?.(false);
             } else if (onSongSelect) {
@@ -193,7 +317,7 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
             onScroll={handleScroll}
             onTouchStart={handleSearchContainerTouch}
             className="absolute left-4 right-4 top-full mt-2 bg-white dark:bg-gray-800 
-              border border-neutral-200 dark:border-gray-700 rounded-2xl shadow-xl z-50 
+              border  dark:border-gray-700 rounded-2xl shadow-xl z-50 
               max-h-[70vh] overflow-y-auto backdrop-blur-sm"
           >
             {searchResults.map((track) => (
@@ -229,7 +353,7 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
 
       {/* Empty State - Only show when no search and no selection */}
       {!searchInput && !selectedTrack && !searchResults.length && (
-        <div className="flex flex-col items-center justify-center mt-10">
+        <div className="flex flex-col items-center justify-center mt-10" suppressHydrationWarning>
           <div className="text-gray-600 dark:text-gray-600 text-6xl mb-4">
             <FaSearch />
           </div>
@@ -241,7 +365,7 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
 
       {/* Selected Song Display */}
       {selectedTrack && (
-        <div className="flex flex-col items-center mt-6 mb-32">
+        <div className="flex flex-col items-center mt-6 mb-32" suppressHydrationWarning>
           <img
             loading="lazy"
             src={selectedTrack.album.images[1]?.url || ""}
@@ -257,24 +381,24 @@ export const SongForm: React.FC<SongFormProps> = ({ accessToken, onSongSelect })
         </div>
       )}
 
-      {/* Bottom Action Section */}
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900/80 
-        backdrop-blur-md border-t dark:border-gray-900 p-4 pb-8 z-50">
+      
+    </form>
+    {/* Bottom Action Section */}
+    <div
+        className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900 
+         p-4 pb-8 z-50"
+        suppressHydrationWarning
+      >
         <div className="max-w-[480px] mx-auto">
-          {selectedTrack && (
-            <>
-              <stripe-buy-button
-                buy-button-id="buy_btn_1QmNacIxGe3lgVLrfSAxDksx"
-                publishable-key="pk_live_51QmNAjIxGe3lgVLrzftNbBXr9LNNY3MbIWlupy3geBMzzpYLxL8DkPRWhZhi7U5YIXWgfQggwEUV9X4JvDkQpJPH006CXImO1h"
-                className="w-full flex justify-center [&>iframe]:!w-full [&>iframe]:!max-w-none [&>iframe]:!h-[42px] [&>iframe]:!min-h-0 [&>iframe]:rounded-xl [&>iframe]:shadow-lg [&>iframe]:transition-transform [&>iframe]:duration-200 [&>iframe]:hover:scale-[1.02] [&>iframe]:active:scale-[0.98]"
-              />
-              <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
-                You will not be charged until your song is played
-              </p>
-            </>
-          )}
+          <ExpressCheckoutElement onConfirm={onConfirm} />
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
+            You will not be charged until your song is played
+          </p>
         </div>
       </div>
-    </form>
+
+    </div>
+    
+    
   );
 };

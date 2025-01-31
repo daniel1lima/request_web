@@ -17,7 +17,7 @@ const SongCard: React.FC<SongCardProps> = ({ image, title, artist, reactions, is
         <img
           loading="lazy"
           srcSet={image}
-          className="aspect-[1.8] object-contain w-[79px] shrink-0 rounded-[0px_0px_0px_0px]"
+          className="aspect-[1.8] object-contain w-[79px] shrink-0 border rounded-[16px]"
           alt={title}
         />
         <div className="flex flex-col items-stretch mt-[9px]">
@@ -29,7 +29,7 @@ const SongCard: React.FC<SongCardProps> = ({ image, title, artist, reactions, is
           </div>
         </div>
       </div>
-      {isQueued ? (
+      {/* {isQueued ? (
         <div className="text-[rgba(155,155,155,1)] dark:text-gray-400 text-xl mt-3.5">
           +
         </div>
@@ -39,7 +39,7 @@ const SongCard: React.FC<SongCardProps> = ({ image, title, artist, reactions, is
           <br />
           <span className="text-[rgba(147,147,147,1)] dark:text-gray-400 text-[10px]"> {reactions}</span>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

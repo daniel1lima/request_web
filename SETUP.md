@@ -186,7 +186,7 @@ router.post('/', async (req, res) => {
     const request = await Request.create({
       userID,
       eventID,
-      paymentID: payment.paymentID,
+      paymentID: payment.paymentId,
       ...requestData,
     });
 

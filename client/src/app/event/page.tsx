@@ -1,4 +1,5 @@
-import React from "react";
+'use client'
+import React, { useEffect, useState } from "react";
 import EventHeader from "@/components/event/EventHeader";
 import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
@@ -6,9 +7,101 @@ import RequestButton from "@/components/event/RequestButton";
 import { NavigateAction } from "next/dist/client/components/router-reducer/router-reducer-types";
 import Link from "next/link";
 
+export interface request {
+  requestId: number;
+  songImage: string;
+  songName: string;
+  songArtist: string;
+  requestUpvotes: number;
+} 
+
+const Loader = () => (
+  <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
+    <div className="loader">Loading...</div>
+  </div>
+);
+
 const Index = () => {
+  const [songRequests, setSongRequests] = useState<request[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const eventId = url.searchParams.get('eventId');
+
+    if (!eventId) {
+      console.log('Event ID not found in URL');
+      return;
+    }
+
+    // Fetch song requests
+    fetch(`api/requests/getByEvent?eventId=${eventId}`)
+      .then(response => response.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setSongRequests(data);
+        } else {
+          console.log("Fetched data is not an array:", data);
+          setSongRequests([]);
+        }
+        setLoading(false);
+      })
+      .catch(error => {
+        console.log("Error fetching initial requests:", error);
+        setLoading(false);
+      });
+
+    // Fetch event details to get djId
+    fetch(`api/events/getById?eventId=${eventId}`)
+      .then(response => response.json())
+      .then(eventData => {
+        const djId = eventData.djId; // Assuming djId is directly available
+        localStorage.setItem("djId", djId);
+      })
+      .catch(error => {
+        console.log("Error fetching event details:", error);
+      });
+
+    localStorage.setItem("eventId", eventId);
+
+    // // Set up WebSocket connection for real-time updates
+    // const socket = new WebSocket(`ws://localhost:65534/requests/webhook/getByEvent?eventId=${eventId}`);
+
+    // socket.onopen = () => {
+    //   console.log("WebSocket connection established");
+    // };
+
+    // socket.onmessage = (event) => {
+    //   const data = JSON.parse(event.data);
+    //   console.log(data); // Log the incoming data
+
+    //   if (data.type === "create") {
+    //     setSongRequests(data.requests); // Update state with new requests
+    //   } else {
+    //     console.log("Unexpected data type:", data.type);
+    //   }
+    // };
+
+    // socket.onerror = (error) => {
+    //   console.log("WebSocket error:", error);
+    // };
+
+    // socket.onclose = () => {
+    //   console.log("WebSocket connection closed");
+    // };
+
+    // // Clean up on component unmount
+    // return () => {
+    //   socket.close();
+    // };
+  }, []);
+
+  if (loading) {
+    return <Loader />;
+  }
+
   return (
-    <div className="bg-gray-800 dark:bg-gray-800 flex max-w-[480px] w-full h-screen flex-col overflow-y-auto items-center mx-auto">
+    <div className="bg-gray-900 dark:bg-gray-900 flex max-w-[600px] w-full h-screen flex-col overflow-y-auto items-center mx-auto">
       <EventHeader />
 
       <div className="flex flex-col items-center w-full px-4 pb-20">
@@ -22,34 +115,19 @@ const Index = () => {
           Song Queue
         </h2>
 
-        <div className="bg-gray-800 dark:bg-gray-800 flex flex-col gap-[13px] w-[80%]">
-          <SongCard
-            image=""
-            title="Healing"
-            artist="Drake, Gordo"
-            reactions={10}
-          />
-
-          <SongCard
-            image=""
-            title="Sauti"
-            artist="Francis Mercier"
-            reactions={12}
-          />
-
-          <SongCard image="" title="Move" artist="Keinemusik" reactions={24} />
-
-          <SongCard image="" title="Open This Wall" artist="Berlioz" isQueued />
-          <SongCard image="" title="Open This Wall" artist="Berlioz" isQueued />
-          <SongCard image="" title="Open This Wall" artist="Berlioz" isQueued />
-          <SongCard image="" title="Open This Wall" artist="Berlioz" isQueued />
-
-          <SongCard
-            image=""
-            title="Celebration"
-            artist="Supermini, Frankie Romano"
-            isQueued
-          />
+        <div
+          className="bg-gray-900 dark:bg-gray-900 flex flex-col gap-[13px] w-[80%] pt-5"
+          style={{ height: `${songRequests.length * 150}px` }}
+        >
+          {songRequests && songRequests.map((request) => (
+            <SongCard
+              key={request.requestId}
+              image={request.songImage}
+              title={request.songName}
+              artist={request.songArtist}
+              reactions={request.requestUpvotes}
+            />
+          ))}
         </div>
       </div>
 

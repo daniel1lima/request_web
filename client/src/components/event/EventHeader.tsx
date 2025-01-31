@@ -9,7 +9,7 @@ interface EventHeaderProps {
 
 const EventHeader: React.FC<EventHeaderProps> = ({ time = "9:41", title = "Event Details" }) => {
   return (
-    <div className="flex flex-col self-stretch relative aspect-[1.697] h-full w-full">
+    <div className="flex flex-col self-stretch relative aspect-[1.697] h-full w-full max-h-[200px]">
       <img
         loading="lazy"
         srcSet="https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=100 100w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=200 200w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=400 400w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=800 800w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=1200 1200w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=1600 1600w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=2000 2000w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true"
