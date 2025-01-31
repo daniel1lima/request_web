@@ -3,8 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useDebounce } from "use-debounce";
 import { FaSearch, FaTimes } from "react-icons/fa";
-import { loadStripe } from "@stripe/stripe-js";
-import {Elements, ExpressCheckoutElement} from '@stripe/react-stripe-js';
+import { loadStripe, Stripe } from "@stripe/stripe-js";
+import {Elements, ExpressCheckoutElement, useElements, useStripe} from '@stripe/react-stripe-js';
 import { StripeElementsOptions } from '@stripe/stripe-js';
 
 interface SpotifyTrack {
@@ -19,6 +19,10 @@ interface SpotifyTrack {
 interface SongFormProps {
   accessToken: string | null;
   onSongSelect?: (selected: boolean) => void;
+  options: { // Define the structure of options here
+    amount: number;
+    currency: string;
+  };
 }
 
 declare global {
@@ -38,6 +42,7 @@ declare global {
 export const SongForm: React.FC<SongFormProps> = ({
   accessToken,
   onSongSelect,
+  options
 }) => {
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
@@ -47,30 +52,66 @@ export const SongForm: React.FC<SongFormProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const resultsContainerRef = React.useRef<HTMLDivElement>(null);
+  const elements = useElements();
+  const stripe = useStripe()
 
-  const onClick = () => {
-    const options = {
-      emailRequired: true
-    };
+  
+
+  const fetchPaymentIntent = async (amount: number, currency: string) => {
+    const response = await fetch(`api/stripe/createPaymentIntent?amount=${amount}&currency=${currency}`, {
+      method: 'POST', // Specify the method if needed
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    if (!response.ok) {
+      throw new Error("Failed to fetch payment intent");
+    }
+    const data = await response.json();
+    return data.client_secret;
   };
 
-  const onConfirm = () => {
-    const options = {
-      emailRequired: true
-    };
-  };
+  const onConfirm = async () => {
+    
 
-  const options: StripeElementsOptions = {
-    mode: 'payment' as const,
-    amount: 50,
-    currency: 'cad',
+    if (!stripe || !elements) {
+      console.error("Stripe.js or Elements has not loaded correctly.");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const clientSecret = await fetchPaymentIntent(options.amount, options.currency);
+      console.log(clientSecret);
+
+      const { error } = await stripe.confirmPayment({
+        elements,
+        clientSecret,
+        confirmParams: {
+          return_url: 'http://localhost:65545',
+        },
+      });
+
+      if (error) {
+        console.error("Payment confirmation error:", error.message);
+        alert(`Payment failed: ${error.message}`);
+      } else {
+        console.log("Payment successful");
+        alert("Payment successful!");
+      }
+    } catch (error) {
+      console.error("Error confirming payment:", error);
+      alert(error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   
 
-  const stripePromise = loadStripe(
-    "pk_test_51QmNAjIxGe3lgVLrIecsxmnxNmQwKyEYFW3eU9rCJBgThBrEZhz41EiGrPwA5quMz1ksbj4SnjCvbXBYBzIdUvxm00qFUY5Kuz"
-  );
+  
+
+  
 
   const searchSpotify = async (isLoadingMore = false) => {
     if (!debouncedSearch || isLoading) return;
@@ -350,9 +391,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         suppressHydrationWarning
       >
         <div className="max-w-[480px] mx-auto">
-        <Elements stripe={stripePromise} options={options}>
-          <ExpressCheckoutElement onConfirm={onConfirm}/>
-        </Elements>
+          <ExpressCheckoutElement onConfirm={onConfirm} />
           <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
             You will not be charged until your song is played
           </p>

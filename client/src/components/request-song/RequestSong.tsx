@@ -6,10 +6,24 @@ import Image from 'next/image';
 import { SongForm } from './SongForm';
 import { EmptyState } from './EmptyState';
 import { ThemeToggle } from '../theme-toggle';
+import { Elements, useStripe } from '@stripe/react-stripe-js';
+import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
+
+// Initialize Stripe
+const stripePromise = loadStripe('pk_test_51QmNAjIxGe3lgVLrIecsxmnxNmQwKyEYFW3eU9rCJBgThBrEZhz41EiGrPwA5quMz1ksbj4SnjCvbXBYBzIdUvxm00qFUY5Kuz');
 
 export const RequestSong = () => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [showHeader, setShowHeader] = useState(true);
+
+  console.log(stripePromise)
+
+  const options: StripeElementsOptions = {
+    mode: 'payment' as const,
+    amount: 50,
+    currency: 'cad',
+    capture_method: 'manual'
+  };
 
 
   const getSpotifyToken = async () => {
@@ -79,10 +93,13 @@ export const RequestSong = () => {
           !showHeader ? 'mt-10' : 'mt-0'
         }`}
       >
-        <SongForm 
-          accessToken={accessToken} 
-          onSongSelect={handleSongSelect}
-        />
+        <Elements stripe={stripePromise} options={options}>
+          <SongForm 
+            accessToken={accessToken} 
+            onSongSelect={handleSongSelect}
+            options={{ amount: options.amount!, currency: options.currency! }}
+          />
+        </Elements>
       </div>
     </div>
   );
