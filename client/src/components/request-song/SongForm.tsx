@@ -39,6 +39,27 @@ declare global {
   }
 }
 
+// CheckMarkAnimation component
+const CheckMarkAnimation: React.FC = () => (
+  <div className="fixed inset-0 flex items-center justify-center h-screen w-screen bg-black bg-opacity-100">
+    <div className="animate-checkmark">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="100"
+        height="100"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="white"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <polyline points="20 6 9 17 4 12" />
+      </svg>
+    </div>
+  </div>
+);
+
 export const SongForm: React.FC<SongFormProps> = ({
   accessToken,
   onSongSelect,
@@ -51,6 +72,7 @@ export const SongForm: React.FC<SongFormProps> = ({
   const [offset, setOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+
   const resultsContainerRef = React.useRef<HTMLDivElement>(null);
   const elements = useElements();
   const stripe = useStripe()
@@ -96,7 +118,6 @@ export const SongForm: React.FC<SongFormProps> = ({
         console.error("Payment confirmation error:", error.message);
       } else {
         console.log("Payment successful");
-        alert("Payment successful!");
 
         // create payment
         // Fetch request to create payment
@@ -150,14 +171,9 @@ export const SongForm: React.FC<SongFormProps> = ({
 
         console.log("Request created successfully:", requestData);
 
-        
-
-        
-
-        // setShowSuccessAnimation(true);
-        // setTimeout(() => {
-        //   window.location.href = '/event'; // Redirect to /event after the animation
-        // }, 2000); // Adjust the delay as needed
+        setTimeout(() => {
+          window.location.href = `/event?eventId=${localStorage.getItem('eventId')}`; // Redirect to /event after the animation
+        }, 1000); // Adjust the delay as needed
       }
     } catch (error) {
       console.error("Error confirming payment:", error);
@@ -265,140 +281,142 @@ export const SongForm: React.FC<SongFormProps> = ({
 
   return (
     <div>
+      {/* Render CheckMarkAnimation when showSuccessAnimation is true */}
+      
       <form
-      className="flex flex-col w-full h-full relative pb-20"
-      onSubmit={(e) => e.preventDefault()}
-      suppressHydrationWarning
-    >
-      {/* Search Input */}
-      <div
-        className="relative bg-gray-800 dark:bg-gray-800 border-gray-700 dark:border-gray-700 border flex items-stretch gap-5 text-base text-neutral-500 dark:text-gray-400 font-normal leading-loose justify-between px-3.5 py-[18px] rounded-[15px] border-solid"
+        className="flex flex-col w-full h-full relative pb-20"
+        onSubmit={(e) => e.preventDefault()}
         suppressHydrationWarning
       >
-        <input
-          id="song-input"
-          type="text"
-          value={
-            selectedTrack
-              ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}`
-              : searchInput
-          }
-          onChange={(e) => {
-            const newValue = e.target.value;
-            setSearchInput(newValue);
-            setSelectedTrack(null);
-            if (newValue === "") {
-              setSearchResults([]);
-              onSongSelect?.(false);
-            } else if (onSongSelect) {
-              onSongSelect(true);
-            }
-          }}
-          onKeyDown={handleKeyDown}
-          placeholder="Search for a song"
-          className="bg-transparent outline-none w-full dark:text-white"
-        />
-        <button
-          type="button"
-          onClick={searchInput || selectedTrack ? handleClear : undefined}
-          className="mt-1 p-1 -mr-1 rounded-full  transition-colors"
+        {/* Search Input */}
+        <div
+          className="relative bg-gray-800 dark:bg-gray-800 border-gray-700 dark:border-gray-700 border flex items-stretch gap-5 text-base text-neutral-500 dark:text-gray-400 font-normal leading-loose justify-between px-3.5 py-[18px] rounded-[15px] border-solid"
+          suppressHydrationWarning
         >
-          {searchInput || selectedTrack ? (
-            <FaTimes className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
-          ) : (
-            <FaSearch className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
-          )}
-        </button>
-
-        {/* Search Results Dropdown */}
-        {searchResults.length > 0 && !selectedTrack && (
-          <div
-            ref={resultsContainerRef}
-            onScroll={handleScroll}
-            onTouchStart={handleSearchContainerTouch}
-            className="absolute left-4 right-4 top-full mt-2 bg-white dark:bg-gray-800 
-              border  dark:border-gray-700 rounded-2xl shadow-xl z-50 
-              max-h-[70vh] overflow-y-auto backdrop-blur-sm"
+          <input
+            id="song-input"
+            type="text"
+            value={
+              selectedTrack
+                ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}`
+                : searchInput
+            }
+            onChange={(e) => {
+              const newValue = e.target.value;
+              setSearchInput(newValue);
+              setSelectedTrack(null);
+              if (newValue === "") {
+                setSearchResults([]);
+                onSongSelect?.(false);
+              } else if (onSongSelect) {
+                onSongSelect(true);
+              }
+            }}
+            onKeyDown={handleKeyDown}
+            placeholder="Search for a song"
+            className="bg-transparent outline-none w-full dark:text-white"
+          />
+          <button
+            type="button"
+            onClick={searchInput || selectedTrack ? handleClear : undefined}
+            className="mt-1 p-1 -mr-1 rounded-full  transition-colors"
           >
-            {searchResults.map((track) => (
-              <div
-                key={track.id}
-                onClick={() => handleSearchResultClick(track)}
-                className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 
-                  cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-              >
-                <img
-                  src={track.album.images[2]?.url}
-                  alt={track.name}
-                  className="w-12 h-12 rounded-lg shadow-sm"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-gray-900 dark:text-white truncate">
-                    {track.name}
-                  </div>
-                  <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                    {track.artists[0].name}
+            {searchInput || selectedTrack ? (
+              <FaTimes className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
+            ) : (
+              <FaSearch className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
+            )}
+          </button>
+
+          {/* Search Results Dropdown */}
+          {searchResults.length > 0 && !selectedTrack && (
+            <div
+              ref={resultsContainerRef}
+              onScroll={handleScroll}
+              onTouchStart={handleSearchContainerTouch}
+              className="absolute left-4 right-4 top-full mt-2 bg-white dark:bg-gray-800 
+                border  dark:border-gray-700 rounded-2xl shadow-xl z-50 
+                max-h-[70vh] overflow-y-auto backdrop-blur-sm"
+            >
+              {searchResults.map((track) => (
+                <div
+                  key={track.id}
+                  onClick={() => handleSearchResultClick(track)}
+                  className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 
+                    cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                >
+                  <img
+                    src={track.album.images[2]?.url}
+                    alt={track.name}
+                    className="w-12 h-12 rounded-lg shadow-sm"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-gray-900 dark:text-white truncate">
+                      {track.name}
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                      {track.artists[0].name}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-            {isLoading && (
-              <div className="text-center p-4 text-gray-500 dark:text-gray-400">
-                <div className="animate-pulse">Loading more songs...</div>
-              </div>
-            )}
+              ))}
+              {isLoading && (
+                <div className="text-center p-4 text-gray-500 dark:text-gray-400">
+                  <div className="animate-pulse">Loading more songs...</div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Empty State - Only show when no search and no selection */}
+        {!searchInput && !selectedTrack && !searchResults.length && (
+          <div className="flex flex-col items-center justify-center mt-10" suppressHydrationWarning>
+            <div className="text-gray-600 dark:text-gray-600 text-6xl mb-4">
+              <FaSearch />
+            </div>
+            <p className="text-gray-400 dark:text-gray-400 text-center">
+              Search for a Song
+            </p>
           </div>
         )}
-      </div>
 
-      {/* Empty State - Only show when no search and no selection */}
-      {!searchInput && !selectedTrack && !searchResults.length && (
-        <div className="flex flex-col items-center justify-center mt-10" suppressHydrationWarning>
-          <div className="text-gray-600 dark:text-gray-600 text-6xl mb-4">
-            <FaSearch />
+        {/* Selected Song Display */}
+        {selectedTrack && (
+          <div className="flex flex-col items-center mt-6 mb-32" suppressHydrationWarning>
+            <img
+              loading="lazy"
+              src={selectedTrack.album.images[1]?.url || ""}
+              className="w-48 h-48 rounded-lg object-cover shadow-lg"
+              alt={selectedTrack.name}
+            />
+            <h2 className="text-gray-800 dark:text-gray-200 text-lg font-medium mt-4 text-center px-4">
+              {selectedTrack.name}
+            </h2>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+              {selectedTrack.artists[0].name}
+            </p>
           </div>
-          <p className="text-gray-400 dark:text-gray-400 text-center">
-            Search for a song to request
-          </p>
+        )}
+      </form>
+      {/* Bottom Action Section */}
+      <div
+          className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900 
+           p-4 pb-8 z-50"
+          suppressHydrationWarning
+        >
+          <div className="max-w-[480px] mx-auto mb-2">
+            {selectedTrack ? (
+              <ExpressCheckoutElement onConfirm={onConfirm} />
+            ) : (
+              <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
+              </div>
+            )}
+            <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
+              You will not be charged until your song is played
+            </p>
+          </div>
         </div>
-      )}
-
-      {/* Selected Song Display */}
-      {selectedTrack && (
-        <div className="flex flex-col items-center mt-6 mb-32" suppressHydrationWarning>
-          <img
-            loading="lazy"
-            src={selectedTrack.album.images[1]?.url || ""}
-            className="w-48 h-48 rounded-lg object-cover shadow-lg"
-            alt={selectedTrack.name}
-          />
-          <h2 className="text-gray-800 dark:text-gray-200 text-lg font-medium mt-4 text-center px-4">
-            {selectedTrack.name}
-          </h2>
-          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-            {selectedTrack.artists[0].name}
-          </p>
-        </div>
-      )}
-
-      
-    </form>
-    {/* Bottom Action Section */}
-    <div
-        className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900 
-         p-4 pb-8 z-50"
-        suppressHydrationWarning
-      >
-        <div className="max-w-[480px] mx-auto">
-          <ExpressCheckoutElement onConfirm={onConfirm} />
-          <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
-            You will not be charged until your song is played
-          </p>
-        </div>
-      </div>
-
     </div>
-    
-    
   );
 };

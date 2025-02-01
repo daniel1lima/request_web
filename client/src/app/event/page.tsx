@@ -117,7 +117,7 @@ const Index = () => {
 
         <div
           className="bg-gray-900 dark:bg-gray-900 flex flex-col gap-[13px] w-[80%] pt-5"
-          style={{ height: `${songRequests.length * 150}px` }}
+          style={{ height: `${songRequests.length * 100}px` }}
         >
           {songRequests && songRequests.map((request) => (
             <SongCard
