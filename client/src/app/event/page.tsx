@@ -3,9 +3,8 @@ import React, { useEffect, useState } from "react";
 import EventHeader from "@/components/event/EventHeader";
 import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
-import RequestButton from "@/components/event/RequestButton";
-import { NavigateAction } from "next/dist/client/components/router-reducer/router-reducer-types";
 import Link from "next/link";
+import Image from 'next/image';
 
 export interface request {
   requestId: number;
@@ -18,7 +17,17 @@ export interface request {
 
 const Loader = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
-    <div className="loader">Loading...</div>
+    <div className="loader text-white">
+    <Image
+            src="/RequestLogoLight.png"
+            alt="DJ Request Logo"
+            width={200}
+            height={200}
+            className="invert dark:invert"
+            priority
+            style={{ objectFit: 'contain' }}
+          />
+    </div>
   </div>
 );
 
