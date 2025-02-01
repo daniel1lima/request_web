@@ -24,6 +24,10 @@ const Loader = () => (
 const EventAdminPage = () => {
   const [songRequests, setSongRequests] = useState<request[]>([]);
   const [loading, setLoading] = useState(true);
+  const [eventTitle, setEventTitle] = useState("Loading event...");
+  const [data, setData] = useState(null);
+  const [eventImage, setEventImage] = useState("");
+  const [requestFee, setRequestFee] = useState(0);
 
   // Function to accept a song request
   const acceptRequest = (requestId: number) => {
@@ -134,6 +138,24 @@ const EventAdminPage = () => {
       return;
     }
 
+    fetch(`/api/events/getById?eventId=${eventId}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setEventTitle(data.eventName || "Event");
+        setEventImage(data.eventImage || "");
+        setRequestFee(data.requestFee || 0);
+        console.log("Event data:", data);
+      })
+      .catch((error) => {
+        console.log("Error fetching event details:", error);
+        setEventTitle("Event");
+      });
+
     // Fetch song requests
     fetch(`api/requests/getByEvent?eventId=${eventId}`)
       .then((response) => response.json())
@@ -159,84 +181,151 @@ const EventAdminPage = () => {
   }
 
   return (
-    <div className="bg-gray-900 dark:bg-gray-900 flex w-screen h-screen flex-col overflow-y-auto overflow-x-hidden items-center mx-auto">
-      <div className="flex flex-col items-center w-full px-4 pb-20">
-        <DJProfile
-          name="DJ Zo"
-          role="Main Event DJ"
-          image="https://cdn.builder.io/api/v1/image/assets/TEMP/07768e6beee3d7f47f88d0798e6e2e885f8e8b62f39f33f7eac92fdf4c2d3eeb?placeholderIfAbsent=true"
-        />
+    <div className="bg-gray-900 dark:bg-gray-900 min-h-screen">
+      {/* Updated Header Section with increased height */}
+      <div 
+        className="relative bg-cover bg-center h-48"
+        style={{ 
+          backgroundImage: `url(${eventImage})` 
+        }}
+      >
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black bg-opacity-60"></div>
+         
+        {/* Content */}
+        <div className="relative max-w-7xl mx-auto px-8 h-full">
+          {/* Content container with flex layout */}
+          <div className="flex items-center h-full space-x-8">
+            {/* Logo - increased height */}
+            <img 
+              src="/RequestLogoDark.png" 
+              alt="Logo" 
+              className="h-32 w-auto"
+            />
 
-        <div className="flex flex-row w-screen h-screen justify-center gap-[25%] text-center">
-          <div className="w-[300px] gap-4">
-            <h2 className="text-gray-200 dark:text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px] min-w-[200px]">
-              Accepted
-            </h2>
-            {songRequests
-              .filter((req) => req.accepted && !req.played)
-              .map((request) => (
-                <div className="mb-4 w-inherit overflow-clip" key={request.requestId}>
-                  <SongCard
-                    image={request.songImage}
-                    title={request.songName}
-                    artist={request.songArtist}
-                    reactions={request.requestUpvotes}
-                  />
-                  <button
-                    onClick={() => playedRequest(request.requestId.toString())}
-                    className="mr-2 text-green-500 mt-3"
-                  >
-                    <FaCheck className="w-5 h-5"/>
-                  </button>
-                </div>
-              ))}
+            {/* Title content */}
+            <div>
+              <h1 className="text-6xl font-bold text-white mb-2">{eventTitle}</h1>
+              <p className="text-2xl text-gray-200">DJ Dashboard</p>
+            </div>
+
+            {/* DJ Profile moved to header with transparent grey card, aligned to the absolute right */}
+            <div className="absolute right-0 bg-gray-800 bg-opacity-90 rounded-lg flex items-center justify-center">
+              <DJProfile
+                name="DJ Zo"
+                role="Main Event DJ"
+                image="https://cdn.builder.io/api/v1/image/assets/TEMP/07768e6beee3d7f47f88d0798e6e2e885f8e8b62f39f33f7eac92fdf4c2d3eeb?placeholderIfAbsent=true"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto p-8">
+        {/* Statistics Cards Section */}
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          {/* Songs Requested Card */}
+          <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-white">Songs Requested</h3>
+            </div>
+            <p className="text-4xl font-semibold text-white">{songRequests.length}</p>
           </div>
 
-          <div className="w-[300px] gap-4">
-            <h2 className="text-gray-200 dark:text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">
-              Requested
-            </h2>
-            {songRequests
-              .filter((req) => !req.accepted && !req.played)
-              .map((request) => (
-                <div className="mb-4" key={request.requestId}>
-                  <SongCard
-                    image={request.songImage}
-                    title={request.songName}
-                    artist={request.songArtist}
-                    reactions={request.requestUpvotes}
-                  />
+          {/* Songs Played Card */}
+          <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-white">Songs Played</h3>
+            </div>
+            <p className="text-4xl font-semibold text-white">
+              {songRequests.filter(req => req.played).length}
+            </p>
+          </div>
 
-                  <div className="mt-3">
-                  <button
-                    onClick={() => acceptRequest(request.requestId)}
-                    className="mr-2 text-green-500"
-                  >
-                    <FaCheck className="w-5 h-5"/>
-                  </button>
-                  <button
-                    onClick={() => declineRequest(request.requestId)}
-                    className="text-red-500"
-                  >
-                    <FaTimes className=" w-5 h-5 text-red-600 hover:text-red-300 transition-colors" />
-                  </button>
-                  </div>
-                </div>
-              ))}
+          {/* DJ Earnings Card */}
+          <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-bold text-white">DJ Earnings</h3>
+            </div>
+            <p className="text-4xl font-semibold text-white">
+              ${songRequests.filter(req => req.played).length * requestFee}
+            </p>
           </div>
         </div>
 
-        {/* <div className="bg-gray-900 dark:bg-gray-900 flex flex-col gap-[13px] w-[80%] pt-5">
-          {songRequests && songRequests.map((request) => (
-            <SongCard
-              key={request.requestId}
-              image={request.songImage}
-              title={request.songName}
-              artist={request.songArtist}
-              reactions={request.requestUpvotes}
-            />
-          ))}
-        </div> */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Accepted Songs Column */}
+          <div className="bg-gray-800 rounded-xl p-6 shadow-xl h-[80vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
+              Accepted Requests
+            </h2>
+            <div className="space-y-4">
+              {songRequests
+                .filter((req) => req.accepted && !req.played)
+                .map((request) => (
+                  <div 
+                    key={request.requestId}
+                    className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <SongCard
+                        image={request.songImage}
+                        title={request.songName}
+                        artist={request.songArtist}
+                        reactions={request.requestUpvotes}
+                      />
+                      <button
+                        onClick={() => playedRequest(request.requestId.toString())}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
+                      >
+                        <FaCheck className="w-6 h-6 text-white"/>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+
+          {/* Requested Songs Column */}
+          <div className="bg-gray-800 rounded-xl p-6 shadow-xl h-[80vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
+              New Requests
+            </h2>
+            <div className="space-y-4">
+              {songRequests
+                .filter((req) => !req.accepted && !req.played)
+                .map((request) => (
+                  <div 
+                    key={request.requestId}
+                    className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <SongCard
+                        image={request.songImage}
+                        title={request.songName}
+                        artist={request.songArtist}
+                        reactions={request.requestUpvotes}
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
+                        <button
+                          onClick={() => acceptRequest(request.requestId)}
+                          className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
+                        >
+                          <FaCheck className="w-6 h-6 text-white"/>
+                        </button>
+                        <button
+                          onClick={() => declineRequest(request.requestId)}
+                          className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
+                        >
+                          <FaTimes className="w-6 h-6 text-white" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

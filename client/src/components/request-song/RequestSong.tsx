@@ -10,7 +10,7 @@ import { Elements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
 
 // Initialize Stripe
-const stripePromise = loadStripe('pk_test_51QmNAjIxGe3lgVLrIecsxmnxNmQwKyEYFW3eU9rCJBgThBrEZhz41EiGrPwA5quMz1ksbj4SnjCvbXBYBzIdUvxm00qFUY5Kuz');
+const stripePromise = loadStripe('pk_test_51QnQVJQOGAUkaNZyWZf9G0ro73fbQSuLBNC2mwUYyR1pEUgS694REz3eNTcPjI1VUYt4U56GCLzdHjq7I51vTekl00k7vstn7R');
 
 export const RequestSong = () => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
