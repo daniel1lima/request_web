@@ -13,6 +13,7 @@ export interface request {
   songName: string;
   songArtist: string;
   requestUpvotes: number;
+  played: boolean;
 } 
 
 const Loader = () => (
@@ -117,9 +118,9 @@ const Index = () => {
 
         <div
           className="bg-gray-900 dark:bg-gray-900 flex flex-col gap-[13px] w-[80%] pt-5"
-          style={{ height: `${songRequests.length * 100}px` }}
+          style={{ height: `${songRequests.filter(req => !req.played).length * 100}px` }}
         >
-          {songRequests && songRequests.map((request) => (
+          {songRequests.filter(request => !request.played).map((request) => (
             <SongCard
               key={request.requestId}
               image={request.songImage}
