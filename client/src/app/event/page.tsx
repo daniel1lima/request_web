@@ -3,9 +3,8 @@ import React, { useEffect, useState } from "react";
 import EventHeader from "@/components/event/EventHeader";
 import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
-import RequestButton from "@/components/event/RequestButton";
-import { NavigateAction } from "next/dist/client/components/router-reducer/router-reducer-types";
 import Link from "next/link";
+import Image from 'next/image';
 
 export interface request {
   requestId: number;
@@ -13,11 +12,22 @@ export interface request {
   songName: string;
   songArtist: string;
   requestUpvotes: number;
+  played: boolean;
 } 
 
 const Loader = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
-    <div className="loader">Loading...</div>
+    <div className="loader text-white">
+    <Image
+            src="/RequestLogoLight.png"
+            alt="DJ Request Logo"
+            width={200}
+            height={200}
+            className="invert dark:invert"
+            priority
+            style={{ objectFit: 'contain' }}
+          />
+    </div>
   </div>
 );
 
@@ -117,9 +127,9 @@ const Index = () => {
 
         <div
           className="bg-gray-900 dark:bg-gray-900 flex flex-col gap-[13px] w-[80%] pt-5"
-          style={{ height: `${songRequests.length * 100}px` }}
+          style={{ height: `${songRequests.filter(req => !req.played).length * 100}px` }}
         >
-          {songRequests && songRequests.map((request) => (
+          {songRequests.filter(request => !request.played).map((request) => (
             <SongCard
               key={request.requestId}
               image={request.songImage}

@@ -29,7 +29,7 @@ const SongCard: React.FC<SongCardProps> = ({ image, title, artist, reactions, is
         <img
           loading="lazy"
           srcSet={image}
-          className="object-cover w-[79px] h-[79px] shrink-0 border rounded-full"
+          className="object-cover w-[75px] h-[75px] shrink-0 border rounded-full max-w-full max-h-full"
           alt={title}
         />
         <div className="flex flex-col items-stretch mt-[9px] p-2 overflow-hidden">
