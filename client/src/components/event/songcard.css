@@ -1,0 +1,19 @@
+@keyframes scroll {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+  
+
+  .scroll-on-hover {
+    display: inline-block;
+    padding-left: 0; /* Add initial space to the left */
+    transition: transform 2s linear; /* Smooth transition for scrolling */
+  }
+  
+  .scroll-on-hover:hover {
+    transform: translateX(-100%); /* Scroll to the left on hover */
+  }

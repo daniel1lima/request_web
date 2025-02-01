@@ -1,6 +1,9 @@
 'use client'
 
-import React from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import './songcard.css';
+
+
 
 interface SongCardProps {
   image: string;
@@ -11,20 +14,32 @@ interface SongCardProps {
 }
 
 const SongCard: React.FC<SongCardProps> = ({ image, title, artist, reactions, isQueued = false }) => {
+  const titleRef = useRef<HTMLDivElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+
+  useEffect(() => {
+    if (titleRef.current) {
+      setIsOverflowing(titleRef.current.scrollWidth > titleRef.current.clientWidth);
+    }
+  }, [title]);
+
   return (
-    <div className="bg-gray-800 dark:bg-gray-800 shadow-[0px_10px_35px_rgba(87,92,138,0.06)] flex items-stretch gap-5 justify-between px-2 py-1 rounded-2xl">
+    <div className="bg-gray-800 dark:bg-gray-800 shadow-[0px_10px_35px_rgba(87,92,138,0.06)] flex items-stretch gap-5 justify-between px-2 py-1 rounded-2xl overflow-hidden">
       <div className="flex items-stretch gap-[17px]">
         <img
           loading="lazy"
           srcSet={image}
-          className="aspect-[1.8] object-contain w-[79px] shrink-0 border rounded-[16px]"
+          className="object-cover w-[79px] h-[79px] shrink-0 border rounded-full"
           alt={title}
         />
-        <div className="flex flex-col items-stretch mt-[9px]">
-          <div className="text-gray-200 dark:text-gray-200 text-[15px] font-medium">
+        <div className="flex flex-col items-stretch mt-[9px] p-2 overflow-hidden">
+          <div 
+            ref={titleRef} 
+            className={`text-gray-200 dark:text-gray-200 text-[15px] font-medium whitespace-nowrap cursor-default ${isOverflowing ? 'scroll-on-hover' : ''}`}
+          >
             {title}
           </div>
-          <div className="text-[#5669FF] dark:text-[rgba(63,56,221,1)] text-[13px] font-light mt-[7px]">
+          <div className="text-[#5669FF] dark:text-[rgba(63,56,221,1)] text-[13px] font-light mt-[5px] text-left">
             {artist}
           </div>
         </div>
