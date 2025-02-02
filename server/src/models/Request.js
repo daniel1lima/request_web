@@ -13,7 +13,7 @@ const Request = sequelize.define('Request', {
   accepted: { type: DataTypes.BOOLEAN, defaultValue: false },
   played: { type: DataTypes.BOOLEAN, defaultValue: false },
   requestUpvotes: { type: DataTypes.INTEGER, defaultValue: 0 },
-  userId: { type: DataTypes.UUID, allowNull: false }, // Foreign key
+  userId: { type: DataTypes.UUID, allowNull: true }, // Foreign key
   eventId: { type: DataTypes.UUID }, // Foreign key
   paymentId: { type: DataTypes.STRING }, // Foreign key
 }, { 

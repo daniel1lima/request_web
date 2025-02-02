@@ -10,23 +10,21 @@ import { Elements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
 
 // Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY!);
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
 
 
 export const RequestSong = () => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [showHeader, setShowHeader] = useState(true);
+  const [eventData, setEventData] = useState<any>(null);
 
-
-  // TODO: Change this so that it is responsive to the event rate
-  const options: StripeElementsOptions = {
+  const [options, setOptions] = useState<StripeElementsOptions>({
     mode: 'payment' as const,
     amount: 50,
     currency: 'cad',
     capture_method: 'manual'
-  };
-
+  });
 
   const getSpotifyToken = async () => {
     try {
@@ -49,9 +47,33 @@ export const RequestSong = () => {
     }
   };
 
+  const fetchEventData = async () => {
+    const eventId = localStorage.getItem('eventId');
+    if (!eventId) return;
+
+    try {
+      const response = await fetch(`api/events/getById?eventId=${eventId}`);
+      const data = await response.json();
+
+      if (data.error) {
+        console.error('Error fetching event data:', data.error);
+        return;
+      }
+
+      console.log('Event data received:', data);
+      setEventData(data);
+      setOptions(prevOptions => ({ ...prevOptions, amount: data.requestFee }));
+    } catch (error) {
+      console.log('Error fetching event data:', error);
+    }
+  };
+
   useEffect(() => {
     getSpotifyToken();
+    fetchEventData();
   }, []);
+
+  console.log(eventData)
 
   const handleSongSelect = (selected: boolean) => {
     setShowHeader(!selected);
@@ -100,6 +122,7 @@ export const RequestSong = () => {
             accessToken={accessToken} 
             onSongSelect={handleSongSelect}
             options={{ amount: options.amount!, currency: options.currency! }}
+            onError={(error) => console.error('Stripe Element Error:', error)}
           />
         </Elements>
       </div>
