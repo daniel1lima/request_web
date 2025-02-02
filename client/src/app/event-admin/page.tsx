@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
 import { FaCheck, FaTimes } from "react-icons/fa";
+import { Loader2 } from "lucide-react";
 
 export interface request {
   requestId: number;
@@ -28,6 +29,7 @@ const EventAdminPage = () => {
   const [data, setData] = useState(null);
   const [eventImage, setEventImage] = useState("");
   const [requestFee, setRequestFee] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Function to accept a song request
   const acceptRequest = (requestId: number) => {
@@ -52,6 +54,7 @@ const EventAdminPage = () => {
   };
 
   const playedRequest = (requestId: string) => {
+    setIsLoading(true);
     // Find the request object by requestId
     const request = songRequests.find(req => req.requestId === requestId);
     
@@ -101,11 +104,11 @@ const EventAdminPage = () => {
             req.requestId === requestId ? { ...req, played: true } : req
           )
         );
-
-
+        setIsLoading(false);
       })
       .catch((error) => {
         console.log("Error processing payment:", error);
+        setIsLoading(false);
       });
   };
 
@@ -277,8 +280,13 @@ const EventAdminPage = () => {
                       <button
                         onClick={() => playedRequest(request.requestId.toString())}
                         className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
+                        disabled={isLoading}
                       >
-                        <FaCheck className="w-6 h-6 text-white"/>
+                        {isLoading ? (
+                          <Loader2 className="w-6 h-6 text-white animate-spin" />
+                        ) : (
+                          <FaCheck className="w-6 h-6 text-white"/>
+                        )}
                       </button>
                     </div>
                   </div>
