@@ -78,7 +78,6 @@ export const SongForm: React.FC<SongFormProps> = ({
   const stripe = useStripe()
 
   
-  // TODO: If we want to link the request ID in the stripe metadata we need to allow the Request UUID to be selected in the post request
   const fetchPaymentIntent = async (amount: number, currency: string) => {
     const response = await fetch(`api/stripe/createPaymentIntent?amount=${amount}&currency=${currency}`, {
       method: 'POST', // Specify the method if needed
@@ -129,7 +128,7 @@ export const SongForm: React.FC<SongFormProps> = ({
           body: JSON.stringify({
             paymentId: pid,
             amount: options.amount,
-            djId: localStorage.getItem('djId'), // TODO: Change this so its dynamic, for now we can't fetch the DJID so I kept it this way
+            djId: localStorage.getItem('djId'), 
           }),
         });
 
@@ -149,7 +148,7 @@ export const SongForm: React.FC<SongFormProps> = ({
           songName: selectedTrack?.name,
           songArtist: selectedTrack?.artists[0].name,
           songImage: selectedTrack?.album.images[1]?.url,
-          userId: "03715864-d919-4502-8e1f-977aae3b52c2", // TODO: This has to be able to be some sort of value for now since we aren't tracking users.
+          userId: localStorage.getItem('requestapp_userId') || null, 
           eventId: localStorage.getItem('eventId'), // Replace with actual event ID
           paymentId: pid,
         };
