@@ -10,13 +10,14 @@ import { Elements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
 
 // Initialize Stripe
-const stripePromise = loadStripe('pk_test_51QnQVJQOGAUkaNZyWZf9G0ro73fbQSuLBNC2mwUYyR1pEUgS694REz3eNTcPjI1VUYt4U56GCLzdHjq7I51vTekl00k7vstn7R');
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_KEY!);
+
+
 
 export const RequestSong = () => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [showHeader, setShowHeader] = useState(true);
 
-  console.log(stripePromise)
 
   // TODO: Change this so that it is responsive to the event rate
   const options: StripeElementsOptions = {

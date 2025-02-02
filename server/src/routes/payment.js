@@ -1,11 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const axios = require('axios');
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY; // Use environment variable for the secret key
-if (!stripeSecretKey) {
-  throw new Error('Stripe secret key is not defined in environment variables');
-}
-const stripe = require('stripe')(stripeSecretKey); // Initialize Stripe with the secret key
 const Payment = require('../models/Payment'); // Import the Payment model
 
 

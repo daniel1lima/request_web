@@ -7,13 +7,13 @@ const Request = sequelize.define('Request', {
     defaultValue: DataTypes.UUIDV4,
     primaryKey: true
   },
-  songName: { type: DataTypes.STRING(50) },
-  songArtist: { type: DataTypes.STRING(50) },
+  songName: { type: DataTypes.STRING },
+  songArtist: { type: DataTypes.STRING },
   songImage: { type: DataTypes.STRING },
   accepted: { type: DataTypes.BOOLEAN, defaultValue: false },
   played: { type: DataTypes.BOOLEAN, defaultValue: false },
   requestUpvotes: { type: DataTypes.INTEGER, defaultValue: 0 },
-  userId: { type: DataTypes.UUID }, // Foreign key
+  userId: { type: DataTypes.UUID, allowNull: false }, // Foreign key
   eventId: { type: DataTypes.UUID }, // Foreign key
   paymentId: { type: DataTypes.STRING }, // Foreign key
 }, { 
