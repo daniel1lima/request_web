@@ -1,15 +1,17 @@
-'use client'
+"use client";
 
-import React, { useEffect, useState } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { SongForm } from './SongForm';
-import { Elements, useStripe } from '@stripe/react-stripe-js';
-import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
-import { Loader2 } from 'lucide-react';
+import React, { useEffect, useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { SongForm } from "./SongForm";
+import { Elements, useStripe } from "@stripe/react-stripe-js";
+import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
+import { Loader2 } from "lucide-react";
 
 // Initialize Stripe
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+const stripePromise = loadStripe(
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
+);
 
 export const RequestSong = () => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -17,39 +19,39 @@ export const RequestSong = () => {
   const [eventData, setEventData] = useState<any>(null);
   const [loading, setLoading] = useState(true); // State to track loading
   const [options, setOptions] = useState<StripeElementsOptions>({
-    mode: 'payment' as const,
-    amount: 50,  // Default amount
-    currency: 'cad',
-    capture_method: 'manual'
+    mode: "payment" as const,
+    amount: 50, // Default amount
+    currency: "cad",
+    capture_method: "manual",
   });
 
   const router = useRouter();
 
   const getSpotifyToken = async () => {
     try {
-      const response = await fetch('/api/spotify/auth', {
+      const response = await fetch("/api/spotify/auth", {
         headers: {
-          'Accept': 'application/json'
-        }
+          Accept: "application/json",
+        },
       });
       const data = await response.json();
-      
+
       if (data.error) {
-        console.error('Error from backend:', data.error);
+        console.error("Error from backend:", data.error);
         return;
       }
 
-      console.log('Token received');
+      console.log("Token received");
       setAccessToken(data.access_token);
     } catch (error) {
-      console.log('Error fetching Spotify token:', error);
+      console.log("Error fetching Spotify token:", error);
     }
   };
 
   const fetchEventData = async () => {
-    const eventId = localStorage.getItem('eventId');
+    const eventId = localStorage.getItem("eventId");
     if (!eventId) {
-      router.push('/404'); // Redirect to 404 if eventId is null
+      router.push("/404"); // Redirect to 404 if eventId is null
       return;
     }
 
@@ -58,18 +60,21 @@ export const RequestSong = () => {
       const data = await response.json();
 
       if (data.error) {
-        console.error('Error fetching event data:', data.error);
-        router.push('/404'); // Redirect to 404 if event does not exist
+        console.error("Error fetching event data:", data.error);
+        router.push("/404"); // Redirect to 404 if event does not exist
         return;
       }
 
-      console.log('Event data received:', data);
+      console.log("Event data received:", data);
       setEventData(data);
-      setOptions(prevOptions => ({ ...prevOptions, amount: data.requestFee }));
+      setOptions((prevOptions) => ({
+        ...prevOptions,
+        amount: data.requestFee,
+      }));
       setLoading(false); // Set loading to false after fetching event data
     } catch (error) {
-      console.log('Error fetching event data:', error);
-      router.push('/404'); // Redirect to 404 on fetch error
+      console.log("Error fetching event data:", error);
+      router.push("/404"); // Redirect to 404 on fetch error
     }
   };
 
@@ -80,21 +85,21 @@ export const RequestSong = () => {
 
   const handleSongSelect = (selected: boolean) => {
     setShowHeader(!selected);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   if (loading) {
-    return <Loader2 className='text-white animate-spin'/>; // Show loader while loading
+    return <Loader2 className="text-white animate-spin" />; // Show loader while loading
   }
 
   return (
     <div className="bg-gray-900 dark:bg-gray-900 max-w-[480px] w-full min-h-screen overflow-x-hidden">
       {/* Logo and Title Sections with animation */}
-      <div 
+      <div
         className={`transition-all duration-500 ease-in-out transform ${
-          showHeader 
-            ? 'opacity-100 translate-y-0 max-h-[200px] mb-12' 
-            : 'opacity-0 -translate-y-12 max-h-0 mb-0'
+          showHeader
+            ? "opacity-100 translate-y-0 max-h-[200px] mb-12"
+            : "opacity-0 -translate-y-12 max-h-0 mb-0"
         }`}
       >
         {/* Logo Section */}
@@ -106,7 +111,7 @@ export const RequestSong = () => {
             height={300}
             className="invert dark:invert"
             priority
-            style={{ objectFit: 'contain' }}
+            style={{ objectFit: "contain" }}
           />
         </div>
 
@@ -119,17 +124,17 @@ export const RequestSong = () => {
       </div>
 
       {/* Form Section */}
-      <div 
+      <div
         className={` flex w-full flex-col px-4 transition-all duration-500 ease-in-out ${
-          !showHeader ? 'mt-10' : 'mt-0'
+          !showHeader ? "mt-10" : "mt-0"
         }`}
       >
         <Elements stripe={stripePromise} options={options}>
-          <SongForm 
-            accessToken={accessToken} 
+          <SongForm
+            accessToken={accessToken}
             onSongSelect={handleSongSelect}
             options={{ amount: options.amount!, currency: options.currency! }}
-            onError={(error) => console.error('Stripe Element Error:', error)}
+            onError={(error) => console.error("Stripe Element Error:", error)}
           />
         </Elements>
       </div>

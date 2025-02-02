@@ -1,33 +1,40 @@
-'use client'
+"use client";
 
-import React from 'react';
+import React from "react";
+import { Button } from "../button";
+import { ChevronLeft } from "lucide-react";
 
 interface EventHeaderProps {
   time?: string;
   title?: string;
+  imageUrl?: string;
 }
 
-const EventHeader: React.FC<EventHeaderProps> = ({ time = "9:41", title = "Event Details" }) => {
+const EventHeader: React.FC<EventHeaderProps> = ({
+  time = "9:41",
+  title = "Event Details",
+  imageUrl,
+}) => {
+  const fallbackImageUrl =
+    "https://storage.googleapis.com/ubyssey/media/renditions/20230303_i_janmohamed_pit.width-1500.format-webp.webp";
+
   return (
     <div className="flex flex-col self-stretch relative aspect-[1.697] h-full w-full max-h-[200px]">
       <img
         loading="lazy"
-        srcSet="https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=100 100w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=200 200w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=400 400w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=800 800w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=1200 1200w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=1600 1600w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true&width=2000 2000w, https://cdn.builder.io/api/v1/image/assets/TEMP/dbf5ad3de51be0841efa30aaffae5d7a3a43b96467f3f39e7d0ca6ab0c1b7c81?placeholderIfAbsent=true"
+        src={imageUrl}
+        onError={(e) => {
+          e.currentTarget.src = fallbackImageUrl;
+        }} // Fallback on error
         className="absolute h-full w-full object-cover inset-0"
         alt="Event background"
       />
       <div className="relative flex mb-[-25px] w-full flex-col items-stretch px-6 py-4">
-        
         <div className="flex items-stretch gap-[13px] text-2xl text-white font-medium mt-4">
-          <img
-            loading="lazy"
-            src="https://cdn.builder.io/api/v1/image/assets/TEMP/022449ea0d22e808f2da674b06a33d692ed63357cc1a988c68bb8d7cf44fe76c?placeholderIfAbsent=true"
-            className="aspect-[1] object-contain w-[22px] shrink-0 my-auto"
-            alt="Back icon"
-          />
-          <div className="basis-auto">
-            {title}
-          </div>
+          <Button variant="outline" size="icon">
+            <ChevronLeft />
+          </Button>
+          <div className="basis-auto">{title}</div>
         </div>
       </div>
     </div>

@@ -1,11 +1,11 @@
-'use client'
+"use client";
 import React, { useEffect, useState } from "react";
 import EventHeader from "@/components/event/EventHeader";
 import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
 import Link from "next/link";
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
 export interface request {
@@ -15,20 +15,60 @@ export interface request {
   songArtist: string;
   requestUpvotes: number;
   played: boolean;
-} 
+}
+
+export interface event {
+  eventId: string;
+  eventName: string;
+  eventImage: string;
+  eventDateTime: string;
+  eventLocation: string;
+  requestFee: number;
+  djId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DJ {
+  djId: string;
+  djName: string;
+  djEmail: string;
+  djPhone: string;
+  djInsta: string;
+  createdAt: string;
+  updatedAt: string;
+  Events: Array<{
+    eventId: string;
+    eventName: string;
+    eventImage: string;
+    eventDateTime: string;
+    eventLocation: string;
+    requestFee: number;
+    djId: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  Payments: Array<{
+    paymentId: string;
+    amount: number;
+    paymentDate: string;
+    status: string;
+    djId: string;
+  }>;
+}
 
 const Loader = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
     <div className="loader text-white">
-    <Image
-            src="/RequestLogoLight.png"
-            alt="DJ Request Logo"
-            width={200}
-            height={200}
-            className="invert dark:invert"
-            priority
-            style={{ objectFit: 'contain' }}
-          />
+      <Image
+        src="/RequestLogoLight.png"
+        alt="DJ Request Logo"
+        width={200}
+        height={200}
+        className="invert dark:invert"
+        priority
+        style={{ objectFit: "contain" }}
+      />
     </div>
   </div>
 );
@@ -38,32 +78,38 @@ const Index = () => {
   const [songRequests, setSongRequests] = useState<request[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventValidated, setEventValidated] = useState(false);
+  const [eventData, setEventData] = useState<event | null>(null);
+  const [djData, setDjData] = useState<DJ | null>(null);
 
   useEffect(() => {
     const url = new URL(window.location.href);
-    const eventId = url.searchParams.get('eventId');
+    const eventId = url.searchParams.get("eventId");
 
     if (!eventId) {
-      router.push('/404');
+      router.push("/404");
       return;
     }
 
     // Fetch event details to validate existence
     fetch(`api/events/getById?eventId=${eventId}`)
-      .then(response => response.json())
-      .then(eventData => {
+      .then((response) => response.json())
+      .then((eventData) => {
         if (!eventData || eventData.error) {
-          console.error('Error fetching event data:', eventData?.error || 'Event not found');
-          router.push('/404');
+          console.error(
+            "Error fetching event data:",
+            eventData?.error || "Event not found"
+          );
+          router.push("/404");
           return;
         }
         const djId = eventData.djId;
         localStorage.setItem("djId", djId);
+        setEventData(eventData);
         setEventValidated(true);
       })
-      .catch(error => {
+      .catch((error) => {
         console.log("Error fetching event details:", error);
-        router.push('/404');
+        router.push("/404");
       });
 
     localStorage.setItem("eventId", eventId);
@@ -72,12 +118,30 @@ const Index = () => {
   useEffect(() => {
     if (eventValidated) {
       const url = new URL(window.location.href);
-      const eventId = url.searchParams.get('eventId');
+      const eventId = url.searchParams.get("eventId");
+      const djId = localStorage.getItem("djId");
+
+      // Fetch DJ information
+      fetch(`api/djs/getById?djId=${djId}`)
+        .then((response) => response.json())
+        .then((data) => {
+          if (data && !data.error) {
+            setDjData(data);
+          } else {
+            console.log(
+              "Error fetching DJ data:",
+              data?.error || "DJ not found"
+            );
+          }
+        })
+        .catch((error) => {
+          console.log("Error fetching DJ details:", error);
+        });
 
       // Fetch song requests
       fetch(`api/requests/getByEvent?eventId=${eventId}`)
-        .then(response => response.json())
-        .then(data => {
+        .then((response) => response.json())
+        .then((data) => {
           if (Array.isArray(data)) {
             setSongRequests(data);
           } else {
@@ -86,7 +150,7 @@ const Index = () => {
           }
           setLoading(false);
         })
-        .catch(error => {
+        .catch((error) => {
           console.log("Error fetching initial requests:", error);
           setLoading(false);
         });
@@ -99,48 +163,53 @@ const Index = () => {
 
   return (
     <div className="w-screen h-screen bg-gray-900">
-
-    
-    <div className="bg-gray-900 dark:bg-gray-900 flex max-w-[600px] w-full min-h-screen flex-col overflow-y-auto items-center mx-auto">
-      <EventHeader />
-
-      <div className="flex flex-col items-center w-full px-4 pb-20">
-        <DJProfile
-          name="DJ Zo"
-          role="Main Event DJ"
-          image="https://cdn.builder.io/api/v1/image/assets/TEMP/07768e6beee3d7f47f88d0798e6e2e885f8e8b62f39f33f7eac92fdf4c2d3eeb?placeholderIfAbsent=true"
+      <div className="bg-gray-900 dark:bg-gray-900 flex max-w-[600px] w-full min-h-screen flex-col overflow-y-auto items-center mx-auto">
+        <EventHeader
+          title={eventData?.eventName || "Default Event Title"}
+          imageUrl={eventData?.eventImage}
         />
 
-        <h2 className="text-gray-200 dark:text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">
-          Song Queue
-        </h2>
+        <div className="flex flex-col items-center w-full px-4 pb-20">
+          <DJProfile
+            name={djData?.djName || "DJ Zo"}
+            role="Main Event DJ"
+            image="https://cdn.builder.io/api/v1/image/assets/TEMP/07768e6beee3d7f47f88d0798e6e2e885f8e8b62f39f33f7eac92fdf4c2d3eeb?placeholderIfAbsent=true"
+          />
 
-        <div
-          className="bg-gray-900 dark:bg-gray-900 flex flex-col gap-[13px] w-[80%] pt-5"
-          style={{ height: `${songRequests.filter(req => !req.played).length * 100}px` }}
-        >
-          {songRequests.filter(request => !request.played).map((request) => (
-            <SongCard
-              key={request.requestId}
-              image={request.songImage}
-              title={request.songName}
-              artist={request.songArtist}
-              reactions={request.requestUpvotes}
-            />
-          ))}
+          <h2 className="text-gray-200 dark:text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">
+            Song Queue
+          </h2>
+
+          <div
+            className="bg-gray-900 dark:bg-gray-900 flex flex-col gap-[13px] w-[80%] pt-5"
+            style={{
+              height: `${songRequests.filter((req) => !req.played).length * 100}px`,
+            }}
+          >
+            {songRequests
+              .filter((request) => !request.played)
+              .map((request) => (
+                <SongCard
+                  key={request.requestId}
+                  image={request.songImage}
+                  title={request.songName}
+                  artist={request.songArtist}
+                  reactions={request.requestUpvotes}
+                />
+              ))}
+          </div>
+        </div>
+
+        <div className="fixed bottom-0 w-full max-w-[480px] bg-transparent pb-4">
+          <div className="self-stretch w-full text-base text-white font-bold text-center uppercase tracking-[1px] mt-[60px] pt-[9px] pb-5 px-[52px] bg-transparent">
+            <Link href="/request-song">
+              <button className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] shadow-[0px_10px_35px_rgba(111,126,201,0.25)] fill-[#5669FF] w-full px-[43px] py-[19px] rounded-[15px]">
+                Request a song
+              </button>
+            </Link>
+          </div>
         </div>
       </div>
-
-      <div className="fixed bottom-0 w-full max-w-[480px] bg-transparent pb-4">
-        <div className="self-stretch w-full text-base text-white font-bold text-center uppercase tracking-[1px] mt-[60px] pt-[9px] pb-5 px-[52px] bg-transparent">
-          <Link href="/request-song">
-            <button className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] shadow-[0px_10px_35px_rgba(111,126,201,0.25)] fill-[#5669FF] w-full px-[43px] py-[19px] rounded-[15px]">
-              Request a song
-            </button>
-          </Link>
-        </div>
-      </div>
-    </div>
     </div>
   );
 };

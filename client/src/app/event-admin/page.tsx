@@ -4,6 +4,7 @@ import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
 import { FaCheck, FaTimes } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
+import Image from "next/image";
 
 export interface request {
   requestId: number;
@@ -16,9 +17,37 @@ export interface request {
   played: boolean;
 }
 
+export interface DJ {
+  djId: string;
+  djName: string;
+  djEmail: string;
+  djPhone: string;
+  djInsta: string;
+  createdAt: string;
+  updatedAt: string;
+  Events: Array<{
+    eventId: string;
+    eventName: string;
+    eventImage: string;
+    eventDateTime: string;
+    eventLocation: string;
+    requestFee: number;
+    djId: string;
+    createdAt: string;
+    updatedAt: string;
+  }>;
+  Payments: Array<{
+    paymentId: string;
+    amount: number;
+    paymentDate: string;
+    status: string;
+    djId: string;
+  }>;
+}
+
 const Loader = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
-    <div className="loader text-white">Loading...</div>
+    <Loader2 className="w-6 h-6 text-white animate-spin" />
   </div>
 );
 
@@ -30,16 +59,66 @@ const EventAdminPage = () => {
   const [eventImage, setEventImage] = useState("");
   const [requestFee, setRequestFee] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [djData, setDjData] = useState<DJ | null>(null);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const eventId = url.searchParams.get("eventId");
+
+    if (!eventId) {
+      console.log("Event ID not found in URL");
+      return;
+    }
+
+    const fetchEventData = fetch(`/api/events/getById?eventId=${eventId}`).then(
+      (response) => {
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+        return response.json();
+      }
+    );
+
+    const fetchSongRequests = fetch(
+      `api/requests/getByEvent?eventId=${eventId}`
+    ).then((response) => response.json());
+
+    // Fetch DJ information based on djId from local storage
+    const djId = localStorage.getItem("djId");
+    const fetchDJData = djId
+      ? fetch(`api/djs/getById?djId=${djId}`).then((response) =>
+          response.json()
+        )
+      : Promise.resolve(null);
+
+    Promise.all([fetchEventData, fetchSongRequests, fetchDJData])
+      .then(([eventData, songRequestsData, djData]) => {
+        setEventTitle(eventData.eventName || "Event");
+        setEventImage(eventData.eventImage || "");
+        setRequestFee(eventData.requestFee || 0);
+        setSongRequests(
+          Array.isArray(songRequestsData) ? songRequestsData : []
+        );
+        setDjData(djData && !djData.error ? djData : null);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.log("Error fetching data:", error);
+        setLoading(false);
+      });
+
+    localStorage.setItem("eventId", eventId);
+  }, []);
 
   // Function to accept a song request
   const acceptRequest = (requestId: number) => {
     // Make a fetch call to accept the song request
     fetch(`api/requests/accept?requestId=${requestId}`, {
-      method: 'PUT',
+      method: "PUT",
     })
       .then((response) => {
         if (!response.ok) {
-          throw new Error('Network response was not ok');
+          throw new Error("Network response was not ok");
         }
         // Update the state to mark the request as accepted
         setSongRequests((prevRequests) =>
@@ -56,8 +135,8 @@ const EventAdminPage = () => {
   const playedRequest = (requestId: string) => {
     setIsLoading(true);
     // Find the request object by requestId
-    const request = songRequests.find(req => req.requestId === requestId);
-    
+    const request = songRequests.find((req) => req.requestId === requestId);
+
     if (!request || !request.paymentId) {
       console.log("Request or paymentId not found");
       return;
@@ -67,7 +146,7 @@ const EventAdminPage = () => {
     fetch(`api/payment/${request.paymentId}`)
       .then((response) => {
         if (!response.ok) {
-          throw new Error('Failed to fetch payment data');
+          throw new Error("Failed to fetch payment data");
         }
         return response.json();
       })
@@ -75,29 +154,32 @@ const EventAdminPage = () => {
         const { amount } = paymentData; // Extract amount from the response
 
         // Capture the payment intent using the paymentId and amount
-        return fetch(`api/stripe/capturePaymentIntent?intentId=${request.paymentId}&capture=${amount}`, {
-          method: 'POST',
-        });
+        return fetch(
+          `api/stripe/capturePaymentIntent?intentId=${request.paymentId}&capture=${amount}`,
+          {
+            method: "POST",
+          }
+        );
       })
       .then((response) => {
         if (!response.ok) {
-          throw new Error('Failed to capture payment intent');
+          throw new Error("Failed to capture payment intent");
         }
         return response.json();
       })
       .then((captureData) => {
-        console.log('Payment captured successfully:', captureData);
-        
+        console.log("Payment captured successfully:", captureData);
+
         // Set the song to played
         return fetch(`api/requests/played?requestId=${requestId}`, {
-          method: 'PUT', // Assuming POST is the correct method
+          method: "PUT", // Assuming POST is the correct method
         });
       })
       .then((response) => {
         if (!response.ok) {
-          throw new Error('Failed to mark request as played');
+          throw new Error("Failed to mark request as played");
         }
-        console.log('Song marked as played successfully');
+        console.log("Song marked as played successfully");
 
         setSongRequests((prevRequests) =>
           prevRequests.map((req) =>
@@ -116,11 +198,11 @@ const EventAdminPage = () => {
   const declineRequest = (requestId: number) => {
     // Make a fetch call to delete the request from the server
     fetch(`api/requests/delete?requestId=${requestId}`, {
-      method: 'DELETE',
+      method: "DELETE",
     })
       .then((response) => {
         if (!response.ok) {
-          throw new Error('Network response was not ok');
+          throw new Error("Network response was not ok");
         }
         // Update the state to remove the declined request
         setSongRequests((prevRequests) =>
@@ -144,7 +226,7 @@ const EventAdminPage = () => {
     fetch(`/api/events/getById?eventId=${eventId}`)
       .then((response) => {
         if (!response.ok) {
-          throw new Error('Network response was not ok');
+          throw new Error("Network response was not ok");
         }
         return response.json();
       })
@@ -153,6 +235,26 @@ const EventAdminPage = () => {
         setEventImage(data.eventImage || "");
         setRequestFee(data.requestFee || 0);
         console.log("Event data:", data);
+
+        // Step 3: Fetch DJ information based on djId from local storage
+        const djId = localStorage.getItem("djId");
+        if (djId) {
+          fetch(`api/djs/getById?djId=${djId}`)
+            .then((response) => response.json())
+            .then((djData) => {
+              if (djData && !djData.error) {
+                setDjData(djData); // Update state with DJ data
+              } else {
+                console.log(
+                  "Error fetching DJ data:",
+                  djData?.error || "DJ not found"
+                );
+              }
+            })
+            .catch((error) => {
+              console.log("Error fetching DJ details:", error);
+            });
+        }
       })
       .catch((error) => {
         console.log("Error fetching event details:", error);
@@ -186,36 +288,40 @@ const EventAdminPage = () => {
   return (
     <div className="bg-gray-900 dark:bg-gray-900 min-h-screen">
       {/* Updated Header Section with increased height */}
-      <div 
+      <div
         className="relative bg-cover bg-center h-48"
-        style={{ 
-          backgroundImage: `url(${eventImage})` 
+        style={{
+          backgroundImage: `url(${eventImage})`,
         }}
       >
         {/* Dark overlay */}
         <div className="absolute inset-0 bg-black bg-opacity-60"></div>
-         
+
         {/* Content */}
         <div className="relative max-w-7xl mx-auto px-8 h-full">
           {/* Content container with flex layout */}
           <div className="flex items-center h-full space-x-8">
             {/* Logo - increased height */}
-            <img 
-              src="/RequestLogoDark.png" 
-              alt="Logo" 
-              className="h-32 w-auto"
+            <Image
+              src="/RequestLogoDark.png"
+              alt="Logo"
+              width={225}
+              height={225}
+              priority
             />
 
             {/* Title content */}
             <div>
-              <h1 className="text-6xl font-bold text-white mb-2">{eventTitle}</h1>
+              <h1 className="text-6xl font-bold text-white mb-2">
+                {eventTitle}
+              </h1>
               <p className="text-2xl text-gray-200">DJ Dashboard</p>
             </div>
 
             {/* DJ Profile moved to header with transparent grey card, aligned to the absolute right */}
-            <div className="absolute right-0 bg-gray-800 bg-opacity-90 rounded-lg flex items-center justify-center">
+            <div className="absolute right-0 bg-opacity-90 rounded-lg flex items-center justify-center ">
               <DJProfile
-                name="DJ Zo"
+                name={djData?.djName || "SAMPLE DJ"}
                 role="Main Event DJ"
                 image="https://cdn.builder.io/api/v1/image/assets/TEMP/07768e6beee3d7f47f88d0798e6e2e885f8e8b62f39f33f7eac92fdf4c2d3eeb?placeholderIfAbsent=true"
               />
@@ -232,7 +338,9 @@ const EventAdminPage = () => {
             <div>
               <h3 className="text-xl font-bold text-white">Songs Requested</h3>
             </div>
-            <p className="text-4xl font-semibold text-white">{songRequests.length}</p>
+            <p className="text-4xl font-semibold text-white">
+              {songRequests.length}
+            </p>
           </div>
 
           {/* Songs Played Card */}
@@ -241,7 +349,7 @@ const EventAdminPage = () => {
               <h3 className="text-xl font-bold text-white">Songs Played</h3>
             </div>
             <p className="text-4xl font-semibold text-white">
-              {songRequests.filter(req => req.played).length}
+              {songRequests.filter((req) => req.played).length}
             </p>
           </div>
 
@@ -251,7 +359,7 @@ const EventAdminPage = () => {
               <h3 className="text-xl font-bold text-white">DJ Earnings</h3>
             </div>
             <p className="text-4xl font-semibold text-white">
-              ${songRequests.filter(req => req.played).length * requestFee}
+              ${songRequests.filter((req) => req.played).length * requestFee}
             </p>
           </div>
         </div>
@@ -266,7 +374,7 @@ const EventAdminPage = () => {
               {songRequests
                 .filter((req) => req.accepted && !req.played)
                 .map((request) => (
-                  <div 
+                  <div
                     key={request.requestId}
                     className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
                   >
@@ -278,14 +386,16 @@ const EventAdminPage = () => {
                         reactions={request.requestUpvotes}
                       />
                       <button
-                        onClick={() => playedRequest(request.requestId.toString())}
+                        onClick={() =>
+                          playedRequest(request.requestId.toString())
+                        }
                         className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
                         disabled={isLoading}
                       >
                         {isLoading ? (
                           <Loader2 className="w-6 h-6 text-white animate-spin" />
                         ) : (
-                          <FaCheck className="w-6 h-6 text-white"/>
+                          <FaCheck className="w-6 h-6 text-white" />
                         )}
                       </button>
                     </div>
@@ -303,7 +413,7 @@ const EventAdminPage = () => {
               {songRequests
                 .filter((req) => !req.accepted && !req.played)
                 .map((request) => (
-                  <div 
+                  <div
                     key={request.requestId}
                     className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
                   >
@@ -319,7 +429,7 @@ const EventAdminPage = () => {
                           onClick={() => acceptRequest(request.requestId)}
                           className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
                         >
-                          <FaCheck className="w-6 h-6 text-white"/>
+                          <FaCheck className="w-6 h-6 text-white" />
                         </button>
                         <button
                           onClick={() => declineRequest(request.requestId)}
