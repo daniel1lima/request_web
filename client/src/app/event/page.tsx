@@ -5,6 +5,8 @@ import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
 import Link from "next/link";
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
+import { Loader2 } from "lucide-react";
 
 export interface request {
   requestId: number;
@@ -32,86 +34,74 @@ const Loader = () => (
 );
 
 const Index = () => {
+  const router = useRouter();
   const [songRequests, setSongRequests] = useState<request[]>([]);
   const [loading, setLoading] = useState(true);
+  const [eventValidated, setEventValidated] = useState(false);
 
   useEffect(() => {
     const url = new URL(window.location.href);
     const eventId = url.searchParams.get('eventId');
 
     if (!eventId) {
-      console.log('Event ID not found in URL');
+      router.push('/404');
       return;
     }
 
-    // Fetch song requests
-    fetch(`api/requests/getByEvent?eventId=${eventId}`)
-      .then(response => response.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setSongRequests(data);
-        } else {
-          console.log("Fetched data is not an array:", data);
-          setSongRequests([]);
-        }
-        setLoading(false);
-      })
-      .catch(error => {
-        console.log("Error fetching initial requests:", error);
-        setLoading(false);
-      });
-
-    // Fetch event details to get djId
+    // Fetch event details to validate existence
     fetch(`api/events/getById?eventId=${eventId}`)
       .then(response => response.json())
       .then(eventData => {
-        const djId = eventData.djId; // Assuming djId is directly available
+        if (!eventData || eventData.error) {
+          console.error('Error fetching event data:', eventData?.error || 'Event not found');
+          router.push('/404');
+          return;
+        }
+        const djId = eventData.djId;
         localStorage.setItem("djId", djId);
+        setEventValidated(true);
       })
       .catch(error => {
         console.log("Error fetching event details:", error);
+        router.push('/404');
       });
 
     localStorage.setItem("eventId", eventId);
-
-    // // Set up WebSocket connection for real-time updates
-    // const socket = new WebSocket(`ws://localhost:65534/requests/webhook/getByEvent?eventId=${eventId}`);
-
-    // socket.onopen = () => {
-    //   console.log("WebSocket connection established");
-    // };
-
-    // socket.onmessage = (event) => {
-    //   const data = JSON.parse(event.data);
-    //   console.log(data); // Log the incoming data
-
-    //   if (data.type === "create") {
-    //     setSongRequests(data.requests); // Update state with new requests
-    //   } else {
-    //     console.log("Unexpected data type:", data.type);
-    //   }
-    // };
-
-    // socket.onerror = (error) => {
-    //   console.log("WebSocket error:", error);
-    // };
-
-    // socket.onclose = () => {
-    //   console.log("WebSocket connection closed");
-    // };
-
-    // // Clean up on component unmount
-    // return () => {
-    //   socket.close();
-    // };
   }, []);
+
+  useEffect(() => {
+    if (eventValidated) {
+      const url = new URL(window.location.href);
+      const eventId = url.searchParams.get('eventId');
+
+      // Fetch song requests
+      fetch(`api/requests/getByEvent?eventId=${eventId}`)
+        .then(response => response.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setSongRequests(data);
+          } else {
+            console.log("Fetched data is not an array:", data);
+            setSongRequests([]);
+          }
+          setLoading(false);
+        })
+        .catch(error => {
+          console.log("Error fetching initial requests:", error);
+          setLoading(false);
+        });
+    }
+  }, [eventValidated]);
 
   if (loading) {
     return <Loader />;
   }
 
   return (
-    <div className="bg-gray-900 dark:bg-gray-900 flex max-w-[600px] w-full h-screen flex-col overflow-y-auto items-center mx-auto">
+    <div className="w-screen h-screen bg-gray-900">
+
+    
+    <div className="bg-gray-900 dark:bg-gray-900 flex max-w-[600px] w-full min-h-screen flex-col overflow-y-auto items-center mx-auto">
       <EventHeader />
 
       <div className="flex flex-col items-center w-full px-4 pb-20">
@@ -150,6 +140,7 @@ const Index = () => {
           </Link>
         </div>
       </div>
+    </div>
     </div>
   );
 };
