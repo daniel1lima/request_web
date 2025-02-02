@@ -17,6 +17,18 @@ export interface request {
   played: boolean;
 } 
 
+export interface event {
+  eventId: string;
+  eventName: string;
+  eventImage: string;
+  eventDateTime: string;
+  eventLocation: string;
+  requestFee: number;
+  djId: string;
+  createdAt: string;
+  updatedAt: string;
+} 
+
 const Loader = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
     <div className="loader text-white">
@@ -38,6 +50,7 @@ const Index = () => {
   const [songRequests, setSongRequests] = useState<request[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventValidated, setEventValidated] = useState(false);
+  const [eventData, setEventData] = useState<event | null>(null);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -59,6 +72,7 @@ const Index = () => {
         }
         const djId = eventData.djId;
         localStorage.setItem("djId", djId);
+        setEventData(eventData)
         setEventValidated(true);
       })
       .catch(error => {
@@ -99,10 +113,12 @@ const Index = () => {
 
   return (
     <div className="w-screen h-screen bg-gray-900">
-
     
     <div className="bg-gray-900 dark:bg-gray-900 flex max-w-[600px] w-full min-h-screen flex-col overflow-y-auto items-center mx-auto">
-      <EventHeader />
+      <EventHeader 
+        title={eventData?.eventName || "Default Event Title"}
+        imageUrl={eventData?.eventImage || "/default-image.png"}
+      />
 
       <div className="flex flex-col items-center w-full px-4 pb-20">
         <DJProfile
