@@ -2,29 +2,28 @@
 
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
-
+import { useRouter } from 'next/navigation';
 import { SongForm } from './SongForm';
-import { EmptyState } from './EmptyState';
-import { ThemeToggle } from '../theme-toggle';
 import { Elements, useStripe } from '@stripe/react-stripe-js';
 import { loadStripe, StripeElementsOptions } from '@stripe/stripe-js';
+import { Loader2 } from 'lucide-react';
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
-
-
 
 export const RequestSong = () => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [showHeader, setShowHeader] = useState(true);
   const [eventData, setEventData] = useState<any>(null);
-
+  const [loading, setLoading] = useState(true); // State to track loading
   const [options, setOptions] = useState<StripeElementsOptions>({
     mode: 'payment' as const,
-    amount: 50,
+    amount: 50,  // Default amount
     currency: 'cad',
     capture_method: 'manual'
   });
+
+  const router = useRouter();
 
   const getSpotifyToken = async () => {
     try {
@@ -49,7 +48,10 @@ export const RequestSong = () => {
 
   const fetchEventData = async () => {
     const eventId = localStorage.getItem('eventId');
-    if (!eventId) return;
+    if (!eventId) {
+      router.push('/404'); // Redirect to 404 if eventId is null
+      return;
+    }
 
     try {
       const response = await fetch(`api/events/getById?eventId=${eventId}`);
@@ -57,14 +59,17 @@ export const RequestSong = () => {
 
       if (data.error) {
         console.error('Error fetching event data:', data.error);
+        router.push('/404'); // Redirect to 404 if event does not exist
         return;
       }
 
       console.log('Event data received:', data);
       setEventData(data);
       setOptions(prevOptions => ({ ...prevOptions, amount: data.requestFee }));
+      setLoading(false); // Set loading to false after fetching event data
     } catch (error) {
       console.log('Error fetching event data:', error);
+      router.push('/404'); // Redirect to 404 on fetch error
     }
   };
 
@@ -73,12 +78,14 @@ export const RequestSong = () => {
     fetchEventData();
   }, []);
 
-  console.log(eventData)
-
   const handleSongSelect = (selected: boolean) => {
     setShowHeader(!selected);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  if (loading) {
+    return <Loader2 className='text-white animate-spin'/>; // Show loader while loading
+  }
 
   return (
     <div className="bg-gray-900 dark:bg-gray-900 max-w-[480px] w-full min-h-screen overflow-x-hidden">
