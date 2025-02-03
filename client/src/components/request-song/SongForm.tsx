@@ -86,9 +86,9 @@ export const SongForm: React.FC<SongFormProps> = ({
         elements,
         clientSecret: client_secret,
         confirmParams: {
-          return_url: 'http://localhost:65545/',
+          return_url: `${window.location.origin}/success`,
         },
-        redirect: 'if_required',
+        redirect: 'always',
       });
 
       if (error) {

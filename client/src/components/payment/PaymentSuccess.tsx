@@ -1,7 +1,15 @@
-import React from 'react';
+'use client'
+import React, { useEffect, useState } from 'react';
 import { FaCheckCircle } from 'react-icons/fa';
 
 const PaymentSuccess: React.FC = () => {
+  const [ eventId, setEventId ] = useState('')
+
+  useEffect(() => {
+    setEventId(localStorage.getItem('eventId')!);
+  }, );
+
+
   return (
     <div className="bg-gray-900 dark:bg-gray-900 flex flex-col items-center justify-center min-h-screen p-6">
       <h1 className="text-3xl text-white font-bold mb-4 text-center">Congratulations!</h1>
@@ -19,7 +27,7 @@ const PaymentSuccess: React.FC = () => {
       </div>
 
       <a
-        href="/event" // Direct link to the event page
+        href={`/event?eventId=${eventId}`} // Direct link to the event page
         className="mt-6 bg-blue-500 text-white px-6 py-3 rounded-lg transition duration-200 hover:bg-blue-600 text-lg"
       >
         Return to Event
