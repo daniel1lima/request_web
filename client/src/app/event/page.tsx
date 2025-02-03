@@ -6,7 +6,6 @@ import SongCard from "@/components/event/SongCard";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
 
 export interface request {
   requestId: number;

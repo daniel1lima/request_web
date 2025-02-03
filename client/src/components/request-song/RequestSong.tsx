@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { SongForm } from "./SongForm";
-import { Elements, useStripe } from "@stripe/react-stripe-js";
+import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
 import { Loader2 } from "lucide-react";
 
@@ -13,12 +13,17 @@ const stripePromise = loadStripe(
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!
 );
 
+type CustomStripeElementsOptions = StripeElementsOptions & {
+  amount?: number;
+  currency?: string;
+};
+
 export const RequestSong = () => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [showHeader, setShowHeader] = useState(true);
-  const [eventData, setEventData] = useState<any>(null);
+  // const [eventData, setEventData] = useState<any>(null);
   const [loading, setLoading] = useState(true); // State to track loading
-  const [options, setOptions] = useState<StripeElementsOptions>({
+  const [options, setOptions] = useState<CustomStripeElementsOptions>({
     mode: "payment" as const,
     amount: 50, // Default amount
     currency: "cad",
@@ -66,7 +71,7 @@ export const RequestSong = () => {
       }
 
       console.log("Event data received:", data);
-      setEventData(data);
+      // setEventData(data);
       setOptions((prevOptions) => ({
         ...prevOptions,
         amount: data.requestFee,
@@ -133,8 +138,7 @@ export const RequestSong = () => {
           <SongForm
             accessToken={accessToken}
             onSongSelect={handleSongSelect}
-            options={{ amount: options.amount!, currency: options.currency! }}
-            onError={(error) => console.error("Stripe Element Error:", error)}
+            feedoptions={{ amount: options.amount!, currency: options.currency! }}
           />
         </Elements>
       </div>

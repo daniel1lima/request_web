@@ -11,7 +11,6 @@ interface EventHeaderProps {
 }
 
 const EventHeader: React.FC<EventHeaderProps> = ({
-  time = "9:41",
   title = "Event Details",
   imageUrl,
 }) => {

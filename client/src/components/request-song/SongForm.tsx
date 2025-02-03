@@ -3,9 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useDebounce } from "use-debounce";
 import { FaSearch, FaTimes } from "react-icons/fa";
-import { loadStripe, Stripe } from "@stripe/stripe-js";
-import {Elements, ExpressCheckoutElement, useElements, useStripe} from '@stripe/react-stripe-js';
-import { StripeElementsOptions } from '@stripe/stripe-js';
+import {ExpressCheckoutElement, useElements, useStripe} from '@stripe/react-stripe-js';
 
 interface SpotifyTrack {
   id: string;
@@ -19,51 +17,16 @@ interface SpotifyTrack {
 interface SongFormProps {
   accessToken: string | null;
   onSongSelect?: (selected: boolean) => void;
-  options: { // Define the structure of options here
+  feedoptions: { // Define the structure of options here
     amount: number;
     currency: string;
   };
 }
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      "stripe-buy-button": React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement>,
-        HTMLElement
-      > & {
-        "buy-button-id": string;
-        "publishable-key": string;
-      };
-    }
-  }
-}
-
-// CheckMarkAnimation component
-const CheckMarkAnimation: React.FC = () => (
-  <div className="fixed inset-0 flex items-center justify-center h-screen w-screen bg-black bg-opacity-100">
-    <div className="animate-checkmark">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="100"
-        height="100"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="white"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <polyline points="20 6 9 17 4 12" />
-      </svg>
-    </div>
-  </div>
-);
-
 export const SongForm: React.FC<SongFormProps> = ({
   accessToken,
   onSongSelect,
-  options
+  feedoptions
 }) => {
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
@@ -76,6 +39,21 @@ export const SongForm: React.FC<SongFormProps> = ({
   const resultsContainerRef = React.useRef<HTMLDivElement>(null);
   const elements = useElements();
   const stripe = useStripe()
+
+
+  // const applePayOptions = {
+  //   applePay: {
+  //     deferredPaymentRequest: {
+  //       paymentDescription: 'My deferred payment',
+  //       managementURL: 'https://example.com/billing',
+  //       deferredBilling: {
+  //         amount: 2500,
+  //         label: 'Deferred Fee',
+  //         deferredPaymentDate: new Date('2024-01-05')
+  //       },
+  //     }
+  //   }
+  // };
 
   
   const fetchPaymentIntent = async (amount: number, currency: string) => {
@@ -102,7 +80,7 @@ export const SongForm: React.FC<SongFormProps> = ({
 
     setIsLoading(true);
     try {
-      const { client_secret, id: pid } = await fetchPaymentIntent(options.amount, options.currency);
+      const { client_secret, id: pid } = await fetchPaymentIntent(feedoptions.amount, feedoptions.currency);
 
       const { error } = await stripe.confirmPayment({
         elements,
@@ -127,7 +105,7 @@ export const SongForm: React.FC<SongFormProps> = ({
           },
           body: JSON.stringify({
             paymentId: pid,
-            amount: options.amount,
+            amount: feedoptions.amount,
             djId: localStorage.getItem('djId'), 
           }),
         });
@@ -406,7 +384,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         >
           <div className="max-w-[480px] mx-auto mb-2">
             {selectedTrack ? (
-              <ExpressCheckoutElement onConfirm={onConfirm} />
+              <ExpressCheckoutElement onConfirm={onConfirm}/>
             ) : (
               <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
               </div>

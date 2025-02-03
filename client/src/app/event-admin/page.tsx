@@ -55,7 +55,7 @@ const EventAdminPage = () => {
   const [songRequests, setSongRequests] = useState<request[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventTitle, setEventTitle] = useState("Loading event...");
-  const [data, setData] = useState(null);
+  // const [data, setData] = useState(null);
   const [eventImage, setEventImage] = useState("");
   const [requestFee, setRequestFee] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
@@ -135,7 +135,7 @@ const EventAdminPage = () => {
   const playedRequest = (requestId: string) => {
     setIsLoading(true);
     // Find the request object by requestId
-    const request = songRequests.find((req) => req.requestId === requestId);
+    const request = songRequests.find((req) => req.requestId === Number(requestId));
 
     if (!request || !request.paymentId) {
       console.log("Request or paymentId not found");
@@ -183,7 +183,7 @@ const EventAdminPage = () => {
 
         setSongRequests((prevRequests) =>
           prevRequests.map((req) =>
-            req.requestId === requestId ? { ...req, played: true } : req
+            req.requestId === Number(requestId) ? { ...req, played: true } : req
           )
         );
         setIsLoading(false);

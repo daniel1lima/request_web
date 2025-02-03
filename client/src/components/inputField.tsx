@@ -1,5 +1,5 @@
 import * as React from "react";
-import { InputFieldProps } from "./types";
+import { InputFieldProps } from "../types";
 
 export const InputField: React.FC<InputFieldProps> = ({
   icon,

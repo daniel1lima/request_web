@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function middleware() {
 //   // Get the pathname of the request (e.g. /, /protected)
 //   const path = request.nextUrl.pathname;
 

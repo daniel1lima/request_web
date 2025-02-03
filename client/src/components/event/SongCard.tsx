@@ -13,7 +13,7 @@ interface SongCardProps {
   isQueued?: boolean;
 }
 
-const SongCard: React.FC<SongCardProps> = ({ image, title, artist, reactions, isQueued = false }) => {
+const SongCard: React.FC<SongCardProps> = ({ image, title, artist}) => {
   const titleRef = useRef<HTMLDivElement>(null);
   const [isOverflowing, setIsOverflowing] = useState(false);
 
