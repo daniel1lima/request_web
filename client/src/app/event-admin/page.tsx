@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react";
 import Image from "next/image";
 
 export interface request {
-  requestId: number;
+  requestId: string;
   songImage: string;
   songName: string;
   songArtist: string;
@@ -111,7 +111,7 @@ const EventAdminPage = () => {
   }, []);
 
   // Function to accept a song request
-  const acceptRequest = (requestId: number) => {
+  const acceptRequest = (requestId: string) => {
     // Make a fetch call to accept the song request
     fetch(`api/requests/accept?requestId=${requestId}`, {
       method: "PUT",
@@ -135,7 +135,7 @@ const EventAdminPage = () => {
   const playedRequest = (requestId: string) => {
     setIsLoading(true);
     // Find the request object by requestId
-    const request = songRequests.find((req) => req.requestId === Number(requestId));
+    const request = songRequests.find((req) => req.requestId === requestId);
 
     if (!request || !request.paymentId) {
       console.log("Request or paymentId not found");
@@ -183,7 +183,7 @@ const EventAdminPage = () => {
 
         setSongRequests((prevRequests) =>
           prevRequests.map((req) =>
-            req.requestId === Number(requestId) ? { ...req, played: true } : req
+            req.requestId === requestId ? { ...req, played: true } : req
           )
         );
         setIsLoading(false);
@@ -195,7 +195,7 @@ const EventAdminPage = () => {
   };
 
   // Function to decline a song request
-  const declineRequest = (requestId: number) => {
+  const declineRequest = (requestId: string) => {
     // Make a fetch call to delete the request from the server
     fetch(`api/requests/delete?requestId=${requestId}`, {
       method: "DELETE",
