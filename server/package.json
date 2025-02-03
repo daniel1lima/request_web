@@ -4,7 +4,7 @@
   "description": "The sample Node.js project with Next.js frontend",
   "scripts": {
     "start": "bun src/app.js",
-    "dev": "concurrently \"bun run server\" \"bun run client\"",
+    "dev": "concurrently \"bun run server\" \"bun run client\""
   },
   "dependencies": {
     "all": "^0.0.0",
