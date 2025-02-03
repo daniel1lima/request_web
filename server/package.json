@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "The sample Node.js project with Next.js frontend",
   "scripts": {
-    "start": "bun server/src/app.js",
+    "start": "bun src/app.js",
     "dev": "concurrently \"bun run server\" \"bun run client\"",
   },
   "dependencies": {
