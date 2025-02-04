@@ -58,8 +58,11 @@ const EventAdminPage = () => {
   // const [data, setData] = useState(null);
   const [eventImage, setEventImage] = useState("");
   const [requestFee, setRequestFee] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
   const [djData, setDjData] = useState<DJ | null>(null);
+
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
+    {}
+  );
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -133,8 +136,9 @@ const EventAdminPage = () => {
   };
 
   const playedRequest = (requestId: string) => {
-    setIsLoading(true);
     // Find the request object by requestId
+    setLoadingStates((prev) => ({ ...prev, [requestId]: true }));
+
     const request = songRequests.find((req) => req.requestId === requestId);
 
     if (!request || !request.paymentId) {
@@ -186,31 +190,68 @@ const EventAdminPage = () => {
             req.requestId === requestId ? { ...req, played: true } : req
           )
         );
-        setIsLoading(false);
       })
       .catch((error) => {
         console.log("Error processing payment:", error);
-        setIsLoading(false);
+      })
+      .finally(() => {
+        // Reset loading state for this specific song
+        setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
       });
   };
 
   // Function to decline a song request
   const declineRequest = (requestId: string) => {
     // Make a fetch call to delete the request from the server
-    fetch(`api/requests/delete?requestId=${requestId}`, {
-      method: "DELETE",
-    })
+
+    setLoadingStates((prev) => ({ ...prev, [requestId]: true }));
+
+    const request = songRequests.find((req) => req.requestId === requestId);
+
+    if (!request) {
+      console.log("Request or paymentId not found");
+      return;
+    }
+
+    return fetch(
+      `api/stripe/cancelPaymentIntent?intentId=${request?.paymentId}`,
+      {
+        method: "POST",
+      }
+    )
       .then((response) => {
         if (!response.ok) {
-          throw new Error("Network response was not ok");
+          throw new Error("Failed to cancel payment intent");
         }
-        // Update the state to remove the declined request
+        return response.json();
+      })
+      .then((captureData) => {
+        console.log("Payment cancelled successfully:", captureData);
+
+        fetch(`api/requests/delete?requestId=${requestId}`, {
+          method: "DELETE",
+        })
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Network response was not ok");
+            }
+          })
+          .catch((error) => {
+            console.log("Error deleting request:", error);
+          });
+      })
+
+      .then(() => {
         setSongRequests((prevRequests) =>
           prevRequests.filter((req) => req.requestId !== requestId)
         );
       })
       .catch((error) => {
-        console.log("Error deleting request:", error);
+        console.log("Error cancelling payment:", error);
+      })
+      .finally(() => {
+        // Reset loading state for this specific song
+        setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
       });
   };
 
@@ -285,8 +326,20 @@ const EventAdminPage = () => {
     return <Loader />;
   }
 
+  console.log(
+    songRequests.filter((req) => req.accepted && !req.played).length === 0
+  );
+
   return (
-    <div className="bg-gray-900 dark:bg-gray-900 max-h-full ">
+    <div
+      className={`bg-gray-900 dark:bg-gray-900 ${
+        songRequests.filter((req) => req.accepted && !req.played).length ===
+          0 &&
+        songRequests.filter((req) => !req.accepted && !req.played).length === 0
+          ? "h-screen"
+          : "h-full"
+      }`}
+    >
       {/* Updated Header Section with increased height */}
       <div
         className="relative bg-cover bg-center h-48"
@@ -386,13 +439,11 @@ const EventAdminPage = () => {
                         reactions={request.requestUpvotes}
                       />
                       <button
-                        onClick={() =>
-                          playedRequest(request.requestId.toString())
-                        }
+                        onClick={() => playedRequest(request.requestId)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
-                        disabled={isLoading}
+                        disabled={loadingStates[request.requestId]}
                       >
-                        {isLoading ? (
+                        {loadingStates[request.requestId] ? (
                           <Loader2 className="w-6 h-6 text-white animate-spin" />
                         ) : (
                           <FaCheck className="w-6 h-6 text-white" />
@@ -434,8 +485,13 @@ const EventAdminPage = () => {
                         <button
                           onClick={() => declineRequest(request.requestId)}
                           className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
+                          disabled={loadingStates[request.requestId]}
                         >
-                          <FaTimes className="w-6 h-6 text-white" />
+                          {loadingStates[request.requestId] ? (
+                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                          ) : (
+                            <FaTimes className="w-6 h-6 text-white" />
+                          )}
                         </button>
                       </div>
                     </div>

@@ -74,4 +74,25 @@ router.post("/capturePaymentIntent", async (req, res) => {
   }
 });
 
+
+router.post("/cancelPaymentIntent", async (req, res) => {
+  const { intentId } = req.query;
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.cancel(
+      `${intentId}`
+    );
+
+    res.status(200).json(paymentIntent);
+  } catch (error) {
+    console.error("Error cancelling payment intent:", error);
+    res
+      .status(500)
+      .json({
+        error: "Failed to cancelling payment intent",
+        details: error.message,
+      });
+  }
+});
+
 module.exports = router;
