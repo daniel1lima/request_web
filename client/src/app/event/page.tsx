@@ -6,6 +6,7 @@ import SongCard from "@/components/event/SongCard";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import "../globals.css";
 
 export interface request {
   requestId: number;
@@ -168,7 +169,7 @@ const Index = () => {
           imageUrl={eventData?.eventImage}
         />
 
-        <div className="flex flex-col items-center w-full px-4 pb-20">
+        <div className="flex flex-col items-center w-full px-4 pb-20 max-h-fit">
           <DJProfile
             name={djData?.djName || "DJ Zo"}
             role="Main Event DJ"
@@ -178,23 +179,19 @@ const Index = () => {
           <h2 className="text-gray-200 dark:text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">
             Song Queue
           </h2>
-
-          <div
-            className="bg-gray-900 dark:bg-gray-900 flex flex-col gap-[13px] w-[80%] pt-5"
-            style={{
-              height: `${songRequests.filter((req) => !req.played).length * 100}px`,
-            }}
-          >
+          <div className="gap-[13px] w-[100%] pt-5 overflow-y-auto max-h-[500px] scrollbar">
             {songRequests
               .filter((request) => !request.played)
               .map((request) => (
-                <SongCard
-                  key={request.requestId}
-                  image={request.songImage}
-                  title={request.songName}
-                  artist={request.songArtist}
-                  reactions={request.requestUpvotes}
-                />
+                <div className="pb-3 mr-2 " key={request.requestId} >
+                  <SongCard
+                    key={request.requestId}
+                    image={request.songImage}
+                    title={request.songName}
+                    artist={request.songArtist}
+                    reactions={request.requestUpvotes}
+                  />
+                </div>
               ))}
           </div>
         </div>
