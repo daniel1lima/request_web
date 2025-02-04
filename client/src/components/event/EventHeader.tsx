@@ -3,6 +3,7 @@
 import React from "react";
 import { Button } from "../button";
 import { ChevronLeft } from "lucide-react";
+import { redirect } from "next/navigation";
 
 interface EventHeaderProps {
   time?: string;
@@ -31,7 +32,7 @@ const EventHeader: React.FC<EventHeaderProps> = ({
       />
       <div className="relative flex mb-[-25px] w-full flex-col items-stretch px-6 py-4">
         <div className="flex items-stretch gap-[13px] text-2xl text-white font-medium mt-4">
-          <Button variant="outline" size="icon">
+          <Button variant="outline" size="icon" onClick={() => {redirect('/')}}>
             <ChevronLeft />
           </Button>
           <div className="basis-auto">{title}</div>
