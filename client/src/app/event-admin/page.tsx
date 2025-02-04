@@ -228,7 +228,7 @@ const EventAdminPage = () => {
       .then((captureData) => {
         console.log("Payment cancelled successfully:", captureData);
 
-        const response = fetch(`api/requests/delete?requestId=${requestId}`, {
+        fetch(`api/requests/delete?requestId=${requestId}`, {
           method: "DELETE",
         })
           .then((response) => {
