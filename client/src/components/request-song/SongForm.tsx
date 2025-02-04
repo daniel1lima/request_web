@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useDebounce } from "use-debounce";
 import { FaSearch, FaTimes } from "react-icons/fa";
 import {ExpressCheckoutElement, useElements, useStripe} from '@stripe/react-stripe-js';
+import { redirect } from "next/navigation";
 
 interface SpotifyTrack {
   id: string;
@@ -88,8 +89,10 @@ export const SongForm: React.FC<SongFormProps> = ({
         confirmParams: {
           return_url: `${window.location.origin}/success`,
         },
-        redirect: 'always',
+        redirect: 'if_required',
       });
+
+      
 
       if (error) {
         console.error("Payment confirmation error:", error.message);
@@ -148,9 +151,10 @@ export const SongForm: React.FC<SongFormProps> = ({
 
         console.log("Request created successfully:", requestData);
 
+
         setTimeout(() => {
-          window.location.href = `/event?eventId=${localStorage.getItem('eventId')}`; // Redirect to /event after the animation
-        }, 1000); // Adjust the delay as needed
+          redirect(`/success`) // Navigate to the new post page
+        }, 3000);
       }
     } catch (error) {
       console.error("Error confirming payment:", error);

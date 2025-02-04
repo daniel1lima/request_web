@@ -3,6 +3,7 @@
 import React from "react";
 import { Button } from "../button";
 import { ChevronLeft } from "lucide-react";
+import Image from "next/image";
 
 interface EventHeaderProps {
   time?: string;
@@ -27,6 +28,7 @@ const EventHeader: React.FC<EventHeaderProps> = ({
         }} // Fallback on error
         className="absolute h-full w-full object-cover inset-0"
         alt="Event background"
+        fetchPriority="high"
       />
       <div className="relative flex mb-[-25px] w-full flex-col items-stretch px-6 py-4">
         <div className="flex items-stretch gap-[13px] text-2xl text-white font-medium mt-4">

@@ -135,7 +135,9 @@ const EventAdminPage = () => {
   const playedRequest = (requestId: string) => {
     setIsLoading(true);
     // Find the request object by requestId
-    const request = songRequests.find((req) => req.requestId === Number(requestId));
+    const request = songRequests.find(
+      (req) => req.requestId === Number(requestId)
+    );
 
     if (!request || !request.paymentId) {
       console.log("Request or paymentId not found");
@@ -410,37 +412,37 @@ const EventAdminPage = () => {
               New Requests
             </h2>
             <div className="space-y-4">
-              {songRequests
-                .filter((req) => !req.accepted && !req.played)
-                .map((request) => (
-                  <div
-                    key={request.requestId}
-                    className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <SongCard
-                        image={request.songImage}
-                        title={request.songName}
-                        artist={request.songArtist}
-                        reactions={request.requestUpvotes}
-                      />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
-                        <button
-                          onClick={() => acceptRequest(request.requestId)}
-                          className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
-                        >
-                          <FaCheck className="w-6 h-6 text-white" />
-                        </button>
-                        <button
-                          onClick={() => declineRequest(request.requestId)}
-                          className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
-                        >
-                          <FaTimes className="w-6 h-6 text-white" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+            {songRequests
+  .filter((req) => !req.accepted && !req.played)
+  .map((request) => (
+    <div
+      key={request.requestId}
+      className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
+    >
+      <div className="flex items-center space-x-4">
+        <SongCard
+          image={request.songImage}
+          title={request.songName}
+          artist={request.songArtist}
+          reactions={request.requestUpvotes}
+        />
+        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
+          <button
+            onClick={() => acceptRequest(request.requestId)}
+            className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
+          >
+            <FaCheck className="w-6 h-6 text-white" />
+          </button>
+          <button
+            onClick={() => declineRequest(request.requestId)}
+            className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
+          >
+            <FaTimes className="w-6 h-6 text-white" />
+          </button>
+        </div>
+      </div>
+    </div>
+  ))}
             </div>
           </div>
         </div>
