@@ -1,9 +1,5 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import EventHeader from "@/components/event/EventHeader";
-import DJProfile from "@/components/event/DJprofile";
-import SongCard from "@/components/event/SongCard";
-import Link from "next/link";
 import Image from "next/image";
 import { redirect, useRouter } from "next/navigation";
 import "./globals.css";
@@ -71,8 +67,6 @@ const Index = () => {
 
   useEffect(() => {
     if (eventValidated) {
-      const url = new URL(window.location.href);
-
       setLoading(false)
     }
   }, [eventValidated]);
