@@ -286,7 +286,7 @@ const EventAdminPage = () => {
   }
 
   return (
-    <div className="bg-gray-900 dark:bg-gray-900 min-h-screen">
+    <div className="bg-gray-900 dark:bg-gray-900 max-h-full ">
       {/* Updated Header Section with increased height */}
       <div
         className="relative bg-cover bg-center h-48"
@@ -364,9 +364,9 @@ const EventAdminPage = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-full">
           {/* Accepted Songs Column */}
-          <div className="bg-gray-800 rounded-xl p-6 shadow-xl h-[80vh] overflow-y-auto">
+          <div className="bg-gray-800 rounded-xl p-6 shadow-xl overflow-y-auto">
             <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
               Accepted Requests
             </h2>
@@ -405,42 +405,42 @@ const EventAdminPage = () => {
           </div>
 
           {/* Requested Songs Column */}
-          <div className="bg-gray-800 rounded-xl p-6 shadow-xl h-[80vh] overflow-y-auto">
+          <div className="bg-gray-800 rounded-xl p-6 shadow-xl  overflow-y-auto">
             <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
               New Requests
             </h2>
             <div className="space-y-4">
-            {songRequests
-  .filter((req) => !req.accepted && !req.played)
-  .map((request) => (
-    <div
-      key={request.requestId}
-      className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
-    >
-      <div className="flex items-center space-x-4">
-        <SongCard
-          image={request.songImage}
-          title={request.songName}
-          artist={request.songArtist}
-          reactions={request.requestUpvotes}
-        />
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
-          <button
-            onClick={() => acceptRequest(request.requestId)}
-            className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
-          >
-            <FaCheck className="w-6 h-6 text-white" />
-          </button>
-          <button
-            onClick={() => declineRequest(request.requestId)}
-            className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
-          >
-            <FaTimes className="w-6 h-6 text-white" />
-          </button>
-        </div>
-      </div>
-    </div>
-  ))}
+              {songRequests
+                .filter((req) => !req.accepted && !req.played)
+                .map((request) => (
+                  <div
+                    key={request.requestId}
+                    className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <SongCard
+                        image={request.songImage}
+                        title={request.songName}
+                        artist={request.songArtist}
+                        reactions={request.requestUpvotes}
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
+                        <button
+                          onClick={() => acceptRequest(request.requestId)}
+                          className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
+                        >
+                          <FaCheck className="w-6 h-6 text-white" />
+                        </button>
+                        <button
+                          onClick={() => declineRequest(request.requestId)}
+                          className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
+                        >
+                          <FaTimes className="w-6 h-6 text-white" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
             </div>
           </div>
         </div>
