@@ -70,7 +70,7 @@ const EventAdminPage = () => {
     const eventId = url.searchParams.get("eventId");
 
     if (!eventId) {
-      console.log("Event ID not found in URL");
+      //console.log("Event ID not found in URL");
       return;
     }
 
@@ -110,7 +110,7 @@ const EventAdminPage = () => {
         setLoading(false);
       })
       .catch((error) => {
-        console.log("Error fetching data:", error);
+        //console.log("Error fetching data:", error);
         setLoading(false);
       });
 
@@ -135,7 +135,7 @@ const EventAdminPage = () => {
         );
       })
       .catch((error) => {
-        console.log("Error accepting request:", error);
+        //console.log("Error accepting request:", error);
       });
   };
 
@@ -145,7 +145,7 @@ const EventAdminPage = () => {
     const request = songRequests.find((req) => req.requestId === requestId);
 
     if (!request || !request.paymentId) {
-      console.log("Request or paymentId not found");
+      //console.log("Request or paymentId not found");
       return;
     }
 
@@ -177,7 +177,7 @@ const EventAdminPage = () => {
         return response.json();
       })
       .then((captureData) => {
-        console.log("Payment captured successfully:", captureData);
+        //console.log("Payment captured successfully:", captureData);
         return apiFetch(`/requests/played?requestId=${requestId}`, {
           method: "PUT",
         });
@@ -197,7 +197,7 @@ const EventAdminPage = () => {
         );
       })
       .catch((error) => {
-        console.log("Error processing payment:", error);
+        //console.log("Error processing payment:", error);
       })
       .finally(() => {
         setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
@@ -213,7 +213,7 @@ const EventAdminPage = () => {
     const request = songRequests.find((req) => req.requestId === requestId);
 
     if (!request) {
-      console.log("Request or paymentId not found");
+      //console.log("Request or paymentId not found");
       return;
     }
 
@@ -233,7 +233,7 @@ const EventAdminPage = () => {
         return response.json();
       })
       .then((captureData) => {
-        console.log("Payment cancelled successfully:", captureData);
+        //console.log("Payment cancelled successfully:", captureData);
 
         apiFetch(`/requests/delete?requestId=${requestId}`, {
           method: "DELETE",
@@ -244,7 +244,7 @@ const EventAdminPage = () => {
             }
           })
           .catch((error) => {
-            console.log("Error deleting request:", error);
+            //console.log("Error deleting request:", error);
           });
       })
 
@@ -254,7 +254,7 @@ const EventAdminPage = () => {
         );
       })
       .catch((error) => {
-        console.log("Error cancelling payment:", error);
+        //console.log("Error cancelling payment:", error);
       })
       .finally(() => {
         // Reset loading state for this specific song
@@ -267,7 +267,7 @@ const EventAdminPage = () => {
     const eventId = url.searchParams.get("eventId");
 
     if (!eventId) {
-      console.log("Event ID not found in URL");
+      //console.log("Event ID not found in URL");
       return;
     }
 
@@ -285,7 +285,7 @@ const EventAdminPage = () => {
         setEventTitle(data.eventName || "Event");
         setEventImage(data.eventImage || "");
         setRequestFee(data.requestFee || 0);
-        console.log("Event data:", data);
+        //console.log("Event data:", data);
 
         // Step 3: Fetch DJ information based on djId from local storage
         const djId = localStorage.getItem("djId");
@@ -296,19 +296,16 @@ const EventAdminPage = () => {
               if (djData && !djData.error) {
                 setDjData(djData); // Update state with DJ data
               } else {
-                console.log(
-                  "Error fetching DJ data:",
-                  djData?.error || "DJ not found"
-                );
+                //console.log("Error fetching DJ data:", djData?.error || "DJ not found");
               }
             })
             .catch((error) => {
-              console.log("Error fetching DJ details:", error);
+              //console.log("Error fetching DJ details:", error);
             });
         }
       })
       .catch((error) => {
-        console.log("Error fetching event details:", error);
+        //console.log("Error fetching event details:", error);
         setEventTitle("Event");
       });
 
@@ -319,13 +316,13 @@ const EventAdminPage = () => {
         if (Array.isArray(data)) {
           setSongRequests(data);
         } else {
-          console.log("Fetched data is not an array:", data);
+          //console.log("Fetched data is not an array:", data);
           setSongRequests([]);
         }
         setLoading(false);
       })
       .catch((error) => {
-        console.log("Error fetching initial requests:", error);
+        //console.log("Error fetching initial requests:", error);
         setLoading(false);
       });
 
@@ -336,9 +333,6 @@ const EventAdminPage = () => {
     return <Loader />;
   }
 
-  console.log(
-    songRequests.filter((req) => req.accepted && !req.played).length === 0
-  );
 
   return (
     <div

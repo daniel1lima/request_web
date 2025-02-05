@@ -30,7 +30,7 @@ app.use('/payment', paymentRoutes);
 
 // Database sync
 sequelize.sync({ force: false }).then(() => {
-    console.log('Database synced');
+    //console.log('Database synced');
 }).catch(err => {
     console.error('Error syncing database:', err);
 });
@@ -43,7 +43,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    //console.log(`Server is running on port ${PORT}`);
 });
 
 module.exports = app;

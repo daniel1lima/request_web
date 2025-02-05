@@ -98,7 +98,7 @@ export const SongForm: React.FC<SongFormProps> = ({
       if (error) {
         console.error("Payment confirmation error:", error.message);
       } else {
-        console.log("Payment successful");
+        //console.log("Payment successful");
 
         // create payment
         // Fetch request to create payment
@@ -120,7 +120,7 @@ export const SongForm: React.FC<SongFormProps> = ({
           throw new Error(paymentData.error || 'Failed to create payment');
         }
 
-        console.log("Payment created successfully:", paymentData);
+        //console.log("Payment created successfully:", paymentData);
 
 
         
@@ -150,7 +150,7 @@ export const SongForm: React.FC<SongFormProps> = ({
           throw new Error(requestData.error || 'Failed to create request');
         }
 
-        console.log("Request created successfully:", requestData);
+        //console.log("Request created successfully:", requestData);
 
 
         setTimeout(() => {

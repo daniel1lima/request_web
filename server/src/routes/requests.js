@@ -9,20 +9,20 @@ const eventClients = new Map();
  * Helper Functions
  */
 const notifyEventClients = (eventId, data) => {
-    console.log(`Attempting to notify clients for event ${eventId} with data:`, JSON.stringify(data));
-    console.log('Current eventClients Map:', Array.from(eventClients.entries()).map(([key, value]) => `${key}: ${value.size} clients`));
+    //console.log(`Attempting to notify clients for event ${eventId} with data:`, JSON.stringify(data));
+    //console.log('Current eventClients Map:', Array.from(eventClients.entries()).map(([key, value]) => `${key}: ${value.size} clients`));
     
     if (eventClients.has(eventId)) {
         const clients = eventClients.get(eventId);
-        console.log(`Found ${clients.size} clients for event ${eventId}`);
+        //console.log(`Found ${clients.size} clients for event ${eventId}`);
         
         clients.forEach(client => {
             try {
                 if (client.writable) {
                     client.write(`data: ${JSON.stringify(data)}\n\n`);
-                    console.log(`Successfully sent notification to client for event ${eventId}`);
+                    //console.log(`Successfully sent notification to client for event ${eventId}`);
                 } else {
-                    console.log(`Client for event ${eventId} is not writable, removing`);
+                    //console.log(`Client for event ${eventId} is not writable, removing`);
                     clients.delete(client);
                 }
             } catch (error) {
@@ -32,11 +32,11 @@ const notifyEventClients = (eventId, data) => {
         });
 
         if (clients.size === 0) {
-            console.log(`Removing empty client set for event ${eventId}`);
+            //console.log(`Removing empty client set for event ${eventId}`);
             eventClients.delete(eventId);
         }
     } else {
-        console.log(`No clients found for event ${eventId}`);
+        //console.log(`No clients found for event ${eventId}`);
     }
 };
 
@@ -116,7 +116,7 @@ router.post('/create', async (req, res) => {
             requestUpvotes: 0
         });
 
-        console.log('New request created:', newRequest.toJSON());
+        //console.log('New request created:', newRequest.toJSON());
 
         const fullRequest = await Request.findOne({
             where: { requestId: newRequest.requestId },
@@ -134,7 +134,7 @@ router.post('/create', async (req, res) => {
         res.status(201).json(fullRequest);
 
         if (eventClients.has(eventId)) {
-            console.log(`Found ${eventClients.get(eventId).size} clients to notify for event ${eventId}`);
+            //console.log(`Found ${eventClients.get(eventId).size} clients to notify for event ${eventId}`);
             notifyEventClients(eventId, { type: 'create', request: fullRequest });
         }
     } catch (error) {
@@ -150,7 +150,7 @@ router.post('/create', async (req, res) => {
 router.put('/accept', async (req, res) => {
     try {
         const { requestId } = req.query;
-        console.log('Attempting to accept request:', requestId);
+        //console.log('Attempting to accept request:', requestId);
         
         if (!requestId) {
             return res.status(400).json({ 
@@ -162,7 +162,7 @@ router.put('/accept', async (req, res) => {
         const request = await Request.findOne({ where: { requestId } });
         
         if (!request) {
-            console.log('Request not found:', requestId);
+            //console.log('Request not found:', requestId);
             return res.status(404).json({ error: 'Request not found' });
         }
 
@@ -194,7 +194,7 @@ router.put('/accept', async (req, res) => {
 router.put('/played', async (req, res) => {
     try {
         const { requestId } = req.query;
-        console.log('Attempting to mark request as played:', requestId);
+        //console.log('Attempting to mark request as played:', requestId);
         
         if (!requestId) {
             return res.status(400).json({ 
@@ -206,12 +206,12 @@ router.put('/played', async (req, res) => {
         const request = await Request.findOne({ where: { requestId } });
         
         if (!request) {
-            console.log('Request not found:', requestId);
+            //console.log('Request not found:', requestId);
             return res.status(404).json({ error: 'Request not found' });
         }
 
         if (!request.accepted) {
-            console.log('Attempted to play unaccepted request:', requestId);
+            //console.log('Attempted to play unaccepted request:', requestId);
             return res.status(400).json({ 
                 error: 'Invalid operation', 
                 details: 'Request must be accepted before it can be marked as played' 
@@ -283,7 +283,7 @@ router.delete('/delete', async (req, res) => {
 // Webhook endpoint for real-time request updates
 router.get('/webhook/getByEvent', async (req, res) => {
     const { eventId } = req.query;
-    console.log('New webhook connection requested for event:', eventId);
+    //console.log('New webhook connection requested for event:', eventId);
     
     if (!eventId) {
         return res.status(400).json({ 

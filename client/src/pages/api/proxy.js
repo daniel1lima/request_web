@@ -6,7 +6,7 @@ dotenv.config();
 
 export default async function handler(req, res) {
     const apiKey = process.env.NEXT_PUBLIC_API_KEY; // Use a server-side environment variable
-    console.log('API Key:', apiKey); // Log the API key for debugging
+    //console.log('API Key:', apiKey); // Log the API key for debugging
 
     if (!apiKey) {
         return res.status(500).json({ error: 'API Key is not defined' });

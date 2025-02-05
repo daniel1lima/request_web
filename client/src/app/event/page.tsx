@@ -109,7 +109,7 @@ const Index = () => {
         setEventValidated(true);
       })
       .catch((error) => {
-        console.log("Error fetching event details:", error);
+        //console.log("Error fetching event details:", error);
         router.push("/404");
       });
 
@@ -129,14 +129,11 @@ const Index = () => {
           if (data && !data.error) {
             setDjData(data);
           } else {
-            console.log(
-              "Error fetching DJ data:",
-              data?.error || "DJ not found"
-            );
+            //console.log( "Error fetching DJ data:", data?.error || "DJ not found" );
           }
         })
         .catch((error) => {
-          console.log("Error fetching DJ details:", error);
+          //console.log("Error fetching DJ details:", error);
         });
 
       // Fetch song requests
@@ -146,13 +143,13 @@ const Index = () => {
           if (Array.isArray(data)) {
             setSongRequests(data);
           } else {
-            console.log("Fetched data is not an array:", data);
+            //console.log("Fetched data is not an array:", data);
             setSongRequests([]);
           }
           setLoading(false);
         })
         .catch((error) => {
-          console.log("Error fetching initial requests:", error);
+          //console.log("Error fetching initial requests:", error);
           setLoading(false);
         });
     }
