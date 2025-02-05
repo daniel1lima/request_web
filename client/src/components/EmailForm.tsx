@@ -1,6 +1,5 @@
 "use client";
 import apiFetch from "@/utils/api";
-import { InfoCircledIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
 
