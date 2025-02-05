@@ -2,12 +2,13 @@
 
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import { SongForm } from "./SongForm";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
-import { Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import apiFetch from "@/utils/api";
+import { Button } from "../button";
 
 // Initialize Stripe
 const stripePromise = loadStripe(
@@ -32,6 +33,16 @@ export const RequestSong = () => {
   });
 
   const router = useRouter();
+
+  useEffect(() => {
+    // Disable scrolling on body when component mounts
+    document.body.style.overflow = 'hidden';
+    
+    // Re-enable scrolling when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
 
   const getSpotifyToken = async () => {
     try {
@@ -109,23 +120,21 @@ export const RequestSong = () => {
         }`}
       >
         {/* Logo Section */}
-        <div className="flex justify-center pt-6 pb-2 px-4 h-[200px] w-[200px] mx-auto">
+        <div className="flex justify-center p-5">
+          <Button variant='outline' size='icon' className="absolute left-6 bg-slate-600" onClick={() => {
+            redirect(`/event?eventId=${localStorage.getItem('eventId')}`)
+          }}>
+            <ChevronLeft/>
+          </Button>
           <Image
             src="/RequestLogoLight.png"
             alt="DJ Request Logo"
-            width={300}
-            height={300}
-            className="invert dark:invert"
+            width={80}
+            height={80}
+            className="invert dark:invert mb-[-50px]"
             priority
             style={{ objectFit: "contain" }}
           />
-        </div>
-
-        {/* Title Section */}
-        <div className="flex flex-col w-full text-center pb-3 px-4">
-          <p className="text-sm text-gray-400 dark:text-gray-400 mt-2">
-            Find and request your favorite tracks
-          </p>
         </div>
       </div>
 

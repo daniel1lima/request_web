@@ -76,11 +76,33 @@ const Loader = () => (
 
 const Index = () => {
   const router = useRouter();
+  const [isMobile, setIsMobile] = useState(false);
   const [songRequests, setSongRequests] = useState<request[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventValidated, setEventValidated] = useState(false);
   const [eventData, setEventData] = useState<event | null>(null);
   const [djData, setDjData] = useState<DJ | null>(null);
+
+  useEffect(() => {
+    // Disable scrolling on body when component mounts
+    document.body.style.overflow = "hidden";
+
+    // Re-enable scrolling when component unmounts
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, []);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -129,7 +151,10 @@ const Index = () => {
           if (data && !data.error) {
             setDjData(data);
           } else {
-            console.log( "Error fetching DJ data:", data?.error || "DJ not found" );
+            console.log(
+              "Error fetching DJ data:",
+              data?.error || "DJ not found"
+            );
           }
         })
         .catch((error) => {
@@ -160,14 +185,14 @@ const Index = () => {
   }
 
   return (
-    <div className="w-screen h-screen bg-gray-900">
-      <div className="bg-gray-900 dark:bg-gray-900 flex max-w-[600px] w-full min-h-screen flex-col overflow-y-auto items-center mx-auto">
+    <div className="w-screen h-screen bg-gray-900 overflow-hidden">
+      <div className="bg-gray-900 dark:bg-gray-900 flex max-w-[600px] w-full h-screen flex-col overflow-hidden items-center mx-auto">
         <EventHeader
           title={eventData?.eventName || "Default Event Title"}
           imageUrl={eventData?.eventImage}
         />
 
-        <div className="flex flex-col items-center w-full px-4 pb-20 max-h-fit">
+        <div className="flex flex-col items-center w-full px-4 pb-20 overflow-y-auto flex-1">
           <DJProfile
             name={djData?.djName || "DJ Zo"}
             role="Main Event DJ"
@@ -177,11 +202,11 @@ const Index = () => {
           <h2 className="text-gray-200 dark:text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">
             Song Queue
           </h2>
-          <div className="gap-[13px] w-[100%] pt-5 overflow-y-auto max-h-[400px] scrollbar">
+          <div className="gap-[13px] w-[100%] pt-5 overflow-y-auto flex-1 scrollbar max-h-[500px]">
             {songRequests
               .filter((request) => !request.played)
               .map((request) => (
-                <div className="pb-3 mr-2 " key={request.requestId} >
+                <div className="pb-3 mr-2 " key={request.requestId}>
                   <SongCard
                     key={request.requestId}
                     image={request.songImage}
@@ -192,15 +217,14 @@ const Index = () => {
                 </div>
               ))}
           </div>
-        </div>
-
-        <div className="fixed bottom-0 w-full max-w-[480px] bg-transparent pb-4">
-          <div className="self-stretch w-full text-base text-white font-bold text-center uppercase tracking-[1px] mt-[60px] pt-[9px] pb-5 px-[52px] bg-transparent">
-            <Link href="/request-song">
-              <button className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] shadow-[0px_10px_35px_rgba(111,126,201,0.25)] fill-[#5669FF] w-full px-[43px] py-[19px] rounded-[15px]">
-                Request a song
-              </button>
-            </Link>
+          <div className={`flex items-center justify-center w-full h-[50px] bg-transparent ${isMobile ? 'mb-[50px]' : ''}`}>
+            <div className="self-stretch w-full text-base text-white font-bold text-center uppercase tracking-[1px] mt-[25px] px-[52px] bg-transparent">
+              <Link href="/request-song">
+                <button className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] shadow-[0px_10px_35px_rgba(111,126,201,0.25)] fill-[#5669FF] w-full px-[43px] py-[19px] rounded-[15px]">
+                  Request a song
+                </button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>
