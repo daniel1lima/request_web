@@ -17,15 +17,15 @@ export default function Home() {
     setTimeout(() => setShowConfetti(false), 5000);
   };
 
-  useEffect(() => {
-    // Disable scrolling on body when component mounts
-    document.body.style.overflow = "hidden";
+  // useEffect(() => {
+  //   // Disable scrolling on body when component mounts
+  //   document.body.style.overflow = "hidden";
 
-    // Re-enable scrolling when component unmounts
-    return () => {
-      document.body.style.overflow = "unset";
-    };
-  }, []);
+  //   // Re-enable scrolling when component unmounts
+  //   return () => {
+  //     document.body.style.overflow = "unset";
+  //   };
+  // }, []);
 
   return (
     <>
