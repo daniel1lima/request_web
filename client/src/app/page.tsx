@@ -4,6 +4,7 @@ import Image from "next/image";
 import { redirect, useRouter } from "next/navigation";
 import "./globals.css";
 import EventCard from "@/components/event/EventCard";
+import apiFetch from '../utils/api'; // Import the apiFetch function
 
 export interface event {
   eventId: string;
@@ -40,10 +41,10 @@ const Index = () => {
   const [eventData, setEventData] = useState<[event] | null>(null);
 
   useEffect(() => {
-
+    console.log('Fetching event data...'); // Log when fetching starts
 
     // Fetch event details to validate existence
-    fetch(`api/events/all`)
+    apiFetch('/events/all') // Use the apiFetch function
       .then((response) => response.json())
       .then((eventData) => {
         if (!eventData || eventData.error) {
@@ -67,7 +68,7 @@ const Index = () => {
 
   useEffect(() => {
     if (eventValidated) {
-      setLoading(false)
+      setLoading(false);
     }
   }, [eventValidated]);
 

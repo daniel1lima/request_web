@@ -5,6 +5,7 @@ import { useDebounce } from "use-debounce";
 import { FaSearch, FaTimes } from "react-icons/fa";
 import {ExpressCheckoutElement, useElements, useStripe} from '@stripe/react-stripe-js';
 import { redirect } from "next/navigation";
+import apiFetch from "@/utils/api";
 
 interface SpotifyTrack {
   id: string;
@@ -58,7 +59,7 @@ export const SongForm: React.FC<SongFormProps> = ({
 
   
   const fetchPaymentIntent = async (amount: number, currency: string) => {
-    const response = await fetch(`api/stripe/createPaymentIntent?amount=${amount}&currency=${currency}`, {
+    const response = await apiFetch(`/stripe/createPaymentIntent?amount=${amount}&currency=${currency}`, {
       method: 'POST', // Specify the method if needed
       headers: {
         'Content-Type': 'application/json',
@@ -101,7 +102,7 @@ export const SongForm: React.FC<SongFormProps> = ({
 
         // create payment
         // Fetch request to create payment
-        const paymentResponse = await fetch('api/payment/createPayment', {
+        const paymentResponse = await apiFetch('/payment/createPayment', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -135,7 +136,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         };
 
         // Fetch request to create the request
-        const requestResponse = await fetch('api/requests/create', {
+        const requestResponse = await apiFetch('/requests/create', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

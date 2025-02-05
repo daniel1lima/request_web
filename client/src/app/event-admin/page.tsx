@@ -5,6 +5,7 @@ import SongCard from "@/components/event/SongCard";
 import { FaCheck, FaTimes } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
+import apiFetch from "@/utils/api";
 
 export interface request {
   requestId: string;
@@ -73,7 +74,7 @@ const EventAdminPage = () => {
       return;
     }
 
-    const fetchEventData = fetch(`/api/events/getById?eventId=${eventId}`).then(
+    const fetchEventData = apiFetch(`/events/getById?eventId=${eventId}`).then(
       (response) => {
         if (!response.ok) {
           throw new Error("Network response was not ok");
@@ -82,14 +83,14 @@ const EventAdminPage = () => {
       }
     );
 
-    const fetchSongRequests = fetch(
-      `api/requests/getByEvent?eventId=${eventId}`
+    const fetchSongRequests = apiFetch(
+      `/requests/getByEvent?eventId=${eventId}`
     ).then((response) => response.json());
 
     // Fetch DJ information based on djId from local storage
     const djId = localStorage.getItem("djId");
     const fetchDJData = djId
-      ? fetch(`api/djs/getById?djId=${djId}`).then((response) =>
+      ? apiFetch(`/djs/getById?djId=${djId}`).then((response) =>
           response.json()
         )
       : Promise.resolve(null);
@@ -116,7 +117,7 @@ const EventAdminPage = () => {
   // Function to accept a song request
   const acceptRequest = (requestId: string) => {
     // Make a fetch call to accept the song request
-    fetch(`api/requests/accept?requestId=${requestId}`, {
+    apiFetch(`/requests/accept?requestId=${requestId}`, {
       method: "PUT",
     })
       .then((response) => {
@@ -136,7 +137,6 @@ const EventAdminPage = () => {
   };
 
   const playedRequest = (requestId: string) => {
-    // Find the request object by requestId
     setLoadingStates((prev) => ({ ...prev, [requestId]: true }));
 
     const request = songRequests.find((req) => req.requestId === requestId);
@@ -146,45 +146,32 @@ const EventAdminPage = () => {
       return;
     }
 
-    // Fetch the payment data using the paymentId from the request
-    fetch(`api/payment/${request.paymentId}`)
+    // Chain all promises together
+    apiFetch(`/payment/${request.paymentId}`)
       .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to fetch payment data");
-        }
+        if (!response.ok) throw new Error("Failed to fetch payment data");
         return response.json();
       })
       .then((paymentData) => {
-        const { amount } = paymentData; // Extract amount from the response
-
-        // Capture the payment intent using the paymentId and amount
-        return fetch(
-          `api/stripe/capturePaymentIntent?intentId=${request.paymentId}&capture=${amount}`,
-          {
-            method: "POST",
-          }
+        const { amount } = paymentData;
+        return apiFetch(
+          `/stripe/capturePaymentIntent?intentId=${request.paymentId}&capture=${amount}`,
+          { method: "POST" }
         );
       })
       .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to capture payment intent");
-        }
+        if (!response.ok) throw new Error("Failed to capture payment intent");
         return response.json();
       })
       .then((captureData) => {
         console.log("Payment captured successfully:", captureData);
-
-        // Set the song to played
-        return fetch(`api/requests/played?requestId=${requestId}`, {
-          method: "PUT", // Assuming POST is the correct method
+        return apiFetch(`/requests/played?requestId=${requestId}`, {
+          method: "PUT",
         });
       })
       .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to mark request as played");
-        }
-        console.log("Song marked as played successfully");
-
+        if (!response.ok) throw new Error("Failed to mark request as played");
+        // Update state only after all API calls succeed
         setSongRequests((prevRequests) =>
           prevRequests.map((req) =>
             req.requestId === requestId ? { ...req, played: true } : req
@@ -195,7 +182,6 @@ const EventAdminPage = () => {
         console.log("Error processing payment:", error);
       })
       .finally(() => {
-        // Reset loading state for this specific song
         setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
       });
   };
@@ -213,8 +199,8 @@ const EventAdminPage = () => {
       return;
     }
 
-    return fetch(
-      `api/stripe/cancelPaymentIntent?intentId=${request?.paymentId}`,
+    return apiFetch(
+      `/stripe/cancelPaymentIntent?intentId=${request?.paymentId}`,
       {
         method: "POST",
       }
@@ -228,7 +214,7 @@ const EventAdminPage = () => {
       .then((captureData) => {
         console.log("Payment cancelled successfully:", captureData);
 
-        fetch(`api/requests/delete?requestId=${requestId}`, {
+        apiFetch(`/requests/delete?requestId=${requestId}`, {
           method: "DELETE",
         })
           .then((response) => {
@@ -264,7 +250,7 @@ const EventAdminPage = () => {
       return;
     }
 
-    fetch(`/api/events/getById?eventId=${eventId}`)
+    apiFetch(`/events/getById?eventId=${eventId}`)
       .then((response) => {
         if (!response.ok) {
           throw new Error("Network response was not ok");
@@ -280,7 +266,7 @@ const EventAdminPage = () => {
         // Step 3: Fetch DJ information based on djId from local storage
         const djId = localStorage.getItem("djId");
         if (djId) {
-          fetch(`api/djs/getById?djId=${djId}`)
+          apiFetch(`/djs/getById?djId=${djId}`)
             .then((response) => response.json())
             .then((djData) => {
               if (djData && !djData.error) {
@@ -303,7 +289,7 @@ const EventAdminPage = () => {
       });
 
     // Fetch song requests
-    fetch(`api/requests/getByEvent?eventId=${eventId}`)
+    apiFetch(`/requests/getByEvent?eventId=${eventId}`)
       .then((response) => response.json())
       .then((data) => {
         if (Array.isArray(data)) {

@@ -8,12 +8,14 @@ const userRoutes = require('./routes/users');
 const spotifyRoutes = require('./routes/spotify');
 const stripeRoutes = require('./routes/stripe');
 const paymentRoutes = require('./routes/payment');
+const frontendAuthMiddleware = require('./middleware/auth');
 
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(frontendAuthMiddleware);
 
 // Routes
 app.use('/events', eventRoutes);
