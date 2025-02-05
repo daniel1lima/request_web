@@ -7,6 +7,7 @@ import { SongForm } from "./SongForm";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
 import { Loader2 } from "lucide-react";
+import apiFetch from "@/utils/api";
 
 // Initialize Stripe
 const stripePromise = loadStripe(
@@ -34,7 +35,7 @@ export const RequestSong = () => {
 
   const getSpotifyToken = async () => {
     try {
-      const response = await fetch("/api/spotify/auth", {
+      const response = await apiFetch("/spotify/auth", {
         headers: {
           Accept: "application/json",
         },
@@ -46,7 +47,7 @@ export const RequestSong = () => {
         return;
       }
 
-      console.log("Token received");
+      //console.log("Token received");
       setAccessToken(data.access_token);
     } catch (error) {
       console.log("Error fetching Spotify token:", error);
@@ -61,7 +62,7 @@ export const RequestSong = () => {
     }
 
     try {
-      const response = await fetch(`api/events/getById?eventId=${eventId}`);
+      const response = await apiFetch(`/events/getById?eventId=${eventId}`);
       const data = await response.json();
 
       if (data.error) {
@@ -70,7 +71,7 @@ export const RequestSong = () => {
         return;
       }
 
-      console.log("Event data received:", data);
+      //console.log("Event data received:", data);
       // setEventData(data);
       setOptions((prevOptions) => ({
         ...prevOptions,

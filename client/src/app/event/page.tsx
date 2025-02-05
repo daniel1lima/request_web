@@ -7,6 +7,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import "../globals.css";
+import apiFetch from "@/utils/api";
 
 export interface request {
   requestId: number;
@@ -91,7 +92,7 @@ const Index = () => {
     }
 
     // Fetch event details to validate existence
-    fetch(`api/events/getById?eventId=${eventId}`)
+    apiFetch(`/events/getById?eventId=${eventId}`)
       .then((response) => response.json())
       .then((eventData) => {
         if (!eventData || eventData.error) {
@@ -122,16 +123,13 @@ const Index = () => {
       const djId = localStorage.getItem("djId");
 
       // Fetch DJ information
-      fetch(`api/djs/getById?djId=${djId}`)
+      apiFetch(`/djs/getById?djId=${djId}`)
         .then((response) => response.json())
         .then((data) => {
           if (data && !data.error) {
             setDjData(data);
           } else {
-            console.log(
-              "Error fetching DJ data:",
-              data?.error || "DJ not found"
-            );
+            console.log( "Error fetching DJ data:", data?.error || "DJ not found" );
           }
         })
         .catch((error) => {
@@ -139,13 +137,13 @@ const Index = () => {
         });
 
       // Fetch song requests
-      fetch(`api/requests/getByEvent?eventId=${eventId}`)
+      apiFetch(`/requests/getByEvent?eventId=${eventId}`)
         .then((response) => response.json())
         .then((data) => {
           if (Array.isArray(data)) {
             setSongRequests(data);
           } else {
-            console.log("Fetched data is not an array:", data);
+            //console.log("Fetched data is not an array:", data);
             setSongRequests([]);
           }
           setLoading(false);

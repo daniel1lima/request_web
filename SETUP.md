@@ -206,7 +206,7 @@ const app = express();
 
 // Sync database
 sequelize.sync({ force: false }).then(() => {
-  console.log('Database synced');
+  //console.log('Database synced');
 });
 
 // Middleware
@@ -220,7 +220,7 @@ app.use('/requests', require('./routes/requests'));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  //console.log(`Server running on port ${PORT}`);
 });
 ```
 
