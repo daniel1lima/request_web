@@ -52,6 +52,17 @@ const Loader = () => (
   </div>
 );
 
+// Helper function to validate API response
+const validateResponse = (response: any) => {
+  if ('ok' in response && !response.ok) {
+    throw new Error("Network response was not ok");
+  }
+  if ('success' in response && !response.success) {
+    throw new Error("Request failed");
+  }
+  return response.json();
+};
+
 const EventAdminPage = () => {
   const [songRequests, setSongRequests] = useState<request[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,36 +77,21 @@ const EventAdminPage = () => {
   );
 
   useEffect(() => {
-    const url = new URL(window.location.href);
-    const eventId = url.searchParams.get("eventId");
+    const eventId = new URL(window.location.href).searchParams.get("eventId");
+    if (!eventId) return;
 
-    if (!eventId) {
-      //console.log("Event ID not found in URL");
-      return;
-    }
+    localStorage.setItem("eventId", eventId);
+    setLoading(true);
 
-    const fetchEventData = apiFetch(`/events/getById?eventId=${eventId}`).then(
-      (response) => {
-        if ('ok' in response && !response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        if ('success' in response && !response.success) {
-          throw new Error("Request failed");
-        }
-        return response.json();
-      }
-    );
+    const fetchEventData = apiFetch(`/events/getById?eventId=${eventId}`)
+      .then(validateResponse);
 
-    const fetchSongRequests = apiFetch(
-      `/requests/getByEvent?eventId=${eventId}`
-    ).then((response) => response.json());
+    const fetchSongRequests = apiFetch(`/requests/getByEvent?eventId=${eventId}`)
+      .then(validateResponse);
 
-    // Fetch DJ information based on djId from local storage
     const djId = localStorage.getItem("djId");
-    const fetchDJData = djId
-      ? apiFetch(`/djs/getById?djId=${djId}`).then((response) =>
-          response.json()
-        )
+    const fetchDJData = djId 
+      ? apiFetch(`/djs/getById?djId=${djId}`).then(validateResponse)
       : Promise.resolve(null);
 
     Promise.all([fetchEventData, fetchSongRequests, fetchDJData])
@@ -103,235 +99,90 @@ const EventAdminPage = () => {
         setEventTitle(eventData.eventName || "Event");
         setEventImage(eventData.eventImage || "");
         setRequestFee(eventData.requestFee || 0);
-        setSongRequests(
-          Array.isArray(songRequestsData) ? songRequestsData : []
-        );
+        setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : []);
         setDjData(djData && !djData.error ? djData : null);
-        setLoading(false);
       })
       .catch((error) => {
-        console.log("Error fetching data:", error);
-        setLoading(false);
-      });
-
-    localStorage.setItem("eventId", eventId);
-  }, []);
-
-  // Function to accept a song request
-  const acceptRequest = (requestId: string) => {
-    // Make a fetch call to accept the song request
-    apiFetch(`/requests/accept?requestId=${requestId}`, {
-      method: "PUT",
-    })
-      .then((response) => {
-        if ('ok' in response && !response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        // Update the state to mark the request as accepted
-        setSongRequests((prevRequests) =>
-          prevRequests.map((req) =>
-            req.requestId === requestId ? { ...req, accepted: true } : req
-          )
-        );
-      })
-      .catch((error) => {
-        console.log("Error accepting request:", error);
-      });
-  };
-
-  const playedRequest = (requestId: string) => {
-    setLoadingStates((prev) => ({ ...prev, [requestId]: true }));
-
-    const request = songRequests.find((req) => req.requestId === requestId);
-
-    if (!request || !request.paymentId) {
-      //console.log("Request or paymentId not found");
-      return;
-    }
-
-    // Chain all promises together
-    apiFetch(`/payment/${request.paymentId}`)
-      .then((response) => {
-        if ('ok' in response && !response.ok) {
-          throw new Error("Failed to fetch payment data");
-        }
-        if ('success' in response && !response.success) {
-          throw new Error("Failed to fetch payment data");
-        }
-        return response.json();
-      })
-      .then((paymentData) => {
-        const { amount } = paymentData;
-        return apiFetch(
-          `/stripe/capturePaymentIntent?intentId=${request.paymentId}&capture=${amount}`,
-          { method: "POST" }
-        );
-      })
-      .then((response) => {
-        if ('ok' in response && !response.ok) {
-          throw new Error("Failed to capture payment intent");
-        }
-        if ('success' in response && !response.success) {
-          throw new Error("Failed to capture payment intent");
-        }
-        return response.json();
-      })
-      .then(() => {
-        return apiFetch(`/requests/played?requestId=${requestId}`, {
-          method: "PUT",
-        });
-      })
-      .then((response) => {
-        if ('ok' in response && !response.ok) {
-          throw new Error("Failed to mark request as played");
-        }
-        if ('success' in response && !response.success) {
-          throw new Error("Failed to mark request as played");
-        }
-        // Update state only after all API calls succeed
-        setSongRequests((prevRequests) =>
-          prevRequests.map((req) =>
-            req.requestId === requestId ? { ...req, played: true } : req
-          )
-        );
-      })
-      .catch((error) => {
-        console.log("Error processing payment:", error);
+        console.error("Error fetching data:", error);
       })
       .finally(() => {
-        setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
+        setLoading(false);
       });
+  }, []);
+
+  const acceptRequest = async (requestId: string) => {
+    try {
+      await apiFetch(`/requests/accept?requestId=${requestId}`, {
+        method: "PUT",
+      }).then(validateResponse);
+
+      setSongRequests((prevRequests) =>
+        prevRequests.map((req) =>
+          req.requestId === requestId ? { ...req, accepted: true } : req
+        )
+      );
+    } catch (error) {
+      console.error("Error accepting request:", error);
+    }
   };
 
-  // Function to decline a song request
-  const declineRequest = (requestId: string) => {
-    // Make a fetch call to delete the request from the server
+  const playedRequest = async (requestId: string) => {
+    setLoadingStates((prev) => ({ ...prev, [requestId]: true }));
+    
+    try {
+      const request = songRequests.find((req) => req.requestId === requestId);
+      if (!request?.paymentId) return;
 
+      const paymentData = await apiFetch(`/payment/${request.paymentId}`)
+        .then(validateResponse);
+
+      await apiFetch(
+        `/stripe/capturePaymentIntent?intentId=${request.paymentId}&capture=${paymentData.amount}`,
+        { method: "POST" }
+      ).then(validateResponse);
+
+      await apiFetch(`/requests/played?requestId=${requestId}`, {
+        method: "PUT",
+      }).then(validateResponse);
+
+      setSongRequests((prevRequests) =>
+        prevRequests.map((req) =>
+          req.requestId === requestId ? { ...req, played: true } : req
+        )
+      );
+    } catch (error) {
+      console.error("Error processing payment:", error);
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
+    }
+  };
+
+  const declineRequest = async (requestId: string) => {
     setLoadingStates((prev) => ({ ...prev, [requestId]: true }));
 
-    const request = songRequests.find((req) => req.requestId === requestId);
+    try {
+      const request = songRequests.find((req) => req.requestId === requestId);
+      if (!request?.paymentId) return;
 
-    if (!request) {
-      //console.log("Request or paymentId not found");
-      return;
-    }
-
-    return apiFetch(
-      `/stripe/cancelPaymentIntent?intentId=${request?.paymentId}`,
-      {
+      await apiFetch(`/stripe/cancelPaymentIntent?intentId=${request.paymentId}`, {
         method: "POST",
-      }
-    )
-      .then((response) => {
-        if ('ok' in response && !response.ok) {
-          throw new Error("Failed to cancel payment intent");
-        }
-        if ('success' in response && !response.success) {
-          throw new Error("Failed to cancel payment intent");
-        }
-        return response.json();
-      })
-      .then((captureData) => {
-        console.log("Payment cancelled successfully:", captureData);
+      }).then(validateResponse);
 
-        apiFetch(`/requests/delete?requestId=${requestId}`, {
-          method: "DELETE",
-        })
-          .then((response) => {
-            if ('ok' in response && !response.ok) {
-              throw new Error("Network response was not ok");
-            }
-          })
-          .catch((error) => {
-            console.log("Error deleting request:", error);
-          });
-      })
+      await apiFetch(`/requests/delete?requestId=${requestId}`, {
+        method: "DELETE",
+      }).then(validateResponse);
 
-      .then(() => {
-        setSongRequests((prevRequests) =>
-          prevRequests.filter((req) => req.requestId !== requestId)
-        );
-      })
-      .catch((error) => {
-        console.log("Error cancelling payment:", error);
-      })
-      .finally(() => {
-        // Reset loading state for this specific song
-        setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
-      });
+      setSongRequests((prevRequests) =>
+        prevRequests.filter((req) => req.requestId !== requestId)
+      );
+    } catch (error) {
+      console.error("Error cancelling payment:", error);
+    } finally {
+      setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
+    }
   };
 
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const eventId = url.searchParams.get("eventId");
-
-    if (!eventId) {
-      //console.log("Event ID not found in URL");
-      return;
-    }
-
-    apiFetch(`/events/getById?eventId=${eventId}`)
-      .then((response) => {
-        if ('ok' in response && !response.ok) {
-          throw new Error("Network response was not ok");
-        }
-        if ('success' in response && !response.success) {
-          throw new Error("Request failed");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setEventTitle(data.eventName || "Event");
-        setEventImage(data.eventImage || "");
-        setRequestFee(data.requestFee || 0);
-        //console.log("Event data:", data);
-
-        // Step 3: Fetch DJ information based on djId from local storage
-        const djId = localStorage.getItem("djId");
-        if (djId) {
-          apiFetch(`/djs/getById?djId=${djId}`)
-            .then((response) => response.json())
-            .then((djData) => {
-              if (djData && !djData.error) {
-                setDjData(djData); // Update state with DJ data
-              } else {
-                console.log("Error fetching DJ data:", djData?.error || "DJ not found");
-              }
-            })
-            .catch((error) => {
-              console.log("Error fetching DJ details:", error);
-            });
-        }
-      })
-      .catch((error) => {
-        console.log("Error fetching event details:", error);
-        setEventTitle("Event");
-      });
-
-    // Fetch song requests
-    apiFetch(`/requests/getByEvent?eventId=${eventId}`)
-      .then((response) => response.json())
-      .then((data) => {
-        if (Array.isArray(data)) {
-          setSongRequests(data);
-        } else {
-          //console.log("Fetched data is not an array:", data);
-          setSongRequests([]);
-        }
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.log("Error fetching initial requests:", error);
-        setLoading(false);
-      });
-
-    localStorage.setItem("eventId", eventId);
-  }, []);
-
-  if (loading) {
-    return <Loader />;
-  }
-
+  if (loading) return <Loader />;
 
   return (
     <div
