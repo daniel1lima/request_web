@@ -177,7 +177,7 @@ const Index = () => {
           <h2 className="text-gray-200 dark:text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">
             Song Queue
           </h2>
-          <div className="gap-[13px] w-[100%] pt-5 overflow-y-auto max-h-[500px] scrollbar">
+          <div className="gap-[13px] w-[100%] pt-5 overflow-y-auto max-h-[400px] scrollbar">
             {songRequests
               .filter((request) => !request.played)
               .map((request) => (
