@@ -33,6 +33,16 @@ export const RequestSong = () => {
 
   const router = useRouter();
 
+  useEffect(() => {
+    // Disable scrolling on body when component mounts
+    document.body.style.overflow = 'hidden';
+    
+    // Re-enable scrolling when component unmounts
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
+
   const getSpotifyToken = async () => {
     try {
       const response = await apiFetch("/spotify/auth", {
