@@ -1,12 +1,8 @@
 
-import dotenv from 'dotenv';
-
-// Load environment variables from .env file
-dotenv.config();
+import '../../envConfig.ts'
 
 export default async function handler(req, res) {
-    const apiKey = process.env.NEXT_PUBLIC_API_KEY; // Use a server-side environment variable
-    //console.log('API Key:', apiKey); // Log the API key for debugging
+    const apiKey = process.env.API_KEY; // Use a server-side environment variable
 
     if (!apiKey) {
         return res.status(500).json({ error: 'API Key is not defined' });

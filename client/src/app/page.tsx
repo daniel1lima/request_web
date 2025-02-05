@@ -41,7 +41,7 @@ const Index = () => {
   const [eventData, setEventData] = useState<[event] | null>(null);
 
   useEffect(() => {
-    console.log('Fetching event data...'); // Log when fetching starts
+    // console.log('Fetching event data...'); // Log when fetching starts
 
     // Fetch event details to validate existence
     apiFetch('/events/all') // Use the apiFetch function
