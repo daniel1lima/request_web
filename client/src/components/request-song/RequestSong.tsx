@@ -50,7 +50,7 @@ export const RequestSong = () => {
       //console.log("Token received");
       setAccessToken(data.access_token);
     } catch (error) {
-      //console.log("Error fetching Spotify token:", error);
+      console.log("Error fetching Spotify token:", error);
     }
   };
 
@@ -79,7 +79,7 @@ export const RequestSong = () => {
       }));
       setLoading(false); // Set loading to false after fetching event data
     } catch (error) {
-      //console.log("Error fetching event data:", error);
+      console.log("Error fetching event data:", error);
       router.push("/404"); // Redirect to 404 on fetch error
     }
   };

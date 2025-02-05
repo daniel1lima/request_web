@@ -110,7 +110,7 @@ const EventAdminPage = () => {
         setLoading(false);
       })
       .catch((error) => {
-        //console.log("Error fetching data:", error);
+        console.log("Error fetching data:", error);
         setLoading(false);
       });
 
@@ -135,7 +135,7 @@ const EventAdminPage = () => {
         );
       })
       .catch((error) => {
-        //console.log("Error accepting request:", error);
+        console.log("Error accepting request:", error);
       });
   };
 
@@ -176,8 +176,7 @@ const EventAdminPage = () => {
         }
         return response.json();
       })
-      .then((captureData) => {
-        //console.log("Payment captured successfully:", captureData);
+      .then(() => {
         return apiFetch(`/requests/played?requestId=${requestId}`, {
           method: "PUT",
         });
@@ -197,7 +196,7 @@ const EventAdminPage = () => {
         );
       })
       .catch((error) => {
-        //console.log("Error processing payment:", error);
+        console.log("Error processing payment:", error);
       })
       .finally(() => {
         setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
@@ -233,7 +232,7 @@ const EventAdminPage = () => {
         return response.json();
       })
       .then((captureData) => {
-        //console.log("Payment cancelled successfully:", captureData);
+        console.log("Payment cancelled successfully:", captureData);
 
         apiFetch(`/requests/delete?requestId=${requestId}`, {
           method: "DELETE",
@@ -244,7 +243,7 @@ const EventAdminPage = () => {
             }
           })
           .catch((error) => {
-            //console.log("Error deleting request:", error);
+            console.log("Error deleting request:", error);
           });
       })
 
@@ -254,7 +253,7 @@ const EventAdminPage = () => {
         );
       })
       .catch((error) => {
-        //console.log("Error cancelling payment:", error);
+        console.log("Error cancelling payment:", error);
       })
       .finally(() => {
         // Reset loading state for this specific song
@@ -296,16 +295,16 @@ const EventAdminPage = () => {
               if (djData && !djData.error) {
                 setDjData(djData); // Update state with DJ data
               } else {
-                //console.log("Error fetching DJ data:", djData?.error || "DJ not found");
+                console.log("Error fetching DJ data:", djData?.error || "DJ not found");
               }
             })
             .catch((error) => {
-              //console.log("Error fetching DJ details:", error);
+              console.log("Error fetching DJ details:", error);
             });
         }
       })
       .catch((error) => {
-        //console.log("Error fetching event details:", error);
+        console.log("Error fetching event details:", error);
         setEventTitle("Event");
       });
 
@@ -322,7 +321,7 @@ const EventAdminPage = () => {
         setLoading(false);
       })
       .catch((error) => {
-        //console.log("Error fetching initial requests:", error);
+        console.log("Error fetching initial requests:", error);
         setLoading(false);
       });
 
