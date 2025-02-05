@@ -1,7 +1,7 @@
 "use client"; // Add this line to mark the component as a Client Component
 
 
-import {useEffect} from 'react'
+// import {useEffect} from 'react'
 import EmailForm from "@/components/EmailForm";
 import { InfoCircledIcon } from "@radix-ui/react-icons";
 import Image from "next/image";
