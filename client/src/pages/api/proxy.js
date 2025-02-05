@@ -1,4 +1,4 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+
 import dotenv from 'dotenv';
 
 // Load environment variables from .env file

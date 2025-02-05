@@ -76,8 +76,11 @@ const EventAdminPage = () => {
 
     const fetchEventData = apiFetch(`/events/getById?eventId=${eventId}`).then(
       (response) => {
-        if (!response.ok) {
+        if ('ok' in response && !response.ok) {
           throw new Error("Network response was not ok");
+        }
+        if ('success' in response && !response.success) {
+          throw new Error("Request failed");
         }
         return response.json();
       }
@@ -121,7 +124,7 @@ const EventAdminPage = () => {
       method: "PUT",
     })
       .then((response) => {
-        if (!response.ok) {
+        if ('ok' in response && !response.ok) {
           throw new Error("Network response was not ok");
         }
         // Update the state to mark the request as accepted
@@ -149,7 +152,12 @@ const EventAdminPage = () => {
     // Chain all promises together
     apiFetch(`/payment/${request.paymentId}`)
       .then((response) => {
-        if (!response.ok) throw new Error("Failed to fetch payment data");
+        if ('ok' in response && !response.ok) {
+          throw new Error("Failed to fetch payment data");
+        }
+        if ('success' in response && !response.success) {
+          throw new Error("Failed to fetch payment data");
+        }
         return response.json();
       })
       .then((paymentData) => {
@@ -160,7 +168,12 @@ const EventAdminPage = () => {
         );
       })
       .then((response) => {
-        if (!response.ok) throw new Error("Failed to capture payment intent");
+        if ('ok' in response && !response.ok) {
+          throw new Error("Failed to capture payment intent");
+        }
+        if ('success' in response && !response.success) {
+          throw new Error("Failed to capture payment intent");
+        }
         return response.json();
       })
       .then((captureData) => {
@@ -170,7 +183,12 @@ const EventAdminPage = () => {
         });
       })
       .then((response) => {
-        if (!response.ok) throw new Error("Failed to mark request as played");
+        if ('ok' in response && !response.ok) {
+          throw new Error("Failed to mark request as played");
+        }
+        if ('success' in response && !response.success) {
+          throw new Error("Failed to mark request as played");
+        }
         // Update state only after all API calls succeed
         setSongRequests((prevRequests) =>
           prevRequests.map((req) =>
@@ -206,7 +224,10 @@ const EventAdminPage = () => {
       }
     )
       .then((response) => {
-        if (!response.ok) {
+        if ('ok' in response && !response.ok) {
+          throw new Error("Failed to cancel payment intent");
+        }
+        if ('success' in response && !response.success) {
           throw new Error("Failed to cancel payment intent");
         }
         return response.json();
@@ -218,7 +239,7 @@ const EventAdminPage = () => {
           method: "DELETE",
         })
           .then((response) => {
-            if (!response.ok) {
+            if ('ok' in response && !response.ok) {
               throw new Error("Network response was not ok");
             }
           })
@@ -252,8 +273,11 @@ const EventAdminPage = () => {
 
     apiFetch(`/events/getById?eventId=${eventId}`)
       .then((response) => {
-        if (!response.ok) {
+        if ('ok' in response && !response.ok) {
           throw new Error("Network response was not ok");
+        }
+        if ('success' in response && !response.success) {
+          throw new Error("Request failed");
         }
         return response.json();
       })

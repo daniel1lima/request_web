@@ -1,5 +1,3 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL; // Base URL for your API
-
 const apiFetch = async (endpoint, options = {}) => {
     const response = await fetch(`/api/proxy?endpoint=${encodeURIComponent(endpoint)}`, {
         ...options,
@@ -20,13 +18,12 @@ const apiFetch = async (endpoint, options = {}) => {
         return { success: true };
     }
 
-    // const contentType = response.headers.get("content-type");
-    // if (contentType && contentType.includes("application/json")) {
-    //     return response.json();
-    // }
-    
-    // If we get here, return the raw response text
-    return response;
+    const data = await response.json();
+    return {
+        ok: true,
+        json: () => Promise.resolve(data),
+        ...data
+    };
 };
 
 export default apiFetch; 
