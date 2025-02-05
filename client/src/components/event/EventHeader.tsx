@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Button } from "../button";
 import { ChevronLeft } from "lucide-react";
 import { redirect } from "next/navigation";
@@ -15,11 +15,23 @@ const EventHeader: React.FC<EventHeaderProps> = ({
   title = "Event Details",
   imageUrl,
 }) => {
+  const [isMobile, setIsMobile] = useState(false);
   const fallbackImageUrl =
     "https://storage.googleapis.com/ubyssey/media/renditions/20230303_i_janmohamed_pit.width-1500.format-webp.webp";
 
+    useEffect(() => {
+      const checkMobile = () => {
+        setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+      };
+  
+      checkMobile();
+      window.addEventListener('resize', checkMobile);
+  
+      return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
   return (
-    <div className="flex flex-col self-stretch relative aspect-[1.697] h-full w-full max-h-[150px]">
+    <div className={`flex flex-col self-stretch relative aspect-[1.697]  w-full ${isMobile ? 'max-h-[90px]' : 'max-h-[150px]'}`}>
       <img
         loading="lazy"
         src={imageUrl}
@@ -32,10 +44,10 @@ const EventHeader: React.FC<EventHeaderProps> = ({
       />
       <div className="relative flex mb-[-25px] w-full flex-col items-stretch px-6 py-4">
         <div className="flex items-stretch gap-[13px] text-2xl text-white font-medium mt-4">
-          <Button variant="outline" size="icon" onClick={() => {redirect('/')}}>
+          <Button variant="outline" size="icon" className="absolute left-6 bg-slate-600" onClick={() => {redirect('/')}}>
             <ChevronLeft />
           </Button>
-          <div className="basis-auto">{title}</div>
+          <div className="basis-auto absolute left-20 ">{title}</div>
         </div>
       </div>
     </div>
