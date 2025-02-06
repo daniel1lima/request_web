@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 const sequelize = require('./config/database');
 const eventRoutes = require('./routes/events');
 const djRoutes = require('./routes/djs')
@@ -9,16 +10,22 @@ const spotifyRoutes = require('./routes/spotify');
 const stripeRoutes = require('./routes/stripe');
 const paymentRoutes = require('./routes/payment');
 const waitlistRoutes = require('./routes/waitlist');
+const authRoutes = require('./routes/auth');
 const frontendAuthMiddleware = require('./middleware/auth');
 
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: process.env.CLIENT_URL || 'http://localhost:3001',
+    credentials: true // Important for cookies
+}));
+app.use(cookieParser()); // Add cookie parser
 app.use(express.json());
 app.use(frontendAuthMiddleware);
 
 // Routes
+app.use('/auth', authRoutes); // Add auth routes
 app.use('/events', eventRoutes);
 app.use('/djs', djRoutes);
 app.use('/requests', requestRoutes);
