@@ -6,6 +6,8 @@ import { FaSearch, FaTimes } from "react-icons/fa";
 import {ExpressCheckoutElement, useElements, useStripe} from '@stripe/react-stripe-js';
 import { redirect } from "next/navigation";
 import apiFetch from "@/utils/api";
+import { v4 as uuidv4 } from 'uuid';
+import { Loader2 } from "lucide-react";
 
 interface SpotifyTrack {
   id: string;
@@ -37,6 +39,10 @@ export const SongForm: React.FC<SongFormProps> = ({
   const [offset, setOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [email, setEmail] = useState("");
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [emailLoading, setEmailLoading] = useState(false);
 
   const resultsContainerRef = React.useRef<HTMLDivElement>(null);
   const elements = useElements();
@@ -164,6 +170,88 @@ export const SongForm: React.FC<SongFormProps> = ({
     }
   };
 
+  const handleFreeRequest = async () => {
+    setEmailLoading(true)
+
+    if (!email) {
+      setEmailError("Please enter your email");
+      setEmailLoading(false);
+      return;
+    }
+
+    try {
+      // First try to submit email to waitlist using the correct endpoint
+      const emailResponse = await apiFetch('/waitlist', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!emailResponse.ok) {
+        const errorData = await emailResponse.json();
+        setEmailError(errorData.error || "This email has already been used for a free request");
+        setEmailLoading(false);
+        return;
+      }
+
+      const freePaymentId = `FREE_${uuidv4()}`;
+
+      // Create a free payment record first
+      const paymentResponse = await apiFetch('/payment/createPayment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          paymentId: freePaymentId,
+          amount: 0,
+          djId: localStorage.getItem('djId'),
+        }),
+      });
+
+      if (!paymentResponse.ok) {
+        setEmailLoading(false)
+        throw new Error('Failed to create payment record');
+      }
+
+      // Then create the request with the payment ID
+      const requestBody = {
+        songName: selectedTrack?.name,
+        songArtist: selectedTrack?.artists[0].name,
+        songImage: selectedTrack?.album.images[1]?.url,
+        userId: localStorage.getItem('requestapp_userId') || null,
+        eventId: localStorage.getItem('eventId'),
+        paymentId: freePaymentId,
+        email: email,
+      };
+
+      // Fetch request to create the request
+      const requestResponse = await apiFetch('/requests/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!requestResponse.ok) {
+        setEmailLoading(false)
+        throw new Error('Failed to create request');
+      }
+
+      // Redirect to success page
+      setTimeout(() => {
+        redirect(`/success`);
+      }, 1000);
+
+    } catch (error) {
+      console.error("Error:", error);
+      setEmailError("Something went wrong. Please try again.");
+      setEmailLoading(false)
+    }
+  };
 
   const searchSpotify = async (isLoadingMore = false) => {
     if (!debouncedSearch || isLoading) return;
@@ -388,11 +476,41 @@ export const SongForm: React.FC<SongFormProps> = ({
           suppressHydrationWarning
         >
           <div className="max-w-[480px] mx-auto mb-2">
-            {selectedTrack ? (
-              <ExpressCheckoutElement onConfirm={onConfirm}/>
-            ) : (
-              <div className="text-center text-sm text-gray-500 dark:text-gray-400 mt-2">
-              </div>
+            {selectedTrack && (
+              <>
+                {showEmailInput ? (
+                  <div className="mb-4 flex flex-col gap-2">
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => {
+                        setEmail(e.target.value);
+                        setEmailError("");
+                        setEmailLoading(false)
+                      }}
+                      placeholder="Enter your email for a free request"
+                      className={`w-full px-4 py-2 rounded-lg bg-gray-800 text-white border ${emailError ? 'border-red-500' : 'border-gray-700'} focus:outline-none focus:border-blue-500`}
+                    />
+                    {emailError && (
+                      <p className="text-red-500 text-sm text-center">{"It looks like your email is already registered!"}</p>
+                    )}
+                    <button
+                      onClick={handleFreeRequest}
+                      className="w-full bg-gradient-to-r from-yellow-500 to-blue-800 text-white py-3 rounded-lg font-medium hover:opacity-90 transition-opacity text-center"
+                    >
+                      {emailLoading ?  <Loader2 className="animate-spin mx-auto"/> : 'Submit Free Request'}
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setShowEmailInput(true)}
+                    className="w-full mb-4 bg-gradient-to-r from-yellow-500 to-blue-800 text-white py-3 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                  >
+                    Get First Request Free!
+                  </button>
+                )}
+                <ExpressCheckoutElement onConfirm={onConfirm} />
+              </>
             )}
             <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
               You will not be charged until your song is played
