@@ -100,7 +100,7 @@ const EventAdminPage = () => {
           credentials: 'include' // Important for cookies
         }).then(validateResponse);
         setIsValidated(response.isValid);
-      } catch (error) {
+      } catch {
         setIsValidated(false);
       } finally {
         setValidating(false);
@@ -135,7 +135,7 @@ const EventAdminPage = () => {
       } else {
         handleLoginError();
       }
-    } catch (error) {
+    } catch {
       handleLoginError();
     } finally {
       setValidating(false);
