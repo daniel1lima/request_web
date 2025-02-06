@@ -63,6 +63,16 @@ const validateResponse = (response: any) => {
   return response.json();
 };
 
+const validateResponseNoReturn = (response: any) => {
+  if ('ok' in response && !response.ok) {
+    throw new Error("Network response was not ok");
+  }
+  if ('success' in response && !response.success) {
+    throw new Error("Request failed");
+  }
+  return ;
+};
+
 const EventAdminPage = () => {
   const [songRequests, setSongRequests] = useState<request[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,21 +170,24 @@ const EventAdminPage = () => {
   const declineRequest = async (requestId: string) => {
     setLoadingStates((prev) => ({ ...prev, [requestId]: true }));
 
+    // Immediately update UI
+    setSongRequests((prevRequests) =>
+      prevRequests.filter((req) => req.requestId !== requestId)
+    );
+
     try {
       const request = songRequests.find((req) => req.requestId === requestId);
       if (!request?.paymentId) return;
 
-      await apiFetch(`/stripe/cancelPaymentIntent?intentId=${request.paymentId}`, {
-        method: "POST",
-      }).then(validateResponse);
-
-      await apiFetch(`/requests/delete?requestId=${requestId}`, {
-        method: "DELETE",
-      }).then(validateResponse);
-
-      setSongRequests((prevRequests) =>
-        prevRequests.filter((req) => req.requestId !== requestId)
-      );
+      // Handle API calls in the background
+      await Promise.all([
+        apiFetch(`/stripe/cancelPaymentIntent?intentId=${request.paymentId}`, {
+          method: "POST",
+        }).then(validateResponseNoReturn),
+        apiFetch(`/requests/delete?requestId=${requestId}`, {
+          method: "DELETE",
+        }).then(validateResponseNoReturn)
+      ]);
     } catch (error) {
       console.error("Error cancelling payment:", error);
     } finally {
