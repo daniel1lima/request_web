@@ -43,7 +43,8 @@ export const SongForm: React.FC<SongFormProps> = ({
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
-
+  const[emailSuccess, setEmailSuccess] = useState(false);
+ 
   const resultsContainerRef = React.useRef<HTMLDivElement>(null);
   const elements = useElements();
   const stripe = useStripe()
@@ -238,13 +239,15 @@ export const SongForm: React.FC<SongFormProps> = ({
 
       if (!requestResponse.ok) {
         setEmailLoading(false)
-        throw new Error('Failed to create request');
       }
+
+      setEmailSuccess(true)
+      setEmailLoading(false)
 
       // Redirect to success page
       setTimeout(() => {
         redirect(`/success`);
-      }, 1000);
+      }, 500);
 
     } catch (error) {
       console.error("Error:", error);
@@ -488,15 +491,15 @@ export const SongForm: React.FC<SongFormProps> = ({
                         setEmailError("");
                         setEmailLoading(false)
                       }}
-                      placeholder="Enter your email for a free request"
-                      className={`w-full px-4 py-2 rounded-lg bg-gray-800 text-white border ${emailError ? 'border-red-500' : 'border-gray-700'} focus:outline-none focus:border-blue-500`}
+                      placeholder="Enter your e-mail"
+                      className={`w-full px-4 py-2 rounded-lg bg-gray-800 text-white border ${emailError ? 'border-red-500' : 'border-gray-700'} ${emailSuccess ? 'border-green-400' : 'border-gray-700'} Successfocus:outline-none focus:border-blue-500`}
                     />
                     {emailError && (
                       <p className="text-red-500 text-sm text-center">{"It looks like your email is already registered!"}</p>
                     )}
                     <button
                       onClick={handleFreeRequest}
-                      className="w-full bg-gradient-to-r from-yellow-500 to-blue-800 text-white py-3 rounded-lg font-medium hover:opacity-90 transition-opacity text-center"
+                      className="w-full bg-yellow-600 text-gray-200 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity text-center"
                     >
                       {emailLoading ?  <Loader2 className="animate-spin mx-auto"/> : 'Submit Free Request'}
                     </button>
@@ -504,7 +507,7 @@ export const SongForm: React.FC<SongFormProps> = ({
                 ) : (
                   <button
                     onClick={() => setShowEmailInput(true)}
-                    className="w-full mb-4 bg-gradient-to-r from-yellow-500 to-blue-800 text-white py-3 rounded-lg font-medium hover:opacity-90 transition-opacity"
+                    className="w-full mb-4 bg-yellow-600 text-gray-200 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity"
                   >
                     Get First Request Free!
                   </button>
