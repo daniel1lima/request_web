@@ -1,11 +1,11 @@
 "use client";
-import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import { redirect, useRouter } from "next/navigation";
 import "./globals.css";
 import EventCard from "@/components/event/EventCard";
 import apiFetch from "../utils/api";
-import { FaHome, FaMusic, FaMap, FaUser } from "react-icons/fa";
+import { FaHome, FaMusic, FaUser } from "react-icons/fa";
 import Link from "next/link";
 import Fuse from 'fuse.js';
 
@@ -54,7 +54,6 @@ const ExploreView = ({ allEvents, searchQuery, setCurrentView }: {
   searchQuery: string,
   setCurrentView: (view: 'explore' | 'events') => void 
 }) => {
-  const router = useRouter();
   const now = new Date();
   const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
@@ -98,7 +97,6 @@ const ExploreView = ({ allEvents, searchQuery, setCurrentView }: {
           <div className="flex gap-4">
             {filteredCurrentEvents.length > 0 ? (
               filteredCurrentEvents.map((event) => {
-                const eventDate = new Date(event.eventDateTime);
                 return (
                   <div
                     key={event.eventId}
@@ -195,12 +193,10 @@ const ExploreView = ({ allEvents, searchQuery, setCurrentView }: {
   );
 };
 
-const AllEventsView = ({ allEvents, refreshEvents, searchQuery }: { 
-  allEvents: Event[] | null, 
-  refreshEvents: () => Promise<void>,
-  searchQuery: string
+const AllEventsView = ({ allEvents, searchQuery }: { 
+  allEvents: Event[] | null;
+  searchQuery: string;
 }) => {
-  const containerRef = useRef<HTMLDivElement>(null);
 
   const sortedEvents = allEvents?.sort((a, b) => 
     new Date(a.eventDateTime).getTime() - new Date(b.eventDateTime).getTime()
@@ -305,22 +301,6 @@ const Index = () => {
       });
   }, [router]);
 
-  const refreshEvents = async () => {
-    try {
-      const response = await apiFetch("/events/all");
-      const data = await response.json();
-      
-      if (!data || data.error) {
-        console.error("Error fetching event data:", data?.error || "No data");
-        return;
-      }
-
-      localStorage.setItem("allEvents", JSON.stringify(data));
-      setAllEvents(data);
-    } catch (error) {
-      console.error("Error refreshing events:", error);
-    }
-  };
 
   if (loading || !imagesLoaded) {
     return (
@@ -390,7 +370,6 @@ const Index = () => {
         ) : (
           <AllEventsView 
             allEvents={allEvents} 
-            refreshEvents={refreshEvents}
             searchQuery={searchQuery}
           />
         )}

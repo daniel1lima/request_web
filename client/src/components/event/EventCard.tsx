@@ -1,28 +1,20 @@
 'use client'
 
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef } from 'react';
 import './songcard.css';
-import Image from 'next/image';
 
 
 
 interface EventCardProps {
   image: string;
   title: string;
-  date: Date;
+  date: string;
   location: string;
   isQueued?: boolean;
 }
 
 const EventCard: React.FC<EventCardProps> = ({ image, title, date, location }) => {
   const titleRef = useRef<HTMLDivElement>(null);
-  const [isOverflowing, setIsOverflowing] = useState(false);
-
-  useEffect(() => {
-    if (titleRef.current) {
-      setIsOverflowing(titleRef.current.scrollWidth > titleRef.current.clientWidth);
-    }
-  }, [title]);
 
   return (
     <div className="bg-gray-800 hover:bg-slate-700 shadow-[0px_10px_35px_rgba(87,92,138,0.06)] rounded-lg overflow-hidden flex flex-col items-center p-4">
