@@ -19,7 +19,7 @@ const EventHeader: React.FC<EventHeaderProps> = ({
     "https://storage.googleapis.com/ubyssey/media/renditions/20230303_i_janmohamed_pit.width-1500.format-webp.webp";
 
   return (
-    <div className="flex flex-col self-stretch relative aspect-[1.697] w-full max-h-[100px] md:max-h-[100px] sm:max-h-[50px]">
+    <div className="flex flex-col self-stretch relative aspect-[1.697] w-full max-h-[100px] md:max-h-[100px] sm:max-h-[50px] bg-gray-900 bg-opacity-80">
       <img
         loading="lazy"
         src={imageUrl}

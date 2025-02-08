@@ -1,12 +1,16 @@
-'use client';
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { useDebounce } from "use-debounce";
 import { FaSearch, FaTimes } from "react-icons/fa";
-import {ExpressCheckoutElement, useElements, useStripe} from '@stripe/react-stripe-js';
+import {
+  ExpressCheckoutElement,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
 import { redirect } from "next/navigation";
 import apiFetch from "@/utils/api";
-import { v4 as uuidv4 } from 'uuid';
+import { v4 as uuidv4 } from "uuid";
 import { Loader2 } from "lucide-react";
 
 interface SpotifyTrack {
@@ -21,7 +25,8 @@ interface SpotifyTrack {
 interface SongFormProps {
   accessToken: string | null;
   onSongSelect?: (selected: boolean) => void;
-  feedoptions: { // Define the structure of options here
+  feedoptions: {
+    // Define the structure of options here
     amount: number;
     currency: string;
   };
@@ -30,7 +35,7 @@ interface SongFormProps {
 export const SongForm: React.FC<SongFormProps> = ({
   accessToken,
   onSongSelect,
-  feedoptions
+  feedoptions,
 }) => {
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
@@ -43,12 +48,11 @@ export const SongForm: React.FC<SongFormProps> = ({
   const [showEmailInput, setShowEmailInput] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
-  const[emailSuccess, setEmailSuccess] = useState(false);
- 
+  const [emailSuccess, setEmailSuccess] = useState(false);
+
   const resultsContainerRef = React.useRef<HTMLDivElement>(null);
   const elements = useElements();
-  const stripe = useStripe()
-
+  const stripe = useStripe();
 
   // const applePayOptions = {
   //   applePay: {
@@ -64,14 +68,16 @@ export const SongForm: React.FC<SongFormProps> = ({
   //   }
   // };
 
-  
   const fetchPaymentIntent = async (amount: number, currency: string) => {
-    const response = await apiFetch(`/stripe/createPaymentIntent?amount=${amount}&currency=${currency}`, {
-      method: 'POST', // Specify the method if needed
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await apiFetch(
+      `/stripe/createPaymentIntent?amount=${amount}&currency=${currency}`,
+      {
+        method: "POST", // Specify the method if needed
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
     if (!response.ok) {
       throw new Error("Failed to fetch payment intent");
     }
@@ -80,8 +86,6 @@ export const SongForm: React.FC<SongFormProps> = ({
   };
 
   const onConfirm = async () => {
-    
-
     if (!stripe || !elements) {
       console.error("Stripe.js or Elements has not loaded correctly.");
       return;
@@ -89,7 +93,10 @@ export const SongForm: React.FC<SongFormProps> = ({
 
     setIsLoading(true);
     try {
-      const { client_secret, id: pid } = await fetchPaymentIntent(feedoptions.amount, feedoptions.currency);
+      const { client_secret, id: pid } = await fetchPaymentIntent(
+        feedoptions.amount,
+        feedoptions.currency
+      );
 
       const { error } = await stripe.confirmPayment({
         elements,
@@ -97,10 +104,8 @@ export const SongForm: React.FC<SongFormProps> = ({
         confirmParams: {
           return_url: `${window.location.origin}/success`,
         },
-        redirect: 'if_required',
+        redirect: "if_required",
       });
-
-      
 
       if (error) {
         console.error("Payment confirmation error:", error.message);
@@ -109,44 +114,41 @@ export const SongForm: React.FC<SongFormProps> = ({
 
         // create payment
         // Fetch request to create payment
-        const paymentResponse = await apiFetch('/payment/createPayment', {
-          method: 'POST',
+        const paymentResponse = await apiFetch("/payment/createPayment", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify({
             paymentId: pid,
             amount: feedoptions.amount,
-            djId: localStorage.getItem('djId'), 
+            djId: localStorage.getItem("djId"),
           }),
         });
 
         const paymentData = await paymentResponse.json();
 
         if (!paymentResponse.ok) {
-          throw new Error(paymentData.error || 'Failed to create payment');
+          throw new Error(paymentData.error || "Failed to create payment");
         }
 
         //console.log("Payment created successfully:", paymentData);
-
-
-        
 
         // Save Request to the database
         const requestBody = {
           songName: selectedTrack?.name,
           songArtist: selectedTrack?.artists[0].name,
           songImage: selectedTrack?.album.images[1]?.url,
-          userId: localStorage.getItem('requestapp_userId') || null, 
-          eventId: localStorage.getItem('eventId'), // Replace with actual event ID
+          userId: localStorage.getItem("requestapp_userId") || null,
+          eventId: localStorage.getItem("eventId"), // Replace with actual event ID
           paymentId: pid,
         };
 
         // Fetch request to create the request
-        const requestResponse = await apiFetch('/requests/create', {
-          method: 'POST',
+        const requestResponse = await apiFetch("/requests/create", {
+          method: "POST",
           headers: {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
           },
           body: JSON.stringify(requestBody),
         });
@@ -154,14 +156,13 @@ export const SongForm: React.FC<SongFormProps> = ({
         const requestData = await requestResponse.json();
 
         if (!requestResponse.ok) {
-          throw new Error(requestData.error || 'Failed to create request');
+          throw new Error(requestData.error || "Failed to create request");
         }
 
         //console.log("Request created successfully:", requestData);
 
-
         setTimeout(() => {
-          redirect(`/success`) // Navigate to the new post page
+          redirect(`/success`); // Navigate to the new post page
         }, 3000);
       }
     } catch (error) {
@@ -172,7 +173,7 @@ export const SongForm: React.FC<SongFormProps> = ({
   };
 
   const handleFreeRequest = async () => {
-    setEmailLoading(true)
+    setEmailLoading(true);
 
     if (!email) {
       setEmailError("Please enter your email");
@@ -182,17 +183,20 @@ export const SongForm: React.FC<SongFormProps> = ({
 
     try {
       // First try to submit email to waitlist using the correct endpoint
-      const emailResponse = await apiFetch('/waitlist', {
-        method: 'POST',
+      const emailResponse = await apiFetch("/waitlist", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ email }),
       });
 
       if (!emailResponse.ok) {
         const errorData = await emailResponse.json();
-        setEmailError(errorData.error || "This email has already been used for a free request");
+        setEmailError(
+          errorData.error ||
+            "This email has already been used for a free request"
+        );
         setEmailLoading(false);
         return;
       }
@@ -200,21 +204,21 @@ export const SongForm: React.FC<SongFormProps> = ({
       const freePaymentId = `FREE_${uuidv4()}`;
 
       // Create a free payment record first
-      const paymentResponse = await apiFetch('/payment/createPayment', {
-        method: 'POST',
+      const paymentResponse = await apiFetch("/payment/createPayment", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           paymentId: freePaymentId,
           amount: 0,
-          djId: localStorage.getItem('djId'),
+          djId: localStorage.getItem("djId"),
         }),
       });
 
       if (!paymentResponse.ok) {
-        setEmailLoading(false)
-        throw new Error('Failed to create payment record');
+        setEmailLoading(false);
+        throw new Error("Failed to create payment record");
       }
 
       // Then create the request with the payment ID
@@ -222,37 +226,36 @@ export const SongForm: React.FC<SongFormProps> = ({
         songName: selectedTrack?.name,
         songArtist: selectedTrack?.artists[0].name,
         songImage: selectedTrack?.album.images[1]?.url,
-        userId: localStorage.getItem('requestapp_userId') || null,
-        eventId: localStorage.getItem('eventId'),
+        userId: localStorage.getItem("requestapp_userId") || null,
+        eventId: localStorage.getItem("eventId"),
         paymentId: freePaymentId,
         email: email,
       };
 
       // Fetch request to create the request
-      const requestResponse = await apiFetch('/requests/create', {
-        method: 'POST',
+      const requestResponse = await apiFetch("/requests/create", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(requestBody),
       });
 
       if (!requestResponse.ok) {
-        setEmailLoading(false)
+        setEmailLoading(false);
       }
 
-      setEmailSuccess(true)
-      setEmailLoading(false)
+      setEmailSuccess(true);
+      setEmailLoading(false);
 
       // Redirect to success page
       setTimeout(() => {
         redirect(`/success`);
       }, 500);
-
     } catch (error) {
       console.error("Error:", error);
       setEmailError("Something went wrong. Please try again.");
-      setEmailLoading(false)
+      setEmailLoading(false);
     }
   };
 
@@ -316,7 +319,9 @@ export const SongForm: React.FC<SongFormProps> = ({
     setSearchResults([]);
     onSongSelect?.(false);
     scrollToTop();
-    const inputElement = document.getElementById("song-input") as HTMLInputElement;
+    const inputElement = document.getElementById(
+      "song-input"
+    ) as HTMLInputElement;
     inputElement.blur();
     if (inputElement) {
     }
@@ -324,7 +329,9 @@ export const SongForm: React.FC<SongFormProps> = ({
 
   const handleSearchContainerTouch = () => {
     // Dismiss keyboard when touching search results
-    const inputElement = document.getElementById("song-input") as HTMLInputElement;
+    const inputElement = document.getElementById(
+      "song-input"
+    ) as HTMLInputElement;
     inputElement.blur();
     if (inputElement) {
     }
@@ -336,7 +343,9 @@ export const SongForm: React.FC<SongFormProps> = ({
     setSelectedTrack(null);
     onSongSelect?.(false);
     scrollToTop();
-    const inputElement = document.getElementById("song-input") as HTMLInputElement;
+    const inputElement = document.getElementById(
+      "song-input"
+    ) as HTMLInputElement;
     inputElement.blur();
     if (inputElement) {
     }
@@ -345,7 +354,9 @@ export const SongForm: React.FC<SongFormProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      const inputElement = document.getElementById("song-input") as HTMLInputElement;
+      const inputElement = document.getElementById(
+        "song-input"
+      ) as HTMLInputElement;
       inputElement.blur();
       if (inputElement) {
       }
@@ -355,7 +366,7 @@ export const SongForm: React.FC<SongFormProps> = ({
   return (
     <div>
       {/* Render CheckMarkAnimation when showSuccessAnimation is true */}
-      
+
       <form
         className="flex flex-col w-full h-full relative pb-20"
         onSubmit={(e) => e.preventDefault()}
@@ -444,7 +455,10 @@ export const SongForm: React.FC<SongFormProps> = ({
 
         {/* Empty State - Only show when no search and no selection */}
         {!searchInput && !selectedTrack && !searchResults.length && (
-          <div className="flex flex-col items-center justify-center mt-10" suppressHydrationWarning>
+          <div
+            className="flex flex-col items-center justify-center mt-10"
+            suppressHydrationWarning
+          >
             <div className="text-gray-600 dark:text-gray-600 text-6xl mb-4">
               <FaSearch />
             </div>
@@ -456,70 +470,105 @@ export const SongForm: React.FC<SongFormProps> = ({
 
         {/* Selected Song Display */}
         {selectedTrack && (
-          <div className="flex flex-col items-center mt-6 mb-32" suppressHydrationWarning>
+          <div
+            className="flex flex-col items-center mt-6 mb-32"
+            suppressHydrationWarning
+          >
             <img
               loading="lazy"
               src={selectedTrack.album.images[1]?.url || ""}
-              className="w-48 h-48 rounded-lg object-cover shadow-lg"
+              className="w-55 h-55 rounded-lg object-cover shadow-lg"
               alt={selectedTrack.name}
             />
-            <h2 className="text-gray-800 dark:text-gray-200 text-lg font-medium mt-4 text-center px-4">
+            <h2 className="text-gray-800 dark:text-gray-200 text-xl font-medium mt-4 text-center px-4">
               {selectedTrack.name}
             </h2>
-            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
+            <p className="text-gray-500 dark:text-gray-400 text-md mt-1">
               {selectedTrack.artists[0].name}
             </p>
+            <div className="relative group">
+              <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 p-[1px] rounded-full overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 mt-3">
+                <div className="px-6 py-2 rounded-full bg-gray-900/90 backdrop-blur-xl">
+                  <p className="text-transparent bg-clip-text bg-gradient-to-r from-violet-200 to-fuchsia-200 text-lg font-medium">
+                    ${(Number(feedoptions.amount) / 100).toFixed(2)}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </form>
       {/* Bottom Action Section */}
       <div
-          className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900 
+        className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900 
            p-4 pb-8 z-50"
-          suppressHydrationWarning
-        >
-          <div className="max-w-[480px] mx-auto mb-2">
-            {selectedTrack && (
-              <>
+        suppressHydrationWarning
+      >
+        <div className="max-w-[480px] mx-auto mb-2">
+          {selectedTrack && (
+            <>
+              <div>
                 {showEmailInput ? (
-                  <div className="mb-4 flex flex-col gap-2">
+                  <div className="flex flex-col gap-2 pb-4">
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => {
                         setEmail(e.target.value);
                         setEmailError("");
-                        setEmailLoading(false)
+                        setEmailLoading(false);
                       }}
                       placeholder="Enter your e-mail"
-                      className={`w-full px-4 py-2 rounded-lg bg-gray-800 text-white border ${emailError ? 'border-red-500' : 'border-gray-700'} ${emailSuccess ? 'border-green-400' : 'border-gray-700'} Successfocus:outline-none focus:border-blue-500`}
+                      className={`w-full px-4 py-2 rounded-lg bg-gray-800 text-white border 
+                        ${emailError ? "border-red-500" : "border-gray-700"} 
+                        ${emailSuccess ? "border-green-400" : "border-gray-700"} 
+                        focus:outline-none focus:border-blue-500
+                        transition-all duration-300 ease-in-out opacity-100 transform translate-y-0`}
                     />
                     {emailError && (
-                      <p className="text-red-500 text-sm text-center">{"It looks like your email is already registered!"}</p>
+                      <p className="text-red-500 text-sm text-center transition-opacity duration-200">
+                        {"It looks like your email is already registered!"}
+                      </p>
                     )}
                     <button
                       onClick={handleFreeRequest}
-                      className="w-full bg-yellow-600 text-gray-200 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity text-center"
+                      className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
+                        shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
+                        mt-2 mb-2 rounded-[8px] transition-all duration-300 ease-in-out"
                     >
-                      {emailLoading ?  <Loader2 className="animate-spin mx-auto"/> : 'Submit Free Request'}
+                      {emailLoading ? (
+                        <Loader2 className="animate-spin mx-auto" />
+                      ) : (
+                        "Submit Free Request"
+                      )}
                     </button>
                   </div>
                 ) : (
-                  <button
-                    onClick={() => setShowEmailInput(true)}
-                    className="w-full mb-4 bg-yellow-600 text-gray-200 py-3 rounded-lg font-medium hover:opacity-90 transition-opacity"
-                  >
-                    Get First Request Free!
-                  </button>
+                  <div className="pb-4">
+                    <button
+                      onClick={() => {
+                        setShowEmailInput(true);
+                        setEmail("");
+                        setEmailError("");
+                        setEmailSuccess(false);
+                      }}
+                      className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
+                        shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
+                        mb-2 mt-2 rounded-[8px] transition-all duration-300 ease-in-out"
+                    >
+                      Get First Request Free!
+                    </button>
+                  </div>
                 )}
-                <ExpressCheckoutElement onConfirm={onConfirm} />
-              </>
-            )}
-            <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
-              You will not be charged until your song is played
-            </p>
-          </div>
+              </div>
+              <ExpressCheckoutElement onConfirm={onConfirm} />
+            </>
+          )}
+          <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
+            You will not be charged until your song is played
+          </p>
         </div>
+      </div>
     </div>
   );
 };

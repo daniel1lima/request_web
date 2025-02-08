@@ -99,9 +99,9 @@ const Index = () => {
     };
 
     checkMobile();
-    window.addEventListener('resize', checkMobile);
+    window.addEventListener("resize", checkMobile);
 
-    return () => window.removeEventListener('resize', checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
   useEffect(() => {
@@ -217,7 +217,9 @@ const Index = () => {
                 </div>
               ))}
           </div>
-          <div className={`flex items-center justify-center w-full h-[50px] bg-transparent ${isMobile ? 'mb-[50px]' : ''}`}>
+          <div
+            className={`flex items-center justify-center w-full h-[50px] bg-transparent ${isMobile ? "mb-[50px]" : ""}`}
+          >
             <div className="self-stretch w-full text-base text-white font-bold text-center uppercase tracking-[1px] mt-[25px] px-[52px] bg-transparent">
               <Link href="/request-song">
                 <button className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] shadow-[0px_10px_35px_rgba(111,126,201,0.25)] fill-[#5669FF] w-full px-[43px] py-[19px] rounded-[15px]">
