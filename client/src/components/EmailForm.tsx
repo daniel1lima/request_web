@@ -33,7 +33,7 @@ export default function EmailForm() {
       }
     } catch (err) {
       console.error(err);
-      toast.error("Something went wrong. Please try again later.");
+      toast.error("Email already exists in waitlist.");
     } finally {
       setIsSubmitting(false);
     }

@@ -84,6 +84,10 @@ router.post("/cancelPaymentIntent", async (req, res) => {
   const { intentId } = req.query;
 
   try {
+    if (intentId.startsWith('FREE_')) {
+      return res.status(200).json({ success: true });
+    }
+
     const paymentIntent = await stripe.paymentIntents.cancel(
       `${intentId}`
     );

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Button } from "../button";
 import { ChevronLeft } from "lucide-react";
 import { redirect } from "next/navigation";
@@ -15,29 +15,17 @@ const EventHeader: React.FC<EventHeaderProps> = ({
   title = "Event Details",
   imageUrl,
 }) => {
-  const [isMobile, setIsMobile] = useState(false);
   const fallbackImageUrl =
     "https://storage.googleapis.com/ubyssey/media/renditions/20230303_i_janmohamed_pit.width-1500.format-webp.webp";
 
-    useEffect(() => {
-      const checkMobile = () => {
-        setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
-      };
-  
-      checkMobile();
-      window.addEventListener('resize', checkMobile);
-  
-      return () => window.removeEventListener('resize', checkMobile);
-    }, []);
-
   return (
-    <div className={`flex flex-col self-stretch relative aspect-[1.697]  w-full ${isMobile ? 'max-h-[90px]' : 'max-h-[150px]'}`}>
+    <div className="flex flex-col self-stretch relative aspect-[1.697] w-full max-h-[100px] md:max-h-[100px] sm:max-h-[50px] bg-gray-900 bg-opacity-80">
       <img
         loading="lazy"
         src={imageUrl}
         onError={(e) => {
           e.currentTarget.src = fallbackImageUrl;
-        }} // Fallback on error
+        }}
         className="absolute h-full w-full object-cover inset-0"
         alt="Event background"
         fetchPriority="high"

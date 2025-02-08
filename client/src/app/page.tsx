@@ -1,12 +1,15 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import { redirect, useRouter } from "next/navigation";
 import "./globals.css";
 import EventCard from "@/components/event/EventCard";
-import apiFetch from '../utils/api'; // Import the apiFetch function
+import apiFetch from "../utils/api";
+import { FaHome, FaMusic, FaUser } from "react-icons/fa";
+import Link from "next/link";
+import Fuse from 'fuse.js';
 
-export interface event {
+export interface Event {
   eventId: string;
   eventName: string;
   eventImage: string;
@@ -34,78 +37,367 @@ const Loader = () => (
   </div>
 );
 
+// Add this helper function after the Event interface
+const createFuseInstance = (events: Event[]) => {
+  return new Fuse(events, {
+    keys: ['eventName', 'eventLocation'],
+    threshold: 0.4, // Lower = more strict matching
+    location: 0,
+    distance: 100,
+    minMatchCharLength: 2
+  });
+};
+
+// Components for different views
+const ExploreView = ({ allEvents, searchQuery, setCurrentView }: { 
+  allEvents: Event[] | null,
+  searchQuery: string,
+  setCurrentView: (view: 'explore' | 'events') => void 
+}) => {
+  const now = new Date();
+  const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+  const filterAndSearchEvents = (events: Event[]) => {
+    if (!searchQuery) return events;
+    const fuse = createFuseInstance(events);
+    return fuse.search(searchQuery).map(result => result.item);
+  };
+
+  const currentEvents = allEvents
+    ?.filter((event: Event) => {
+      const eventDate = new Date(event.eventDateTime);
+      return eventDate >= now && eventDate <= next24Hours;
+    });
+
+  const futureEvents = allEvents
+    ?.filter((event: Event) => {
+      const eventDate = new Date(event.eventDateTime);
+      return eventDate > next24Hours;
+    });
+
+  const filteredCurrentEvents = currentEvents ? filterAndSearchEvents(currentEvents) : [];
+  const filteredFutureEvents = futureEvents ? filterAndSearchEvents(futureEvents) : [];
+
+  return (
+    <main className="flex-1 overflow-y-auto pb-20 px-4">
+      {/* Current Events */}
+      <section className="mt-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Events Right Now</h2>
+          <button 
+            onClick={() => setCurrentView('events')} 
+            className="text-sm text-indigo-400"
+          >
+            See All
+          </button>
+        </div>
+
+        {/* Events grid or list */}
+        <div className="mt-4 p-4 pb-4 bg-white bg-opacity-5 rounded-lg shadow-md h-58 overflow-x-auto whitespace-nowrap ">
+          <div className="flex gap-4">
+            {filteredCurrentEvents.length > 0 ? (
+              filteredCurrentEvents.map((event) => {
+                return (
+                  <div
+                    key={event.eventId}
+                    className="inline-block cursor-pointer hover:bg-gray-700 transition"
+                    onClick={() => {
+                      redirect(`/event?eventId=${event.eventId}`);
+                    }}
+                  >
+                    <EventCard
+                      image={event.eventImage}
+                      title={event.eventName}
+                      date={new Date(event.eventDateTime).toLocaleDateString()}
+                      location={event.eventLocation}
+                    />
+                  </div>
+                );
+              })
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full w-full text-gray-400">
+                <p className="text-5xl mb-2">😔</p>
+                <p className="text-center text-sm">
+                  Sorry, Nothing Here Just Yet
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* Invite friends banner */}
+      <section className="mt-8">
+        <div className="relative bg-indigo-600 rounded-lg p-4 flex items-center">
+          <h3 className="text-5xl font-bold">🙋‍♂️</h3>
+          <div>
+            <h3 className="text-sm font-bold text-center ml-1 mr-3">
+              Join our future events!
+            </h3>
+            <p className="text-sm opacity-90 text-center">
+              Get 1 free request
+            </p>
+          </div>
+          <Link href="/waitlist">
+            <button className="ml-auto bg-white text-indigo-600 font-semibold py-2 px-4 rounded-md">
+              Join Now
+            </button>
+          </Link>
+        </div>
+      </section>
+
+      {/* Events After 24 Hours */}
+      <section className="mt-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Events Coming Soon</h2>
+          <button 
+            onClick={() => setCurrentView('events')} 
+            className="text-sm text-indigo-400"
+          >
+            See All
+          </button>
+        </div>
+
+        {/* Events grid or list */}
+        <div className="mt-4 p-4 bg-white bg-opacity-5 rounded-lg shadow-md h-58 overflow-x-auto whitespace-nowrap ">
+          <div className="flex gap-4">
+            {filteredFutureEvents.length > 0 ? (
+              filteredFutureEvents.map((event) => (
+                <div
+                  key={event.eventId}
+                  className="inline-block cursor-pointer hover:bg-gray-700 transition"
+                  onClick={() => {
+                    redirect(`/event?eventId=${event.eventId}`);
+                  }}
+                >
+                  <EventCard
+                    image={event.eventImage}
+                    title={event.eventName}
+                    date={new Date(event.eventDateTime).toLocaleDateString()}
+                    location={event.eventLocation}
+                  />
+                </div>
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full w-full text-gray-400">
+                <p className="text-5xl mb-2">😔</p>
+                <p className="text-center text-sm">
+                  Sorry, Nothing Here Just Yet
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </section>
+    </main>
+  );
+};
+
+const AllEventsView = ({ allEvents, searchQuery }: { 
+  allEvents: Event[] | null;
+  searchQuery: string;
+}) => {
+
+  const sortedEvents = allEvents?.sort((a, b) => 
+    new Date(a.eventDateTime).getTime() - new Date(b.eventDateTime).getTime()
+  ) || [];
+
+  const filteredEvents = useMemo(() => {
+    if (!searchQuery) return sortedEvents;
+    const fuse = createFuseInstance(sortedEvents);
+    return fuse.search(searchQuery).map(result => result.item);
+  }, [sortedEvents, searchQuery]);
+
+  return (
+    <div className="h-full overflow-y-auto px-4 pb-20 pt-3">
+      <div className="grid grid-cols-1 gap-4">
+        {filteredEvents.map((event) => (
+          <div
+            key={event.eventId}
+            className="cursor-pointer hover:bg-gray-700 transition"
+            onClick={() => {
+              redirect(`/event?eventId=${event.eventId}`);
+            }}
+          >
+            <EventCard
+              image={event.eventImage}
+              title={event.eventName}
+              date={new Date(event.eventDateTime).toLocaleDateString()}
+              location={event.eventLocation}
+            />
+          </div>
+        ))}
+        {filteredEvents.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+            <p className="text-5xl mb-2">😔</p>
+            <p className="text-center text-sm">No events found</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const Index = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [eventValidated, setEventValidated] = useState(false);
-  const [eventData, setEventData] = useState<[event] | null>(null);
+  const [fadeOut, setFadeOut] = useState(false);
+  const [allEvents, setAllEvents] = useState<Event[] | null>(null);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
+  const [currentView, setCurrentView] = useState<'explore' | 'events'>('explore');
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Add new useEffect for image preloading
+  useEffect(() => {
+    const logoImage = new window.Image();
+    logoImage.src = "/RequestLogoDark.png";
+
+    document.ontouchmove = function(event){
+      event.preventDefault();
+  }
+    
+    Promise.all([
+      new Promise((resolve) => {
+        logoImage.onload = resolve;
+      })
+    ]).then(() => {
+      setImagesLoaded(true);
+    });
+  }, []);
 
   useEffect(() => {
-    // console.log('Fetching event data...'); // Log when fetching starts
+    // Check if event data is already cached
+    const cachedEvents = localStorage.getItem("allEvents");
+    if (cachedEvents) {
+      const data = JSON.parse(cachedEvents);
+      setAllEvents(data);
+      setFadeOut(true);
+      setTimeout(() => {
+        setLoading(false);
+      }, 200);
+      return;
+    }
 
-    // Fetch event details to validate existence
-    apiFetch('/events/all') // Use the apiFetch function
+    // Fetch all events if not cached
+    apiFetch("/events/all")
       .then((response) => response.json())
-      .then((eventData) => {
-        if (!eventData || eventData.error) {
-          console.error(
-            "Error fetching event data:",
-            eventData?.error || "Event not found"
-          );
+      .then((data) => {
+        if (!data || data.error) {
+          console.error("Error fetching event data:", data?.error || "No data");
           router.push("/404");
           return;
         }
 
-        setEventData(eventData);
-        setEventValidated(true);
+        localStorage.setItem("allEvents", JSON.stringify(data));
+        setAllEvents(data);
+        setFadeOut(true);
+        setTimeout(() => {
+          setLoading(false);
+        }, 200);
       })
       .catch((error) => {
-        console.log("Error fetching event details:", error);
+        console.error("Error fetching event details:", error);
         router.push("/404");
       });
+  }, [router]);
 
-  }, []);
 
-  useEffect(() => {
-    if (eventValidated) {
-      setLoading(false);
-    }
-  }, [eventValidated]);
-
-  if (loading) {
-    return <Loader />;
+  if (loading || !imagesLoaded) {
+    return (
+      <div className={`transition-opacity duration-300 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
+        <Loader />
+      </div>
+    );
   }
 
   return (
-    <div className="w-screen h-screen bg-gray-900">
-      <div className="bg-gray-900 dark:bg-gray-900 flex max-w-[600px] w-full min-h-screen flex-col overflow-y-auto items-center mx-auto">
+    <div 
+      className="fixed inset-0 bg-gray-900 text-white"
+      style={{ 
+        overscrollBehavior: 'none',
+        touchAction: 'none'
+      }}
+    >
+      {/* Fixed header and search section */}
+      <div className="fixed top-0 left-0 right-0 z-10 bg-gray-900">
+        <header className="bg-gray-900 dark:bg-gray-900 w-full py-1 px-4 flex justify-center h-14 mb-3 mt-2">
+          <div className="flex items-center">
+            <Image
+              src="/RequestLogoDark.png"
+              alt="Logo"
+              width={120}
+              height={120}
+              className="object-contain"
+              priority
+            />
+          </div>
+        </header>
 
-        <div className="flex flex-col items-center w-full px-4 pb-20 max-h-fit">
-          {/* <DJProfile
-            name={djData?.djName || "DJ Zo"}
-            role="Main Event DJ"
-            image="https://cdn.builder.io/api/v1/image/assets/TEMP/07768e6beee3d7f47f88d0798e6e2e885f8e8b62f39f33f7eac92fdf4c2d3eeb?placeholderIfAbsent=true"
-          /> */}
-
-          <h2 className="text-gray-200 dark:text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">
-            Events
-          </h2>
-          <div className="gap-[13px] w-[100%] pt-5 overflow-y-auto max-h-[500px] scrollbar">
-            {eventData?.map((event) => (
-                <div className="pb-3 mr-2 cursor-pointer " key={event.eventId} onClick={() => {redirect(`/event?eventId=${event.eventId}`)}}>
-                  <EventCard
-                    key={event.eventId}
-                    image={event.eventImage}
-                    title={event.eventName}
-                    fee={event.requestFee}
-                  />
-                </div>
-              ))}
+        {/* Search bar */}
+        <div className="px-4 py-3 bg-gray-900">
+          <div className="flex items-center bg-gray-800 rounded-lg px-3 py-2">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-5 w-5 text-gray-400"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path d="M21 21l-4.35-4.35" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="10" cy="10" r="6" strokeWidth="2" strokeLinecap="round" />
+            </svg>
+            <input
+              type="text"
+              placeholder="Search..."
+              className="w-full bg-transparent outline-none text-sm text-gray-200 ml-2"
+              style={{ fontSize: '16px' }}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onClick={() => setCurrentView('events')}
+            />
           </div>
         </div>
-
-      
       </div>
+
+      {/* Content area */}
+      <div className="absolute inset-0 pt-32 pb-16">
+        {currentView === 'explore' ? (
+          <ExploreView 
+            allEvents={allEvents} 
+            searchQuery={searchQuery}
+            setCurrentView={setCurrentView}
+          />
+        ) : (
+          <AllEventsView 
+            allEvents={allEvents} 
+            searchQuery={searchQuery}
+          />
+        )}
+      </div>
+
+      {/* Bottom nav bar */}
+      <nav className="fixed bottom-0 w-full bg-gray-900 border-t border-gray-800 py-2 flex justify-around items-center">
+        <button 
+          className={`flex flex-col items-center text-xs ${currentView === 'explore' ? 'text-white' : 'text-gray-400'}`}
+          onClick={() => setCurrentView('explore')}
+        >
+          <FaHome className="h-5 w-5 mb-1" />
+          Explore
+        </button>
+
+        <button 
+          className={`flex flex-col items-center text-xs ${currentView === 'events' ? 'text-white' : 'text-gray-400'}`}
+          onClick={() => setCurrentView('events')}
+        >
+          <FaMusic className="h-5 w-5 mb-1" />
+          Events
+        </button>
+
+        <button className="flex flex-col items-center text-xs text-gray-400">
+          <FaUser className="h-5 w-5 mb-1" />
+          User
+        </button>
+      </nav>
     </div>
   );
 };
