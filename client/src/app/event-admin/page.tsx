@@ -408,7 +408,7 @@ const EventAdminPage = () => {
               <h3 className="text-xl font-bold text-white">DJ Earnings</h3>
             </div>
             <p className="text-4xl font-semibold text-white">
-              ${songRequests.filter((req) => req.played).length * requestFee}
+              ${(songRequests.filter((req) => req.played).length * requestFee) / 100}
             </p>
           </div>
         </div>
