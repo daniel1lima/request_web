@@ -462,9 +462,9 @@ const EventAdminPage = () => {
                 .map((request) => (
                   <div
                     key={request.requestId}
-                    className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
+                    className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group "
                   >
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-4 w-[300px] max-w-[300px]">
                       <SongCard
                         image={request.songImage}
                         title={request.songName}
