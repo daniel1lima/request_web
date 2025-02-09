@@ -11,7 +11,8 @@ import {
 import { redirect } from "next/navigation";
 import apiFetch from "@/utils/api";
 import { v4 as uuidv4 } from "uuid";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronLeft } from "lucide-react";
+import { Button } from "../button";
 
 interface SpotifyTrack {
   id: string;
@@ -372,85 +373,93 @@ export const SongForm: React.FC<SongFormProps> = ({
         onSubmit={(e) => e.preventDefault()}
         suppressHydrationWarning
       >
-        {/* Search Input */}
-        <div
-          className="relative bg-gray-800 dark:bg-gray-800 border-gray-700 dark:border-gray-700 border flex items-stretch gap-5 text-base text-neutral-500 dark:text-gray-400 font-normal leading-loose justify-between px-3.5 py-[18px] rounded-[15px] border-solid"
-          suppressHydrationWarning
-        >
-          <input
-            id="song-input"
-            type="text"
-            value={
-              selectedTrack
-                ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}`
-                : searchInput
-            }
-            onChange={(e) => {
-              const newValue = e.target.value;
-              setSearchInput(newValue);
-              setSelectedTrack(null);
-              if (newValue === "") {
-                setSearchResults([]);
-                onSongSelect?.(false);
-              } else if (onSongSelect) {
-                onSongSelect(true);
-              }
-            }}
-            onKeyDown={handleKeyDown}
-            placeholder="Search for a song"
-            className="bg-transparent outline-none w-full dark:text-white"
-          />
-          <button
-            type="button"
-            onClick={searchInput || selectedTrack ? handleClear : undefined}
-            className="mt-1 p-1 -mr-1 rounded-full  transition-colors"
+        {/* Search Input Container */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant='outline'
+            onClick={() => redirect(`/event?eventId=${localStorage.getItem('eventId')}`)}
+            className="p-2 bg-slate-600 hover:bg-white transition-colors"
           >
-            {searchInput || selectedTrack ? (
-              <FaTimes className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
-            ) : (
-              <FaSearch className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
-            )}
-          </button>
+            
+            <ChevronLeft className="w-5 h-5 text-gray-400" />
+          </Button>
 
-          {/* Search Results Dropdown */}
-          {searchResults.length > 0 && !selectedTrack && (
-            <div
-              ref={resultsContainerRef}
-              onScroll={handleScroll}
-              onTouchStart={handleSearchContainerTouch}
-              className="absolute left-4 right-4 top-full mt-2 bg-white dark:bg-gray-800 
-                border  dark:border-gray-700 rounded-2xl shadow-xl z-50 
-                max-h-[70vh] overflow-y-auto backdrop-blur-sm"
+          <div
+            className="flex-1 bg-gray-800 dark:bg-gray-800 border-gray-700 dark:border-gray-700 border flex items-stretch gap-5 text-base text-neutral-500 dark:text-gray-400 font-normal leading-loose justify-between px-3.5 py-[18px] rounded-[15px] border-solid"
+            suppressHydrationWarning
+          >
+            <input
+              id="song-input"
+              type="text"
+              value={selectedTrack ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}` : searchInput}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                setSearchInput(newValue);
+                setSelectedTrack(null);
+                if (newValue === "") {
+                  setSearchResults([]);
+                  onSongSelect?.(false);
+                } else if (onSongSelect) {
+                  onSongSelect(true);
+                }
+              }}
+              onKeyDown={handleKeyDown}
+              placeholder="Search for a song"
+              className="bg-transparent outline-none w-full dark:text-white"
+            />
+            <button
+              type="button"
+              onClick={searchInput || selectedTrack ? handleClear : undefined}
+              className="mt-1 p-1 -mr-1 rounded-full  transition-colors"
             >
-              {searchResults.map((track) => (
-                <div
-                  key={track.id}
-                  onClick={() => handleSearchResultClick(track)}
-                  className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 
-                    cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                >
-                  <img
-                    src={track.album.images[2]?.url}
-                    alt={track.name}
-                    className="w-12 h-12 rounded-lg shadow-sm"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-gray-900 dark:text-white truncate">
-                      {track.name}
-                    </div>
-                    <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                      {track.artists[0].name}
+              {searchInput || selectedTrack ? (
+                <FaTimes className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
+              ) : (
+                <FaSearch className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors" />
+              )}
+            </button>
+
+            {/* Search Results Dropdown */}
+            {searchResults.length > 0 && !selectedTrack && (
+              <div
+                ref={resultsContainerRef}
+                onScroll={handleScroll}
+                onTouchStart={handleSearchContainerTouch}
+                className="absolute left-0 right-0 top-20 
+                  bg-white dark:bg-gray-800 
+                  border dark:border-gray-700 rounded-2xl shadow-xl z-50 
+                  max-h-[70vh] overflow-y-auto backdrop-blur-sm"
+              >
+                {searchResults.map((track) => (
+                  <div
+                    key={track.id}
+                    onClick={() => handleSearchResultClick(track)}
+                    className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 
+                      cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+                  >
+                    <img
+                      src={track.album.images[2]?.url}
+                      alt={track.name}
+                      className="w-12 h-12 rounded-lg shadow-sm"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-gray-900 dark:text-white truncate">
+                        {track.name}
+                      </div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                        {track.artists[0].name}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-              {isLoading && (
-                <div className="text-center p-4 text-gray-500 dark:text-gray-400">
-                  <div className="animate-pulse">Loading more songs...</div>
-                </div>
-              )}
-            </div>
-          )}
+                ))}
+                {isLoading && (
+                  <div className="text-center p-4 text-gray-500 dark:text-gray-400">
+                    <div className="animate-pulse">Loading more songs...</div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Empty State - Only show when no search and no selection */}
@@ -477,19 +486,19 @@ export const SongForm: React.FC<SongFormProps> = ({
             <img
               loading="lazy"
               src={selectedTrack.album.images[1]?.url || ""}
-              className="w-55 h-55 rounded-lg object-cover shadow-lg"
+              className="w-28 h-28 md:w-48 md:h-48 lg:w-64 lg:h-64 rounded-lg object-cover shadow-lg" 
               alt={selectedTrack.name}
             />
-            <h2 className="text-gray-800 dark:text-gray-200 text-xl font-medium mt-4 text-center px-4">
+            <h2 className="text-gray-800 dark:text-gray-200 text-lg md:text-xl lg:text-2xl font-medium mt-4 text-center px-4">
               {selectedTrack.name}
             </h2>
-            <p className="text-gray-500 dark:text-gray-400 text-md mt-1">
+            <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base lg:text-lg mt-1">
               {selectedTrack.artists[0].name}
             </p>
             <div className="relative group">
               <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 p-[1px] rounded-full overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 mt-3">
                 <div className="px-6 py-2 rounded-full bg-gray-900/90 backdrop-blur-xl">
-                  <p className="text-transparent bg-clip-text bg-gradient-to-r from-violet-200 to-fuchsia-200 text-lg font-medium">
+                  <p className="text-transparent bg-clip-text bg-gradient-to-r from-violet-200 to-fuchsia-200 text-lg md:text-xl lg:text-2xl font-medium">
                     ${(Number(feedoptions.amount) / 100).toFixed(2)}
                   </p>
                 </div>
@@ -501,10 +510,10 @@ export const SongForm: React.FC<SongFormProps> = ({
       {/* Bottom Action Section */}
       <div
         className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900 
-           p-4 pb-8 z-50"
+           p-4 pb-8"
         suppressHydrationWarning
       >
-        <div className="max-w-[480px] mx-auto mb-2">
+        <div className="max-w-[480px] mx-auto mb-2 bg-transparent">
           {selectedTrack && (
             <>
               <div>
