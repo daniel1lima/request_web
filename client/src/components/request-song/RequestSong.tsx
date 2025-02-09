@@ -36,6 +36,11 @@ export const RequestSong = () => {
 
   useEffect(() => {
     // Disable scrolling on body when component mounts
+
+    document.ontouchmove = function(event){
+      event.preventDefault();
+  }
+  
     document.body.style.overflow = 'hidden';
     
     // Re-enable scrolling when component unmounts
@@ -119,23 +124,6 @@ export const RequestSong = () => {
             : "opacity-0 -translate-y-12 max-h-0 mb-0"
         }`}
       >
-        {/* Logo Section */}
-        <div className="flex justify-center p-5">
-          <Button variant='outline' size='icon' className="absolute left-6 bg-slate-600" onClick={() => {
-            redirect(`/event?eventId=${localStorage.getItem('eventId')}`)
-          }}>
-            <ChevronLeft/>
-          </Button>
-          <Image
-            src="/RequestLogoLight.png"
-            alt="DJ Request Logo"
-            width={80}
-            height={80}
-            className="invert dark:invert mb-[-50px]"
-            priority
-            style={{ objectFit: "contain" }}
-          />
-        </div>
       </div>
 
       {/* Form Section */}
