@@ -38,7 +38,7 @@ app.use('/waitlist', waitlistRoutes);
 
 
 // Database sync
-sequelize.sync({ force: false, logging: false }).then(() => {
+sequelize.sync({ force: true, logging: false }).then(() => {
     //console.log('Database synced');
 }).catch(err => {
     console.error('Error syncing database:', err);
