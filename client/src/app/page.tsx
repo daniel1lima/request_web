@@ -319,7 +319,6 @@ const Index = () => {
   const { isSignedIn, user } = useUser();
   const [eventName, setEventName] = useState("");
   const [eventImage, setEventImage] = useState("");
-  const [eventDateTime, setEventDateTime] = useState("");
   const [eventLocation, setEventLocation] = useState("");
   const [requestFee, setRequestFee] = useState(0);
   const [eventNameError, setEventNameError] = useState(false);
@@ -328,7 +327,6 @@ const Index = () => {
   const [eventLocationError, setEventLocationError] = useState(false);
   const [requestFeeError, setRequestFeeError] = useState(false);
   const [date, setDate] = React.useState<Date>()
-  const [success, setSuccess] = useState(false);
 
   // Add new useEffect for image preloading
   useEffect(() => {
@@ -396,7 +394,6 @@ const Index = () => {
     setEventDateError(false);
     setEventLocationError(false);
     setRequestFeeError(false);
-    setSuccess(false);
 
     // Validation flags
     let isValid = true;
@@ -450,11 +447,9 @@ const Index = () => {
 
         if (response.ok) {
             console.log("Event created successfully:", await response.json());
-            setSuccess(true);
             // Optionally reset form fields after successful submission
             setEventName("");
             setEventImage("");
-            setEventDateTime("");
             setEventLocation("");
             setRequestFee(0);
             setDate(undefined); // Reset date

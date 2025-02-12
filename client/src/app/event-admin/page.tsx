@@ -6,8 +6,6 @@ import { FaCheck, FaTimes } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import apiFetch from "@/utils/api";
-import { Toaster, toast } from "react-hot-toast";
-import { cn } from "@/lib/utils";
 import { useUser } from "@clerk/nextjs";
 
 export interface request {
