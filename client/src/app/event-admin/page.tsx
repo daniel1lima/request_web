@@ -82,78 +82,10 @@ const EventAdminPage = () => {
   const [eventImage, setEventImage] = useState("");
   const [requestFee, setRequestFee] = useState(0);
   const [djData, setDjData] = useState<DJ | null>(null);
-  const [isValidated, setIsValidated] = useState(false);
-  const [password, setPassword] = useState("");
-  const [validating, setValidating] = useState(true);
-  const [error, setError] = useState(false);
-  const [shake, setShake] = useState(false);
 
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
     {}
   );
-
-  useEffect(() => {
-    // Check session validation status on mount
-    const checkValidation = async () => {
-      try {
-        const response = await apiFetch('/auth/check-admin', {
-          credentials: 'include' // Important for cookies
-        }).then(validateResponse);
-        setIsValidated(response.isValid);
-      } catch {
-        setIsValidated(false);
-      } finally {
-        setValidating(false);
-      }
-    };
-
-    checkValidation();
-  }, []);
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(false);
-
-    try {
-      const response = await apiFetch('/auth/admin-login', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ password }),
-      }).then(validateResponse);
-
-      if (response.success) {
-        setIsValidated(true);
-        toast.success('Login successful!', {
-          style: {
-            background: '#333',
-            color: '#fff',
-          },
-        });
-      } else {
-        handleLoginError();
-      }
-    } catch {
-      handleLoginError();
-    } finally {
-      setValidating(false);
-      setPassword('');
-    }
-  };
-
-  const handleLoginError = () => {
-    setError(true);
-    setShake(true);
-    setTimeout(() => setShake(false), 500);
-    toast.error('Invalid password', {
-      style: {
-        background: '#333',
-        color: '#fff',
-      },
-    });
-  };
 
   useEffect(() => {
     const eventId = new URL(window.location.href).searchParams.get("eventId");
@@ -264,67 +196,7 @@ const EventAdminPage = () => {
     }
   };
 
-  if (loading || validating) return <Loader />;
-
-  if (!isValidated) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <Toaster />
-        <div className={cn(
-          "bg-gray-800 p-8 rounded-lg shadow-xl w-full max-w-md transition-all",
-          shake && "animate-shake"
-        )}>
-          <Image
-            src="/RequestLogoDark.png"
-            alt="Logo"
-            width={225}
-            height={225}
-            className="mx-auto mb-8"
-            priority
-          />
-          <h2 className="text-2xl font-bold text-white mb-6 text-center">
-            DJ Admin Access
-          </h2>
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <div className="relative">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  setError(false);
-                }}
-                placeholder="Enter admin password"
-                className={cn(
-                  "w-full p-3 rounded bg-gray-700 text-white border transition-all duration-200 focus:outline-none",
-                  error 
-                    ? "border-red-500 focus:border-red-500" 
-                    : "border-gray-600 focus:border-blue-500"
-                )}
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={validating}
-              className={cn(
-                "w-full py-3 rounded transition-all duration-200",
-                "disabled:opacity-50 text-white",
-                error 
-                  ? "bg-red-500 hover:bg-red-600" 
-                  : "bg-blue-500 hover:bg-blue-600"
-              )}
-            >
-              {validating ? (
-                <Loader2 className="w-6 h-6 animate-spin mx-auto" />
-              ) : (
-                'Access Dashboard'
-              )}
-            </button>
-          </form>
-        </div>
-      </div>
-    );
-  }
+  if (loading) return <Loader />;
 
   return (
     <div
