@@ -38,7 +38,7 @@ app.use('/waitlist', waitlistRoutes);
 
 
 // Database sync
-sequelize.sync({ force: false }).then(() => {
+sequelize.sync({ force: false, logging: false }).then(() => {
     //console.log('Database synced');
 }).catch(err => {
     console.error('Error syncing database:', err);
@@ -52,7 +52,13 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    //console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`
+ ____  _____ ___  _   _ _____ ____ _____ 
+|  _ \| ____/ _ \| | | | ____/ ___|_   _|
+| |_) |  _|| | | | | | |  _| \___ \ | |  
+|  _ <| |__| |_| | |_| | |___ ___) || |  
+|_| \_\_____\__\_\\___/|_____|____/ |_|  `);
 });
 
 module.exports = app;

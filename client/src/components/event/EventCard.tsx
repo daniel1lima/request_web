@@ -21,7 +21,7 @@ const EventCard: React.FC<EventCardProps> = ({ image, title, date, location }) =
       <img
         loading="lazy"
         srcSet={image}
-        className="object-cover w-full h-32 rounded-t-lg"
+        className="object-cover w-full h-32 rounded-lg"
         alt={title}
       />
       <div className="flex flex-col items-center mt-2">

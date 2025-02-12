@@ -9,6 +9,32 @@ import { FaHome, FaMusic, FaUser } from "react-icons/fa";
 import Link from "next/link";
 import Fuse from "fuse.js";
 import { useUser, SignIn, UserButton } from "@clerk/nextjs";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/dialog";
+import { Button } from "@/components/button";
+import { Input } from "@/components/input";
+import { Label } from "@/components/label";
+
+
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export interface Event {
   eventId: string;
@@ -291,6 +317,18 @@ const Index = () => {
   );
   const [searchQuery, setSearchQuery] = useState("");
   const { isSignedIn, user } = useUser();
+  const [eventName, setEventName] = useState("");
+  const [eventImage, setEventImage] = useState("");
+  const [eventDateTime, setEventDateTime] = useState("");
+  const [eventLocation, setEventLocation] = useState("");
+  const [requestFee, setRequestFee] = useState(0);
+  const [eventNameError, setEventNameError] = useState(false);
+  const [eventImageError, setEventImageError] = useState(false);
+  const [eventDateError, setEventDateError] = useState(false);
+  const [eventLocationError, setEventLocationError] = useState(false);
+  const [requestFeeError, setRequestFeeError] = useState(false);
+  const [date, setDate] = React.useState<Date>()
+  const [success, setSuccess] = useState(false);
 
   // Add new useEffect for image preloading
   useEffect(() => {
@@ -309,19 +347,23 @@ const Index = () => {
       setImagesLoaded(true);
     });
   }, []);
+  
+  useEffect(() => {
+    console.log(date)
+  }, [date]);
 
   useEffect(() => {
     // Check if event data is already cached
-    const cachedEvents = localStorage.getItem("allEvents");
-    if (cachedEvents) {
-      const data = JSON.parse(cachedEvents);
-      setAllEvents(data);
-      setFadeOut(true);
-      setTimeout(() => {
-        setLoading(false);
-      }, 200);
-      return;
-    }
+    // const cachedEvents = localStorage.getItem("allEvents");
+    // if (cachedEvents) {
+    //   const data = JSON.parse(cachedEvents);
+    //   setAllEvents(data);
+    //   setFadeOut(true);
+    //   setTimeout(() => {
+    //     setLoading(false);
+    //   }, 200);
+    //   return;
+    // }
 
     // Fetch all events if not cached
     apiFetch("/events/all")
@@ -346,6 +388,92 @@ const Index = () => {
       });
   }, [router]);
 
+
+  const handleSubmit = async () => {
+    // Reset error states
+    setEventNameError(false);
+    setEventImageError(false);
+    setEventDateError(false);
+    setEventLocationError(false);
+    setRequestFeeError(false);
+    setSuccess(false);
+
+    // Validation flags
+    let isValid = true;
+
+    // Validate Event Name
+    if (!eventName) {
+        setEventNameError(true);
+        isValid = false;
+    }
+
+    // Validate Event Image URL
+    if (!eventImage) {
+        setEventImageError(true);
+        isValid = false;
+    }
+
+    // Validate Event Location
+    if (!eventLocation) {
+        setEventLocationError(true);
+        isValid = false;
+    }
+
+    // Validate Request Fee
+    if (requestFee <= 50) {
+        setRequestFeeError(true);
+        isValid = false;
+    }
+
+    // If any validation fails, prevent submission
+    if (!isValid) {
+        return;
+    }
+
+    // Proceed with event creation logic
+    const eventData = {
+        eventName,
+        eventImage,
+        eventDateTime: date ? date.toISOString() : null, // Convert to ISO string
+        eventLocation,
+        requestFee,
+        djId: user?.id, // Use the user's Clerk user ID
+    };
+
+    setLoading(true);
+
+    try {
+        const response = await apiFetch('/events/create', {
+            method: 'POST',
+            body: JSON.stringify(eventData),
+        });
+
+        if (response.ok) {
+            console.log("Event created successfully:", await response.json());
+            setSuccess(true);
+            // Optionally reset form fields after successful submission
+            setEventName("");
+            setEventImage("");
+            setEventDateTime("");
+            setEventLocation("");
+            setRequestFee(0);
+            setDate(undefined); // Reset date
+
+            // Close the dialog after a short delay
+            setTimeout(() => {
+                setLoading(false);
+                setFadeOut(true); // Trigger fade out effect
+            }, 1000); // Adjust delay as needed
+        } else {
+            console.error("Failed to create event:", response);
+        }
+    } catch (error) {
+        console.error("Error creating event:", error);
+    } finally {
+        setLoading(false); // Ensure loading state is reset
+    }
+  };
+
   if (loading || !imagesLoaded) {
     return (
       <div
@@ -364,6 +492,125 @@ const Index = () => {
         touchAction: "none",
       }}
     >
+      {/* Conditional Dialog Button */}
+      {isSignedIn && (
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="fixed top-4 right-4 bg-indigo-600 text-white rounded-full p-2 shadow-lg z-50 w-12">
+              +
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create Event</DialogTitle>
+              <DialogDescription>
+                Fill in the details to create a new event.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4">
+              <div>
+                <Label htmlFor="eventName">Event Name</Label>
+                <Input
+                  id="eventName"
+                  value={eventName}
+                  onChange={(e) => setEventName(e.target.value)}
+                  placeholder="Enter event name"
+                  className={eventNameError ? "border-red-500" : ""}
+                />
+                {eventNameError && (
+                  <p className="text-red-500">Event name is required.</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="eventImage">Event Image URL</Label>
+                <Input
+                  id="eventImage"
+                  value={eventImage}
+                  onChange={(e) => setEventImage(e.target.value)}
+                  placeholder="Enter event image URL"
+                  className={eventImageError ? "border-red-500" : ""}
+                />
+                {eventImageError && (
+                  <p className="text-red-500">Image URL is required.</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="eventDateTime">Event Date & Time</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-[280px] justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon />
+                      {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      disabled={(date) => date <= new Date()}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {eventDateError && (
+                  <p className="text-red-500">Date must be in the future.</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="eventLocation">Event Location</Label>
+                <Input
+                  id="eventLocation"
+                  value={eventLocation}
+                  onChange={(e) => setEventLocation(e.target.value)}
+                  placeholder="Enter event location"
+                  className={eventLocationError ? "border-red-500" : ""}
+                />
+                {eventLocationError && (
+                  <p className="text-red-500">Location is required.</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="requestFee">Request Fee</Label>
+                <Input
+                  id="requestFee"
+                  type="number"
+                  value={requestFee == 0 ? "" : requestFee}
+                  onChange={(e) => setRequestFee(Number(e.target.value))}
+                  placeholder="Enter request fee (must be more than 50)"
+                  className={requestFeeError ? "border-red-500" : ""}
+                />
+                {requestFeeError && (
+                  <p className="text-red-500">
+                    Fee must be more than 50 cents.
+                  </p>
+                )}
+              </div>
+            </div>
+            <DialogFooter className="sm:justify-start">
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                className="bg-indigo-600 text-white"
+              >
+                Create Event
+              </Button>
+              <DialogClose asChild>
+                <Button type="button" variant="secondary">
+                  Close
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+            {loading && <div className="loader">Loading...</div>}
+          </DialogContent>
+        </Dialog>
+      )}
       {/* Fixed header and search section */}
       <div className="fixed top-0 left-0 right-0 z-10 bg-gray-900">
         <header className="bg-gray-900 dark:bg-gray-900 w-full py-1 px-4 flex justify-center h-14 mb-3 mt-2">

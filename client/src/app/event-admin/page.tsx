@@ -8,6 +8,7 @@ import Image from "next/image";
 import apiFetch from "@/utils/api";
 import { Toaster, toast } from "react-hot-toast";
 import { cn } from "@/lib/utils";
+import { useUser } from "@clerk/nextjs";
 
 export interface request {
   requestId: string;
@@ -76,20 +77,24 @@ const validateResponseNoReturn = (response: any) => {
 };
 
 const EventAdminPage = () => {
+  const { user } = useUser();
   const [songRequests, setSongRequests] = useState<request[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventTitle, setEventTitle] = useState("Loading event...");
   const [eventImage, setEventImage] = useState("");
   const [requestFee, setRequestFee] = useState(0);
   const [djData, setDjData] = useState<DJ | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
     {}
   );
 
+  const [noRequests, setNoRequests] = useState(false);
+
   useEffect(() => {
     const eventId = new URL(window.location.href).searchParams.get("eventId");
-    if (!eventId) return;
+    if (!eventId || !user) return;
 
     localStorage.setItem("eventId", eventId);
     setLoading(true);
@@ -98,7 +103,8 @@ const EventAdminPage = () => {
       .then(validateResponse);
 
     const fetchSongRequests = apiFetch(`/requests/getByEvent?eventId=${eventId}`)
-      .then(validateResponse);
+      .then(validateResponse)
+      .catch(() => []);
 
     const djId = localStorage.getItem("djId");
     const fetchDJData = djId 
@@ -107,11 +113,19 @@ const EventAdminPage = () => {
 
     Promise.all([fetchEventData, fetchSongRequests, fetchDJData])
       .then(([eventData, songRequestsData, djData]) => {
+        if (user?.id !== djData?.djId) {
+          
+          window.location.href = `/event?eventId=${eventId}`;
+          return;
+        }
+        setIsAuthorized(true);
         setEventTitle(eventData.eventName || "Event");
         setEventImage(eventData.eventImage || "");
         setRequestFee(eventData.requestFee || 0);
         setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : []);
         setDjData(djData && !djData.error ? djData : null);
+        
+        setNoRequests(songRequestsData.length === 0);
       })
       .catch((error) => {
         console.error("Error fetching data:", error);
@@ -119,7 +133,7 @@ const EventAdminPage = () => {
       .finally(() => {
         setLoading(false);
       });
-  }, []);
+  }, [user]);
 
   const acceptRequest = async (requestId: string) => {
     try {
@@ -196,7 +210,7 @@ const EventAdminPage = () => {
     }
   };
 
-  if (loading) return <Loader />;
+  if (loading || !isAuthorized) return <Loader />;
 
   return (
     <div
@@ -250,8 +264,15 @@ const EventAdminPage = () => {
           </div>
         </div>
       </div>
-
-      <div className="max-w-7xl mx-auto p-8">
+        {noRequests ? 
+        <div className="flex items-center justify-center h-[80vh] mb-20">
+          <div className="text-center">
+            <h2 className="text-4xl font-bold">No requests yet</h2>
+            <p className="text-2xl text-gray-500">Check back later for song requests</p>
+          </div>
+        </div> :
+        
+        <div className="max-w-7xl mx-auto p-8">
         {/* Statistics Cards Section */}
         <div className="grid grid-cols-3 gap-4 mb-8">
           {/* Songs Requested Card */}
@@ -369,6 +390,8 @@ const EventAdminPage = () => {
           </div>
         </div>
       </div>
+          }
+      
     </div>
   );
 };
