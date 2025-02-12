@@ -10,7 +10,7 @@ const Payment = sequelize.define('Payment', {
   amount: { type: DataTypes.FLOAT, allowNull: false },
   paymentDate: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   status: { type: DataTypes.STRING, defaultValue: 'pending' },
-  djId: { type: DataTypes.UUID, allowNull: false }, // Foreign key
+  djId: { type: DataTypes.STRING, allowNull: false }, // Foreign key
 }, { timestamps: false });
 
 module.exports = Payment;

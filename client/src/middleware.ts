@@ -1,30 +1,16 @@
-import { NextResponse } from 'next/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-export function middleware() {
-//   // Get the pathname of the request (e.g. /, /protected)
-//   const path = request.nextUrl.pathname;
+const isProtectedRoute = createRouteMatcher(['/event-admin(.*)'])
 
-//   // Get the token from the cookies
-//   const isAuthenticated = request.cookies.get('your-auth-cookie')?.value;
-
-//   // Protected routes
-//   const protectedPaths = ['/dashboard'];
-  
-//   const isProtectedPath = protectedPaths.some((pp) => path.startsWith(pp));
-
-//   if (isProtectedPath && !isAuthenticated) {
-//     // Redirect to login page if accessing protected route without authentication
-//     return NextResponse.redirect(new URL('/', request.url));
-//   }
-
-//   if (path === '/' && isAuthenticated) {
-//     // Redirect to dashboard if already authenticated
-//     return NextResponse.redirect(new URL('/dashboard', request.url));
-//   }
-
-  return NextResponse.next();
-}
+export default clerkMiddleware(async (auth, req) => {
+  if (isProtectedRoute(req)) await auth.protect()
+})
 
 export const config = {
-  matcher: ['/', '/dashboard/:path*', '/signin']
+  matcher: [
+    // Skip Next.js internals and all static files, unless found in search params
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    // Always run for API routes
+    '/(api|trpc)(.*)',
+  ],
 }; 

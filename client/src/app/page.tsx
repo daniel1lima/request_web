@@ -7,7 +7,34 @@ import EventCard from "@/components/event/EventCard";
 import apiFetch from "../utils/api";
 import { FaHome, FaMusic, FaUser } from "react-icons/fa";
 import Link from "next/link";
-import Fuse from 'fuse.js';
+import Fuse from "fuse.js";
+import { useUser, SignIn, UserButton } from "@clerk/nextjs";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/dialog";
+import { Button } from "@/components/button";
+import { Input } from "@/components/input";
+import { Label } from "@/components/label";
+
+
+import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+
+import { cn } from "@/lib/utils";
+
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export interface Event {
   eventId: string;
@@ -40,19 +67,23 @@ const Loader = () => (
 // Add this helper function after the Event interface
 const createFuseInstance = (events: Event[]) => {
   return new Fuse(events, {
-    keys: ['eventName', 'eventLocation'],
+    keys: ["eventName", "eventLocation"],
     threshold: 0.4, // Lower = more strict matching
     location: 0,
     distance: 100,
-    minMatchCharLength: 2
+    minMatchCharLength: 2,
   });
 };
 
 // Components for different views
-const ExploreView = ({ allEvents, searchQuery, setCurrentView }: { 
-  allEvents: Event[] | null,
-  searchQuery: string,
-  setCurrentView: (view: 'explore' | 'events') => void 
+const ExploreView = ({
+  allEvents,
+  searchQuery,
+  setCurrentView,
+}: {
+  allEvents: Event[] | null;
+  searchQuery: string;
+  setCurrentView: (view: "explore" | "events") => void;
 }) => {
   const now = new Date();
   const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
@@ -60,23 +91,25 @@ const ExploreView = ({ allEvents, searchQuery, setCurrentView }: {
   const filterAndSearchEvents = (events: Event[]) => {
     if (!searchQuery) return events;
     const fuse = createFuseInstance(events);
-    return fuse.search(searchQuery).map(result => result.item);
+    return fuse.search(searchQuery).map((result) => result.item);
   };
 
-  const currentEvents = allEvents
-    ?.filter((event: Event) => {
-      const eventDate = new Date(event.eventDateTime);
-      return eventDate >= now && eventDate <= next24Hours;
-    });
+  const currentEvents = allEvents?.filter((event: Event) => {
+    const eventDate = new Date(event.eventDateTime);
+    return eventDate >= now && eventDate <= next24Hours;
+  });
 
-  const futureEvents = allEvents
-    ?.filter((event: Event) => {
-      const eventDate = new Date(event.eventDateTime);
-      return eventDate > next24Hours;
-    });
+  const futureEvents = allEvents?.filter((event: Event) => {
+    const eventDate = new Date(event.eventDateTime);
+    return eventDate > next24Hours;
+  });
 
-  const filteredCurrentEvents = currentEvents ? filterAndSearchEvents(currentEvents) : [];
-  const filteredFutureEvents = futureEvents ? filterAndSearchEvents(futureEvents) : [];
+  const filteredCurrentEvents = currentEvents
+    ? filterAndSearchEvents(currentEvents)
+    : [];
+  const filteredFutureEvents = futureEvents
+    ? filterAndSearchEvents(futureEvents)
+    : [];
 
   return (
     <main className="flex-1 overflow-y-auto pb-20 px-4">
@@ -84,8 +117,8 @@ const ExploreView = ({ allEvents, searchQuery, setCurrentView }: {
       <section className="mt-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Events Right Now</h2>
-          <button 
-            onClick={() => setCurrentView('events')} 
+          <button
+            onClick={() => setCurrentView("events")}
             className="text-sm text-indigo-400"
           >
             See All
@@ -134,9 +167,7 @@ const ExploreView = ({ allEvents, searchQuery, setCurrentView }: {
             <h3 className="text-sm font-bold text-center ml-1 mr-3">
               Join our future events!
             </h3>
-            <p className="text-sm opacity-90 text-center">
-              Get 1 free request
-            </p>
+            <p className="text-sm opacity-90 text-center">Get 1 free request</p>
           </div>
           <Link href="/waitlist">
             <button className="ml-auto bg-white text-indigo-600 font-semibold py-2 px-4 rounded-md">
@@ -150,8 +181,8 @@ const ExploreView = ({ allEvents, searchQuery, setCurrentView }: {
       <section className="mt-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Events Coming Soon</h2>
-          <button 
-            onClick={() => setCurrentView('events')} 
+          <button
+            onClick={() => setCurrentView("events")}
             className="text-sm text-indigo-400"
           >
             See All
@@ -193,19 +224,24 @@ const ExploreView = ({ allEvents, searchQuery, setCurrentView }: {
   );
 };
 
-const AllEventsView = ({ allEvents, searchQuery }: { 
+const AllEventsView = ({
+  allEvents,
+  searchQuery,
+}: {
   allEvents: Event[] | null;
   searchQuery: string;
 }) => {
-
-  const sortedEvents = allEvents?.sort((a, b) => 
-    new Date(a.eventDateTime).getTime() - new Date(b.eventDateTime).getTime()
-  ) || [];
+  const sortedEvents =
+    allEvents?.sort(
+      (a, b) =>
+        new Date(a.eventDateTime).getTime() -
+        new Date(b.eventDateTime).getTime()
+    ) || [];
 
   const filteredEvents = useMemo(() => {
     if (!searchQuery) return sortedEvents;
     const fuse = createFuseInstance(sortedEvents);
-    return fuse.search(searchQuery).map(result => result.item);
+    return fuse.search(searchQuery).map((result) => result.item);
   }, [sortedEvents, searchQuery]);
 
   return (
@@ -238,45 +274,94 @@ const AllEventsView = ({ allEvents, searchQuery }: {
   );
 };
 
+// UserView component
+const UserView = () => {
+  const { isSignedIn, user } = useUser();
+
+  return (
+    <div className="h-full flex flex-col items-center justify-center">
+      {isSignedIn ? (
+        <>
+          <h2 className="text-2xl font-semibold">Welcome, {user.firstName}!</h2>
+          <UserButton />
+        </>
+      ) : (
+        <div className="flex flex-col items-center">
+          <SignIn
+            routing="hash"
+            appearance={{
+              elements: {
+                footerAction: "hidden",
+              },
+              variables: {
+                colorBackground: "#1a202c",
+                colorPrimary: "rgba(86,105,255,1)",
+                colorText: "white",
+              },
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
 const Index = () => {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [fadeOut, setFadeOut] = useState(false);
   const [allEvents, setAllEvents] = useState<Event[] | null>(null);
   const [imagesLoaded, setImagesLoaded] = useState(false);
-  const [currentView, setCurrentView] = useState<'explore' | 'events'>('explore');
+  const [currentView, setCurrentView] = useState<"explore" | "events" | "user">(
+    "explore"
+  );
   const [searchQuery, setSearchQuery] = useState("");
+  const { isSignedIn, user } = useUser();
+  const [eventName, setEventName] = useState("");
+  const [eventImage, setEventImage] = useState("");
+  const [eventLocation, setEventLocation] = useState("");
+  const [requestFee, setRequestFee] = useState(0);
+  const [eventNameError, setEventNameError] = useState(false);
+  const [eventImageError, setEventImageError] = useState(false);
+  const [eventDateError, setEventDateError] = useState(false);
+  const [eventLocationError, setEventLocationError] = useState(false);
+  const [requestFeeError, setRequestFeeError] = useState(false);
+  const [date, setDate] = React.useState<Date>()
 
   // Add new useEffect for image preloading
   useEffect(() => {
     const logoImage = new window.Image();
     logoImage.src = "/RequestLogoDark.png";
 
-    document.ontouchmove = function(event){
+    document.ontouchmove = function (event) {
       event.preventDefault();
-  }
-    
+    };
+
     Promise.all([
       new Promise((resolve) => {
         logoImage.onload = resolve;
-      })
+      }),
     ]).then(() => {
       setImagesLoaded(true);
     });
   }, []);
+  
+  useEffect(() => {
+    console.log(date)
+  }, [date]);
 
   useEffect(() => {
     // Check if event data is already cached
-    const cachedEvents = localStorage.getItem("allEvents");
-    if (cachedEvents) {
-      const data = JSON.parse(cachedEvents);
-      setAllEvents(data);
-      setFadeOut(true);
-      setTimeout(() => {
-        setLoading(false);
-      }, 200);
-      return;
-    }
+    // const cachedEvents = localStorage.getItem("allEvents");
+    // if (cachedEvents) {
+    //   const data = JSON.parse(cachedEvents);
+    //   setAllEvents(data);
+    //   setFadeOut(true);
+    //   setTimeout(() => {
+    //     setLoading(false);
+    //   }, 200);
+    //   return;
+    // }
 
     // Fetch all events if not cached
     apiFetch("/events/all")
@@ -302,22 +387,225 @@ const Index = () => {
   }, [router]);
 
 
+  const handleSubmit = async () => {
+    // Reset error states
+    setEventNameError(false);
+    setEventImageError(false);
+    setEventDateError(false);
+    setEventLocationError(false);
+    setRequestFeeError(false);
+
+    // Validation flags
+    let isValid = true;
+
+    // Validate Event Name
+    if (!eventName) {
+        setEventNameError(true);
+        isValid = false;
+    }
+
+    // Validate Event Image URL
+    if (!eventImage) {
+        setEventImageError(true);
+        isValid = false;
+    }
+
+    // Validate Event Location
+    if (!eventLocation) {
+        setEventLocationError(true);
+        isValid = false;
+    }
+
+    // Validate Request Fee
+    if (requestFee <= 50) {
+        setRequestFeeError(true);
+        isValid = false;
+    }
+
+    // If any validation fails, prevent submission
+    if (!isValid) {
+        return;
+    }
+
+    // Proceed with event creation logic
+    const eventData = {
+        eventName,
+        eventImage,
+        eventDateTime: date ? date.toISOString() : null, // Convert to ISO string
+        eventLocation,
+        requestFee,
+        djId: user?.id, // Use the user's Clerk user ID
+    };
+
+    setLoading(true);
+
+    try {
+        const response = await apiFetch('/events/create', {
+            method: 'POST',
+            body: JSON.stringify(eventData),
+        });
+
+        if (response.ok) {
+            console.log("Event created successfully:", await response.json());
+            // Optionally reset form fields after successful submission
+            setEventName("");
+            setEventImage("");
+            setEventLocation("");
+            setRequestFee(0);
+            setDate(undefined); // Reset date
+
+            // Close the dialog after a short delay
+            setTimeout(() => {
+                setLoading(false);
+                setFadeOut(true); // Trigger fade out effect
+            }, 1000); // Adjust delay as needed
+        } else {
+            console.error("Failed to create event:", response);
+        }
+    } catch (error) {
+        console.error("Error creating event:", error);
+    } finally {
+        setLoading(false); // Ensure loading state is reset
+    }
+  };
+
   if (loading || !imagesLoaded) {
     return (
-      <div className={`transition-opacity duration-300 ${fadeOut ? 'opacity-0' : 'opacity-100'}`}>
+      <div
+        className={`transition-opacity duration-300 ${fadeOut ? "opacity-0" : "opacity-100"}`}
+      >
         <Loader />
       </div>
     );
   }
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-gray-900 text-white"
-      style={{ 
-        overscrollBehavior: 'none',
-        touchAction: 'none'
+      style={{
+        overscrollBehavior: "none",
+        touchAction: "none",
       }}
     >
+      {/* Conditional Dialog Button */}
+      {isSignedIn && (
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="fixed top-4 right-4 bg-indigo-600 text-white rounded-full p-2 shadow-lg z-50 w-12">
+              +
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create Event</DialogTitle>
+              <DialogDescription>
+                Fill in the details to create a new event.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4">
+              <div>
+                <Label htmlFor="eventName">Event Name</Label>
+                <Input
+                  id="eventName"
+                  value={eventName}
+                  onChange={(e) => setEventName(e.target.value)}
+                  placeholder="Enter event name"
+                  className={eventNameError ? "border-red-500" : ""}
+                />
+                {eventNameError && (
+                  <p className="text-red-500">Event name is required.</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="eventImage">Event Image URL</Label>
+                <Input
+                  id="eventImage"
+                  value={eventImage}
+                  onChange={(e) => setEventImage(e.target.value)}
+                  placeholder="Enter event image URL"
+                  className={eventImageError ? "border-red-500" : ""}
+                />
+                {eventImageError && (
+                  <p className="text-red-500">Image URL is required.</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="eventDateTime">Event Date & Time</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-[280px] justify-start text-left font-normal",
+                        !date && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon />
+                      {date ? format(date, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={date}
+                      onSelect={setDate}
+                      disabled={(date) => date <= new Date()}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+                {eventDateError && (
+                  <p className="text-red-500">Date must be in the future.</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="eventLocation">Event Location</Label>
+                <Input
+                  id="eventLocation"
+                  value={eventLocation}
+                  onChange={(e) => setEventLocation(e.target.value)}
+                  placeholder="Enter event location"
+                  className={eventLocationError ? "border-red-500" : ""}
+                />
+                {eventLocationError && (
+                  <p className="text-red-500">Location is required.</p>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="requestFee">Request Fee</Label>
+                <Input
+                  id="requestFee"
+                  type="number"
+                  value={requestFee == 0 ? "" : requestFee}
+                  onChange={(e) => setRequestFee(Number(e.target.value))}
+                  placeholder="Enter request fee (must be more than 50)"
+                  className={requestFeeError ? "border-red-500" : ""}
+                />
+                {requestFeeError && (
+                  <p className="text-red-500">
+                    Fee must be more than 50 cents.
+                  </p>
+                )}
+              </div>
+            </div>
+            <DialogFooter className="sm:justify-start">
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                className="bg-indigo-600 text-white"
+              >
+                Create Event
+              </Button>
+              <DialogClose asChild>
+                <Button type="button" variant="secondary">
+                  Close
+                </Button>
+              </DialogClose>
+            </DialogFooter>
+            {loading && <div className="loader">Loading...</div>}
+          </DialogContent>
+        </Dialog>
+      )}
       {/* Fixed header and search section */}
       <div className="fixed top-0 left-0 right-0 z-10 bg-gray-900">
         <header className="bg-gray-900 dark:bg-gray-900 w-full py-1 px-4 flex justify-center h-14 mb-3 mt-2">
@@ -343,17 +631,27 @@ const Index = () => {
               viewBox="0 0 24 24"
               stroke="currentColor"
             >
-              <path d="M21 21l-4.35-4.35" strokeWidth="2" strokeLinecap="round" />
-              <circle cx="10" cy="10" r="6" strokeWidth="2" strokeLinecap="round" />
+              <path
+                d="M21 21l-4.35-4.35"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+              <circle
+                cx="10"
+                cy="10"
+                r="6"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
             </svg>
             <input
               type="text"
               placeholder="Search..."
               className="w-full bg-transparent outline-none text-sm text-gray-200 ml-2"
-              style={{ fontSize: '16px' }}
+              style={{ fontSize: "16px" }}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              onClick={() => setCurrentView('events')}
+              onClick={() => setCurrentView("events")}
             />
           </div>
         </div>
@@ -361,42 +659,47 @@ const Index = () => {
 
       {/* Content area */}
       <div className="absolute inset-0 pt-32 pb-16">
-        {currentView === 'explore' ? (
-          <ExploreView 
-            allEvents={allEvents} 
+        {currentView === "explore" ? (
+          <ExploreView
+            allEvents={allEvents}
             searchQuery={searchQuery}
             setCurrentView={setCurrentView}
           />
+        ) : currentView === "user" ? (
+          <UserView />
         ) : (
-          <AllEventsView 
-            allEvents={allEvents} 
-            searchQuery={searchQuery}
-          />
+          <AllEventsView allEvents={allEvents} searchQuery={searchQuery} />
         )}
       </div>
 
       {/* Bottom nav bar */}
       <nav className="fixed bottom-0 w-full bg-gray-900 border-t border-gray-800 py-2 flex justify-around items-center">
-        <button 
-          className={`flex flex-col items-center text-xs ${currentView === 'explore' ? 'text-white' : 'text-gray-400'}`}
-          onClick={() => setCurrentView('explore')}
+        <button
+          className={`flex flex-col items-center text-xs ${currentView === "explore" ? "text-white" : "text-gray-400"}`}
+          onClick={() => setCurrentView("explore")}
         >
           <FaHome className="h-5 w-5 mb-1" />
           Explore
         </button>
 
-        <button 
-          className={`flex flex-col items-center text-xs ${currentView === 'events' ? 'text-white' : 'text-gray-400'}`}
-          onClick={() => setCurrentView('events')}
+        <button
+          className={`flex flex-col items-center text-xs ${currentView === "events" ? "text-white" : "text-gray-400"}`}
+          onClick={() => setCurrentView("events")}
         >
           <FaMusic className="h-5 w-5 mb-1" />
           Events
         </button>
 
-        <button className="flex flex-col items-center text-xs text-gray-400">
-          <FaUser className="h-5 w-5 mb-1" />
-          User
-        </button>
+        {isSignedIn ? (
+          <UserButton />
+        ) : (
+          <button
+            className="flex flex-col items-center text-xs text-gray-400"
+            onClick={() => (isSignedIn ? null : setCurrentView("user"))}
+          >
+            <FaUser className="h-5 w-5 mb-1" />
+          </button>
+        )}
       </nav>
     </div>
   );

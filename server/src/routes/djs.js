@@ -50,7 +50,7 @@ router.get('/getById', async (req, res) => {
 // Create new DJ
 router.post('/create', async (req, res) => {
     try {
-        const { djName, djEmail, djPhone, djInsta } = req.body;
+        const { djId, djName, djEmail, djPhone, djInsta } = req.body;
 
         // Validate required fields
         if (!djName || !djEmail) {
@@ -60,6 +60,7 @@ router.post('/create', async (req, res) => {
         }
 
         const newDJ = await DJ.create({
+            djId,
             djName,
             djEmail,
             djPhone,
@@ -190,6 +191,35 @@ router.get('/getEvents', async (req, res) => {
 //     }
 // });
 
+// Webhook to create a new DJ
+router.post('/webhook/create', async (req, res) => {
+    try {
+        const { data } = req.body;
+        const firstName = data.first_name;
+        const email = data.email_addresses[0]?.email_address; // Get the first email address
+        const djId = data.id; // Assign userId to djId
 
+        // Validate required fields
+        if (!firstName || !email || !djId) {
+            return res.status(400).json({ 
+                error: 'First name, email, and DJ ID are required' 
+            });
+        }
+
+        const newDJ = await DJ.create({
+            djId, // Assigning userId to djId
+            djName: firstName, // Assuming djName is the first name
+            djEmail: email,
+            // You can add more fields if needed, e.g., phone, Instagram, etc.
+        });
+
+        res.status(201).json(newDJ);
+    } catch (error) {
+        res.status(500).json({ 
+            error: 'Failed to create DJ from webhook',
+            details: error.message 
+        });
+    }
+});
 
 module.exports = router;

@@ -3,8 +3,7 @@ const sequelize = require('../config/database');
 
 const DJ = sequelize.define('DJ', {
   djId: {
-    type: DataTypes.UUID,
-    defaultValue: DataTypes.UUIDV4,
+    type: DataTypes.STRING,
     primaryKey: true
   },
   djName: { type: DataTypes.STRING, allowNull: false },
