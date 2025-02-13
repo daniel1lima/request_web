@@ -90,7 +90,20 @@ const EventAdminPage = () => {
 
   const [noRequests, setNoRequests] = useState(false);
 
-  const isMobile = window.innerWidth <= 768; // Check if the device is mobile
+  const [isMobile, setIsMobile] = useState(false); // State to track mobile status
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768); // Check if the device is mobile
+    };
+
+    handleResize(); // Initial check
+    window.addEventListener("resize", handleResize); // Add event listener
+
+    return () => {
+      window.removeEventListener("resize", handleResize); // Cleanup listener
+    };
+  }, []);
 
   useEffect(() => {
     const eventId = new URL(window.location.href).searchParams.get("eventId");
