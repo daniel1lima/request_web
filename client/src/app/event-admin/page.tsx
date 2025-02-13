@@ -55,23 +55,23 @@ const Loader = () => (
 
 // Helper function to validate API response
 const validateResponse = (response: any) => {
-  if ('ok' in response && !response.ok) {
+  if ("ok" in response && !response.ok) {
     throw new Error("Network response was not ok");
   }
-  if ('success' in response && !response.success) {
+  if ("success" in response && !response.success) {
     throw new Error("Request failed");
   }
   return response.json();
 };
 
 const validateResponseNoReturn = (response: any) => {
-  if ('ok' in response && !response.ok) {
+  if ("ok" in response && !response.ok) {
     throw new Error("Network response was not ok");
   }
-  if ('success' in response && !response.success) {
+  if ("success" in response && !response.success) {
     throw new Error("Request failed");
   }
-  return ;
+  return;
 };
 
 const EventAdminPage = () => {
@@ -90,6 +90,8 @@ const EventAdminPage = () => {
 
   const [noRequests, setNoRequests] = useState(false);
 
+  const isMobile = window.innerWidth <= 768; // Check if the device is mobile
+
   useEffect(() => {
     const eventId = new URL(window.location.href).searchParams.get("eventId");
     if (!eventId || !user) return;
@@ -97,22 +99,24 @@ const EventAdminPage = () => {
     localStorage.setItem("eventId", eventId);
     setLoading(true);
 
-    const fetchEventData = apiFetch(`/events/getById?eventId=${eventId}`)
-      .then(validateResponse);
+    const fetchEventData = apiFetch(`/events/getById?eventId=${eventId}`).then(
+      validateResponse
+    );
 
-    const fetchSongRequests = apiFetch(`/requests/getByEvent?eventId=${eventId}`)
+    const fetchSongRequests = apiFetch(
+      `/requests/getByEvent?eventId=${eventId}`
+    )
       .then(validateResponse)
       .catch(() => []);
 
     const djId = localStorage.getItem("djId");
-    const fetchDJData = djId 
+    const fetchDJData = djId
       ? apiFetch(`/djs/getById?djId=${djId}`).then(validateResponse)
       : Promise.resolve(null);
 
     Promise.all([fetchEventData, fetchSongRequests, fetchDJData])
       .then(([eventData, songRequestsData, djData]) => {
         if (user?.id !== djData?.djId) {
-          
           window.location.href = `/event?eventId=${eventId}`;
           return;
         }
@@ -120,9 +124,11 @@ const EventAdminPage = () => {
         setEventTitle(eventData.eventName || "Event");
         setEventImage(eventData.eventImage || "");
         setRequestFee(eventData.requestFee || 0);
-        setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : []);
+        setSongRequests(
+          Array.isArray(songRequestsData) ? songRequestsData : []
+        );
         setDjData(djData && !djData.error ? djData : null);
-        
+
         setNoRequests(songRequestsData.length === 0);
       })
       .catch((error) => {
@@ -151,13 +157,14 @@ const EventAdminPage = () => {
 
   const playedRequest = async (requestId: string) => {
     setLoadingStates((prev) => ({ ...prev, [requestId]: true }));
-    
+
     try {
       const request = songRequests.find((req) => req.requestId === requestId);
       if (!request?.paymentId) return;
 
-      const paymentData = await apiFetch(`/payment/${request.paymentId}`)
-        .then(validateResponse);
+      const paymentData = await apiFetch(`/payment/${request.paymentId}`).then(
+        validateResponse
+      );
 
       await apiFetch(
         `/stripe/capturePaymentIntent?intentId=${request.paymentId}&capture=${paymentData.amount}`,
@@ -199,7 +206,7 @@ const EventAdminPage = () => {
         }).then(validateResponseNoReturn),
         apiFetch(`/requests/delete?requestId=${requestId}`, {
           method: "DELETE",
-        }).then(validateResponseNoReturn)
+        }).then(validateResponseNoReturn),
       ]);
     } catch (error) {
       console.error("Error cancelling payment:", error);
@@ -252,147 +259,159 @@ const EventAdminPage = () => {
             </div>
 
             {/* DJ Profile moved to header with transparent grey card, aligned to the absolute right */}
-            <div className="absolute right-0 bg-opacity-90 rounded-lg flex items-center justify-center ">
+            <div className="absolute right-0 bg-opacity-90 rounded-lg flex items-center justify-center pr-8">
               <DJProfile
-                name={djData?.djName || "SAMPLE DJ"}
+                name={djData?.djName || "DJ Zo"}
                 role="Main Event DJ"
                 image="https://cdn.builder.io/api/v1/image/assets/TEMP/07768e6beee3d7f47f88d0798e6e2e885f8e8b62f39f33f7eac92fdf4c2d3eeb?placeholderIfAbsent=true"
+                insta={
+                  djData?.djInsta
+                    ? isMobile
+                      ? `instagram://user/${djData.djInsta}`
+                      : `https://www.instagram.com/${djData.djInsta}`
+                    : ""
+                }
               />
             </div>
           </div>
         </div>
       </div>
-        {noRequests ? 
+      {noRequests ? (
         <div className="flex items-center justify-center h-[80vh] mb-20">
           <div className="text-center">
             <h2 className="text-4xl font-bold">No requests yet</h2>
-            <p className="text-2xl text-gray-500">Check back later for song requests</p>
-          </div>
-        </div> :
-        
-        <div className="max-w-7xl mx-auto p-8">
-        {/* Statistics Cards Section */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          {/* Songs Requested Card */}
-          <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-white">Songs Requested</h3>
-            </div>
-            <p className="text-4xl font-semibold text-white">
-              {songRequests.length}
-            </p>
-          </div>
-
-          {/* Songs Played Card */}
-          <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-white">Songs Played</h3>
-            </div>
-            <p className="text-4xl font-semibold text-white">
-              {songRequests.filter((req) => req.played).length}
-            </p>
-          </div>
-
-          {/* DJ Earnings Card */}
-          <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
-            <div>
-              <h3 className="text-xl font-bold text-white">DJ Earnings</h3>
-            </div>
-            <p className="text-4xl font-semibold text-white">
-              ${(songRequests.filter((req) => req.played).length * requestFee) / 100}
+            <p className="text-2xl text-gray-500">
+              Check back later for song requests
             </p>
           </div>
         </div>
+      ) : (
+        <div className="max-w-7xl mx-auto p-8">
+          {/* Statistics Cards Section */}
+          <div className="grid grid-cols-3 gap-4 mb-8">
+            {/* Songs Requested Card */}
+            <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-white">
+                  Songs Requested
+                </h3>
+              </div>
+              <p className="text-4xl font-semibold text-white">
+                {songRequests.length}
+              </p>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-full">
-          {/* Accepted Songs Column */}
-          <div className="bg-gray-800 rounded-xl p-6 shadow-xl overflow-y-auto">
-            <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
-              Accepted Requests
-            </h2>
-            <div className="space-y-4">
-              {songRequests
-                .filter((req) => req.accepted && !req.played)
-                .map((request) => (
-                  <div
-                    key={request.requestId}
-                    className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <SongCard
-                        image={request.songImage}
-                        title={request.songName}
-                        artist={request.songArtist}
-                        reactions={request.requestUpvotes}
-                      />
-                      <button
-                        onClick={() => playedRequest(request.requestId)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
-                        disabled={loadingStates[request.requestId]}
-                      >
-                        {loadingStates[request.requestId] ? (
-                          <Loader2 className="w-6 h-6 text-white animate-spin" />
-                        ) : (
-                          <FaCheck className="w-6 h-6 text-white" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))}
+            {/* Songs Played Card */}
+            <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-white">Songs Played</h3>
+              </div>
+              <p className="text-4xl font-semibold text-white">
+                {songRequests.filter((req) => req.played).length}
+              </p>
+            </div>
+
+            {/* DJ Earnings Card */}
+            <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-white">DJ Earnings</h3>
+              </div>
+              <p className="text-4xl font-semibold text-white">
+                $
+                {(songRequests.filter((req) => req.played).length *
+                  requestFee) /
+                  100}
+              </p>
             </div>
           </div>
 
-          {/* Requested Songs Column */}
-          <div className="bg-gray-800 rounded-xl p-6 shadow-xl  overflow-y-auto">
-            <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
-              New Requests
-            </h2>
-            <div className="space-y-4">
-              {songRequests
-                .filter((req) => !req.accepted && !req.played)
-                .map((request) => (
-                  <div
-                    key={request.requestId}
-                    className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group "
-                  >
-                    <div className="flex items-center space-x-4 w-[300px] max-w-[300px]">
-                      <SongCard
-                        image={request.songImage}
-                        title={request.songName}
-                        artist={request.songArtist}
-                        reactions={request.requestUpvotes}
-                      />
-                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-full">
+            {/* Accepted Songs Column */}
+            <div className="bg-gray-800 rounded-xl p-6 shadow-xl overflow-y-auto">
+              <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
+                Accepted Requests
+              </h2>
+              <div className="space-y-4">
+                {songRequests
+                  .filter((req) => req.accepted && !req.played)
+                  .map((request) => (
+                    <div
+                      key={request.requestId}
+                      className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
+                    >
+                      <div className="flex items-center space-x-4">
+                        <SongCard
+                          image={request.songImage}
+                          title={request.songName}
+                          artist={request.songArtist}
+                          reactions={request.requestUpvotes}
+                        />
                         <button
-                          onClick={() => acceptRequest(request.requestId)}
-                          className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
-                        >
-                          <FaCheck className="w-6 h-6 text-white" />
-                        </button>
-                        <button
-                          onClick={() => declineRequest(request.requestId)}
-                          className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
+                          onClick={() => playedRequest(request.requestId)}
+                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
                           disabled={loadingStates[request.requestId]}
                         >
                           {loadingStates[request.requestId] ? (
                             <Loader2 className="w-6 h-6 text-white animate-spin" />
                           ) : (
-                            <FaTimes className="w-6 h-6 text-white" />
+                            <FaCheck className="w-6 h-6 text-white" />
                           )}
                         </button>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+              </div>
+            </div>
+
+            {/* Requested Songs Column */}
+            <div className="bg-gray-800 rounded-xl p-6 shadow-xl  overflow-y-auto">
+              <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
+                New Requests
+              </h2>
+              <div className="space-y-4">
+                {songRequests
+                  .filter((req) => !req.accepted && !req.played)
+                  .map((request) => (
+                    <div
+                      key={request.requestId}
+                      className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group "
+                    >
+                      <div className="flex items-center space-x-4 w-[300px] max-w-[300px]">
+                        <SongCard
+                          image={request.songImage}
+                          title={request.songName}
+                          artist={request.songArtist}
+                          reactions={request.requestUpvotes}
+                        />
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
+                          <button
+                            onClick={() => acceptRequest(request.requestId)}
+                            className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
+                          >
+                            <FaCheck className="w-6 h-6 text-white" />
+                          </button>
+                          <button
+                            onClick={() => declineRequest(request.requestId)}
+                            className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
+                            disabled={loadingStates[request.requestId]}
+                          >
+                            {loadingStates[request.requestId] ? (
+                              <Loader2 className="w-6 h-6 text-white animate-spin" />
+                            ) : (
+                              <FaTimes className="w-6 h-6 text-white" />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
-          }
-      
+      )}
     </div>
   );
 };
-
 
 export default EventAdminPage;

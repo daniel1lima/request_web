@@ -5,9 +5,11 @@ import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { redirect, useRouter } from "next/navigation";
 import "../globals.css";
 import apiFetch from "@/utils/api";
+import { useUser } from "@clerk/nextjs";
+import { Button } from "@/components/button";
 
 export interface request {
   requestId: number;
@@ -73,6 +75,26 @@ const Loader = () => (
     </div>
   </div>
 );
+
+const EventOwnershipDisclaimer = ({ djId }: { djId: string }) => {
+  const { user } = useUser();
+  const isOwner = user?.id === djId;
+
+  return (
+    <div className="text-gray-200 dark:text-gray-200 text-sm mt-6">
+      {isOwner ? (
+        <div>
+        <Button className="outline-double" variant={"outline"} onClick={() => {redirect(`/event-admin?eventId=${localStorage.getItem('eventId')}`)}}>
+          Admin Dashboard
+        </Button>
+
+        </div>
+      ) : (
+        <p>This event is not owned by you.</p>
+      )}
+    </div>
+  );
+};
 
 const Index = () => {
   const router = useRouter();
@@ -191,13 +213,18 @@ const Index = () => {
           title={eventData?.eventName || "Default Event Title"}
           imageUrl={eventData?.eventImage}
         />
+        
 
         <div className="flex flex-col items-center w-full px-4 pb-20 overflow-y-auto flex-1">
           <DJProfile
             name={djData?.djName || "DJ Zo"}
             role="Main Event DJ"
             image="https://cdn.builder.io/api/v1/image/assets/TEMP/07768e6beee3d7f47f88d0798e6e2e885f8e8b62f39f33f7eac92fdf4c2d3eeb?placeholderIfAbsent=true"
+            insta={djData?.djInsta ? (isMobile ? `instagram://user/${djData.djInsta}` : `https://www.instagram.com/${djData.djInsta}`) : ''}
           />
+          <div>
+            <EventOwnershipDisclaimer djId={eventData?.djId} />
+          </div>
 
           <h2 className="text-gray-200 dark:text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">
             Song Queue

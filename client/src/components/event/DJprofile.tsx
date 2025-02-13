@@ -1,12 +1,15 @@
-import React from 'react';
+import React from "react";
+import { FaInstagram } from "react-icons/fa";
+import { Button } from "../button";
 
 interface DJProfileProps {
   name: string;
   role: string;
   image: string;
+  insta: string
 }
 
-const DJProfile: React.FC<DJProfileProps> = ({ name, role, image }) => {
+const DJProfile: React.FC<DJProfileProps> = ({ name, role, image, insta }) => {
   return (
     <div className="flex w-full max-w-[331px] items-stretch gap-5 font-light justify-between pt-6">
       <div className="flex items-stretch gap-[13px]">
@@ -25,9 +28,12 @@ const DJProfile: React.FC<DJProfileProps> = ({ name, role, image }) => {
           </div>
         </div>
       </div>
-      <button className="bg-[rgba(86,105,255,1)] shadow-[0px_8px_20px_rgba(74,210,228,0.082)] text-xs text-white whitespace-nowrap text-center my-auto px-3 py-[7px] rounded-[7px]">
-        Follow
-      </button>
+
+      <div className="flex flex-row gap-3">
+        <Button className="bg-[rgba(86,105,255,1)] shadow-[0px_8px_20px_rgba(74,210,228,0.082)] text-xs text-white whitespace-nowrap text-center my-auto px-3 py-[7px] rounded-[7px]" onClick={() => {window.open(insta, 'instagram.com')}}>
+          <FaInstagram />
+        </Button>
+      </div>
     </div>
   );
 };

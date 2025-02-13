@@ -87,6 +87,22 @@ const ExploreView = ({
 }) => {
   const now = new Date();
   const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+  
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Add useEffect to detect mobile device
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768); // Adjust the width as needed for mobile detection
+    };
+
+    handleResize(); // Check on initial load
+    window.addEventListener("resize", handleResize);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   const filterAndSearchEvents = (events: Event[]) => {
     if (!searchQuery) return events;
@@ -126,14 +142,14 @@ const ExploreView = ({
         </div>
 
         {/* Events grid or list */}
-        <div className="mt-4 p-4 pb-4 bg-white bg-opacity-5 rounded-lg shadow-md h-58 overflow-x-auto whitespace-nowrap ">
+        <div className="mt-4 p-4 pb-4 bg-white bg-opacity-5 rounded-lg shadow-md h-48 overflow-hidden whitespace-nowrap ">
           <div className="flex gap-4">
             {filteredCurrentEvents.length > 0 ? (
               filteredCurrentEvents.map((event) => {
                 return (
                   <div
                     key={event.eventId}
-                    className="inline-block cursor-pointer hover:bg-gray-700 transition"
+                    className="cursor-pointer transition"
                     onClick={() => {
                       redirect(`/event?eventId=${event.eventId}`);
                     }}
@@ -178,48 +194,50 @@ const ExploreView = ({
       </section>
 
       {/* Events After 24 Hours */}
-      <section className="mt-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Events Coming Soon</h2>
-          <button
-            onClick={() => setCurrentView("events")}
-            className="text-sm text-indigo-400"
-          >
-            See All
-          </button>
-        </div>
-
-        {/* Events grid or list */}
-        <div className="mt-4 p-4 bg-white bg-opacity-5 rounded-lg shadow-md h-58 overflow-x-auto whitespace-nowrap ">
-          <div className="flex gap-4">
-            {filteredFutureEvents.length > 0 ? (
-              filteredFutureEvents.map((event) => (
-                <div
-                  key={event.eventId}
-                  className="inline-block cursor-pointer hover:bg-gray-700 transition"
-                  onClick={() => {
-                    redirect(`/event?eventId=${event.eventId}`);
-                  }}
-                >
-                  <EventCard
-                    image={event.eventImage}
-                    title={event.eventName}
-                    date={new Date(event.eventDateTime).toLocaleDateString()}
-                    location={event.eventLocation}
-                  />
-                </div>
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full w-full text-gray-400">
-                <p className="text-5xl mb-2">😔</p>
-                <p className="text-center text-sm">
-                  Sorry, Nothing Here Just Yet
-                </p>
-              </div>
-            )}
+      {!isMobile && (
+        <section className="mt-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Events Coming Soon</h2>
+            <button
+              onClick={() => setCurrentView("events")}
+              className="text-sm text-indigo-400"
+            >
+              See All
+            </button>
           </div>
-        </div>
-      </section>
+
+          {/* Events grid or list */}
+          <div className="mt-4 p-4 bg-white bg-opacity-5 rounded-lg shadow-md h-58 overflow-x-auto whitespace-nowrap ">
+            <div className="flex gap-4">
+              {filteredFutureEvents.length > 0 ? (
+                filteredFutureEvents.map((event) => (
+                  <div
+                    key={event.eventId}
+                    className="inline-block cursor-pointer  transition"
+                    onClick={() => {
+                      redirect(`/event?eventId=${event.eventId}`);
+                    }}
+                  >
+                    <EventCard
+                      image={event.eventImage}
+                      title={event.eventName}
+                      date={new Date(event.eventDateTime).toLocaleDateString()}
+                      location={event.eventLocation}
+                    />
+                  </div>
+                ))
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full w-full text-gray-400">
+                  <p className="text-5xl mb-2">😔</p>
+                  <p className="text-center text-sm">
+                    Sorry, Nothing Here Just Yet
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
     </main>
   );
 };
@@ -276,27 +294,34 @@ const AllEventsView = ({
 
 // UserView component
 const UserView = () => {
-  const { isSignedIn, user } = useUser();
+  const { isSignedIn } = useUser();
+
+  useEffect(() => {
+    if (isSignedIn) {
+      redirect('/')
+
+    }
+
+  }, [isSignedIn])
 
   return (
     <div className="h-full flex flex-col items-center justify-center">
-      {isSignedIn ? (
-        <>
-          <h2 className="text-2xl font-semibold">Welcome, {user.firstName}!</h2>
-          <UserButton />
-        </>
-      ) : (
+      {!isSignedIn && (
         <div className="flex flex-col items-center">
           <SignIn
             routing="hash"
             appearance={{
               elements: {
                 footerAction: "hidden",
+                alternativeMethodsBlockButton: 'text-[white]'
               },
               variables: {
                 colorBackground: "#1a202c",
                 colorPrimary: "rgba(86,105,255,1)",
                 colorText: "white",
+                colorTextSecondary: "white",
+                colorTextOnPrimaryBackground: 'white',
+                colorInputBackground: 'white'
               },
             }}
           />
@@ -304,7 +329,7 @@ const UserView = () => {
       )}
     </div>
   );
-};
+}
 
 const Index = () => {
   const router = useRouter();
@@ -385,7 +410,6 @@ const Index = () => {
         router.push("/404");
       });
   }, [router]);
-
 
   const handleSubmit = async () => {
     // Reset error states
@@ -607,55 +631,57 @@ const Index = () => {
         </Dialog>
       )}
       {/* Fixed header and search section */}
-      <div className="fixed top-0 left-0 right-0 z-10 bg-gray-900">
-        <header className="bg-gray-900 dark:bg-gray-900 w-full py-1 px-4 flex justify-center h-14 mb-3 mt-2">
-          <div className="flex items-center">
-            <Image
-              src="/RequestLogoDark.png"
-              alt="Logo"
-              width={120}
-              height={120}
-              className="object-contain"
-              priority
-            />
-          </div>
-        </header>
+      {!(currentView == 'user') && (
+        <div className="fixed top-0 left-0 right-0 z-10 bg-gray-900">
+          <header className="bg-gray-900 dark:bg-gray-900 w-full py-1 px-4 flex justify-center h-14 mb-3 mt-2">
+            <div className="flex items-center">
+              <Image
+                src="/RequestLogoDark.png"
+                alt="Logo"
+                width={120}
+                height={120}
+                className="object-contain"
+                priority
+              />
+            </div>
+          </header>
 
-        {/* Search bar */}
-        <div className="px-4 py-3 bg-gray-900">
-          <div className="flex items-center bg-gray-800 rounded-lg px-3 py-2">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5 text-gray-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                d="M21 21l-4.35-4.35"
-                strokeWidth="2"
-                strokeLinecap="round"
+          {/* Search bar */}
+          <div className="px-4 py-3 bg-gray-900">
+            <div className="flex items-center bg-gray-800 rounded-lg px-3 py-2">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-5 w-5 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  d="M21 21l-4.35-4.35"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+                <circle
+                  cx="10"
+                  cy="10"
+                  r="6"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
+              </svg>
+              <input
+                type="text"
+                placeholder="Search..."
+                className="w-full bg-transparent outline-none text-sm text-gray-200 ml-2"
+                style={{ fontSize: "16px" }}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onClick={() => setCurrentView("events")}
               />
-              <circle
-                cx="10"
-                cy="10"
-                r="6"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search..."
-              className="w-full bg-transparent outline-none text-sm text-gray-200 ml-2"
-              style={{ fontSize: "16px" }}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onClick={() => setCurrentView("events")}
-            />
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Content area */}
       <div className="absolute inset-0 pt-32 pb-16">

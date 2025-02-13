@@ -48,7 +48,7 @@ export default function EmailForm() {
           </label>
           <input
             autoComplete="email"
-            className="text-accent-500 block h-12 w-full focus:invalid:border-red-400 focus:invalid:text-red-500 focus:invalid:ring-red-500 appearance-none rounded-lg border-2 border-slate-300 px-4 py-3 placeholder-zinc-400 duration-200 focus:outline-none focus:ring-zinc-300 sm:text-md "
+            className="text-black block h-12 w-full focus:invalid:border-red-400 focus:invalid:text-red-500 focus:invalid:ring-red-500 appearance-none rounded-lg border-2 border-green-300 px-4 py-3 duration-200 focus:outline-none focus:ring-zinc-300 sm:text-md "
             pattern="[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$"
             id="email-address"
             name="email"
