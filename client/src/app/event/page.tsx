@@ -197,6 +197,7 @@ const Index = () => {
             name={djData?.djName || "DJ Zo"}
             role="Main Event DJ"
             image="https://cdn.builder.io/api/v1/image/assets/TEMP/07768e6beee3d7f47f88d0798e6e2e885f8e8b62f39f33f7eac92fdf4c2d3eeb?placeholderIfAbsent=true"
+            insta={djData?.djInsta ? (isMobile ? `instagram://user/${djData.djInsta}` : `https://www.instagram.com/${djData.djInsta}`) : ''}
           />
 
           <h2 className="text-gray-200 dark:text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">

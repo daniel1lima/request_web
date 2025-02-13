@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import './songcard.css';
 
 
@@ -15,15 +15,23 @@ interface EventCardProps {
 
 const EventCard: React.FC<EventCardProps> = ({ image, title, date, location }) => {
   const titleRef = useRef<HTMLDivElement>(null);
+  const [currentImage, setCurrentImage] = useState(image);
 
   return (
-    <div className="bg-gray-800 hover:bg-slate-700 shadow-[0px_10px_35px_rgba(87,92,138,0.06)] rounded-lg overflow-hidden flex flex-col items-center p-4">
-      <img
-        loading="lazy"
-        srcSet={image}
-        className="object-cover w-full h-32 rounded-lg"
-        alt={title}
-      />
+    <div className="bg-gray-800 hover:bg-slate-700 shadow-[0px_10px_35px_rgba(87,92,138,0.06)] rounded-lg overflow-hidden flex flex-col items-center p-2">
+      {currentImage ? 
+        <img
+          loading="lazy"
+          src={currentImage}
+          onError={() => setCurrentImage('')}
+          className="object-cover w-full h-16 rounded-lg"
+          alt={title}
+        />
+        :
+        <div className='object-cover w-full h-16 rounded-lg'>
+
+        </div>
+      }
       <div className="flex flex-col items-center mt-2">
         <div 
           ref={titleRef} 
