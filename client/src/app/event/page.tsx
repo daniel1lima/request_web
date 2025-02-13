@@ -223,7 +223,7 @@ const Index = () => {
             insta={djData?.djInsta ? (isMobile ? `instagram://user/${djData.djInsta}` : `https://www.instagram.com/${djData.djInsta}`) : ''}
           />
           <div>
-            <EventOwnershipDisclaimer djId={eventData?.djId} />
+            <EventOwnershipDisclaimer djId={eventData?.djId ?? ''} />
           </div>
 
           <h2 className="text-gray-200 dark:text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">
