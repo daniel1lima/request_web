@@ -1,7 +1,6 @@
 import React from "react";
 import { FaInstagram } from "react-icons/fa";
 import { Button } from "../button";
-import { redirect } from "next/navigation";
 
 interface DJProfileProps {
   name: string;

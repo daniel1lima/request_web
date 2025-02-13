@@ -294,7 +294,7 @@ const AllEventsView = ({
 
 // UserView component
 const UserView = () => {
-  const { isSignedIn, user } = useUser();
+  const { isSignedIn } = useUser();
 
   useEffect(() => {
     if (isSignedIn) {

@@ -8,7 +8,6 @@ import Image from "next/image";
 import { redirect, useRouter } from "next/navigation";
 import "../globals.css";
 import apiFetch from "@/utils/api";
-import { FaCheck } from "react-icons/fa";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/button";
 

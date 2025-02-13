@@ -4,7 +4,6 @@ import React from "react";
 import { Button } from "../button";
 import { ChevronLeft } from "lucide-react";
 import { redirect } from "next/navigation";
-import { FaCheck } from "react-icons/fa";
 
 interface EventHeaderProps {
   time?: string;
