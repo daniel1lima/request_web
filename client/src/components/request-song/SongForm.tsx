@@ -173,6 +173,8 @@ export const SongForm: React.FC<SongFormProps> = ({
     }
   };
 
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/; // Regex for email validation
+
   const handleFreeRequest = async () => {
     setEmailLoading(true);
 
@@ -182,14 +184,48 @@ export const SongForm: React.FC<SongFormProps> = ({
       return;
     }
 
+    // Validate email format
+    if (!emailRegex.test(email)) {
+      setEmailError("Please enter a valid email address");
+      setEmailLoading(false);
+      return;
+    }
+
     try {
+      // Check if the email already exists in the waitlist
+      const checkEmailResponse = await apiFetch(`/waitlist/check-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+      });
+
+      if (!checkEmailResponse.ok) {
+        const errorData = await checkEmailResponse.json();
+        setEmailError(errorData.error || "Error checking email");
+        setEmailLoading(false);
+        return;
+      }
+
+      const emailExists = await checkEmailResponse.json();
+      if (emailExists.exists) {
+        setEmailError("This email has already been used for a free request");
+        setEmailLoading(false);
+        return;
+      }
+
       // First try to submit email to waitlist using the correct endpoint
       const emailResponse = await apiFetch("/waitlist", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ 
+          email, 
+          eventId: localStorage.getItem("eventId"), // Retrieve eventId from local storage
+          songRequested: selectedTrack?.name // Include the song requested
+        }),
       });
 
       if (!emailResponse.ok) {
@@ -536,7 +572,7 @@ export const SongForm: React.FC<SongFormProps> = ({
                     />
                     {emailError && (
                       <p className="text-red-500 text-sm text-center transition-opacity duration-200">
-                        {"It looks like your email is already registered!"}
+                        {emailError}
                       </p>
                     )}
                     <button

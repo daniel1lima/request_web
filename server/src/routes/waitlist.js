@@ -1,48 +1,61 @@
 const express = require("express");
 const router = express.Router();
 const axios = require("axios");
+const Waitlist = require('../models/Waitlist');
 require('dotenv').config();
 
 router.post("/", async (req, res) => {
+  const { email, eventId, songRequested } = req.body;
+
+  console.log(email, eventId, songRequested)
+  if (!email || !eventId || !songRequested) {
+    return res.status(400).json({ error: "Email, eventId, and song requested are required" });
+  }
+
+  try {
+    const newEntry = await Waitlist.create({
+      email,
+      eventId,
+      songRequested
+    });
+
+    res.status(201).json({ message: "Entry added to waitlist successfully!", entry: newEntry });
+  } catch (error) {
+    console.error("Error adding entry to waitlist:", error);
+    res.status(500).json({ 
+      error: "Failed to add entry to waitlist", 
+      details: error.message 
+    });
+  }
+});
+
+router.post("/check-email", async (req, res) => {
   const { email } = req.body;
 
   if (!email) {
     return res.status(400).json({ error: "Email is required" });
   }
 
+  // Define common email domains
+  const commonDomains = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com"];
   
+  // Extract the domain from the email
+  const emailDomain = email.split("@")[1];
+
+  // Check if the domain is in the list of common domains
+  if (!commonDomains.includes(emailDomain)) {
+    return res.status(400).json({ error: "Email domain is not allowed" });
+  }
 
   try {
-    console.log(process.env.EMAILOCTOPUS_KEY)
-    console.log(process.env.LIST_ID)
-
-    
-    const response = await axios.post(
-      `https://emailoctopus.com/api/1.6/lists/${process.env.LIST_ID}/contacts`,
-      {
-        api_key: process.env.EMAILOCTOPUS_KEY,
-        email_address: email,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (response.status === 200) {
-      res.status(200).json({ message: "Email submitted successfully!" });
-    } else {
-      res.status(response.status).json({ 
-        error: response.data.error.message || "Failed to submit email!" 
-      });
+    const existingEntry = await Waitlist.findOne({ where: { email } });
+    if (existingEntry) {
+      return res.status(200).json({ exists: true });
     }
+    return res.status(200).json({ exists: false });
   } catch (error) {
-    console.error("Error submitting email:", error);
-    res.status(500).json({ 
-      error: "Failed to submit email", 
-      details: error.response?.data?.error?.message || error.message 
-    });
+    console.error("Error checking email:", error);
+    return res.status(500).json({ error: "Failed to check email" });
   }
 });
 
