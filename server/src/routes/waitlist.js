@@ -6,9 +6,7 @@ require('dotenv').config();
 
 router.post("/", async (req, res) => {
   const { email, eventId, songRequested } = req.body;
-
-  console.log(email, eventId, songRequested)
-  if (!email || !eventId || !songRequested) {
+  if (!email) {
     return res.status(400).json({ error: "Email, eventId, and song requested are required" });
   }
 

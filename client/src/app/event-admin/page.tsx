@@ -90,6 +90,8 @@ const EventAdminPage = () => {
 
   const [noRequests, setNoRequests] = useState(false);
 
+  const isMobile = window.innerWidth <= 768; // Check if the device is mobile
+
   useEffect(() => {
     const eventId = new URL(window.location.href).searchParams.get("eventId");
     if (!eventId || !user) return;
@@ -257,13 +259,17 @@ const EventAdminPage = () => {
             </div>
 
             {/* DJ Profile moved to header with transparent grey card, aligned to the absolute right */}
-            <div className="absolute right-0 bg-opacity-90 rounded-lg flex items-center justify-center ">
+            <div className="absolute right-0 bg-opacity-90 rounded-lg flex items-center justify-center pr-8">
               <DJProfile
-                name={djData?.djName || "SAMPLE DJ"}
+                name={djData?.djName || "DJ Zo"}
                 role="Main Event DJ"
                 image="https://cdn.builder.io/api/v1/image/assets/TEMP/07768e6beee3d7f47f88d0798e6e2e885f8e8b62f39f33f7eac92fdf4c2d3eeb?placeholderIfAbsent=true"
                 insta={
-                  djData?.djInsta ? `instagram://user/${djData.djInsta}` : ""
+                  djData?.djInsta
+                    ? isMobile
+                      ? `instagram://user/${djData.djInsta}`
+                      : `https://www.instagram.com/${djData.djInsta}`
+                    : ""
                 }
               />
             </div>

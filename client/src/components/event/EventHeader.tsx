@@ -4,6 +4,7 @@ import React from "react";
 import { Button } from "../button";
 import { ChevronLeft } from "lucide-react";
 import { redirect } from "next/navigation";
+import { FaCheck } from "react-icons/fa";
 
 interface EventHeaderProps {
   time?: string;
@@ -30,11 +31,20 @@ const EventHeader: React.FC<EventHeaderProps> = ({
         alt="Event background"
         fetchPriority="high"
       />
+      
       <div className="relative flex mb-[-25px] w-full flex-col items-stretch px-6 py-4">
         <div className="flex items-stretch gap-[13px] text-2xl text-white font-medium mt-4">
-          <Button variant="outline" size="icon" className="absolute left-6 bg-slate-600" onClick={() => {redirect('/')}}>
+          <Button
+            variant="outline"
+            size="icon"
+            className="absolute left-6 bg-slate-600"
+            onClick={() => {
+              redirect("/");
+            }}
+          >
             <ChevronLeft />
           </Button>
+
           <div className="basis-auto absolute left-20 ">{title}</div>
         </div>
       </div>
