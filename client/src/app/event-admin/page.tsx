@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import apiFetch from "@/utils/api";
 import { useUser } from "@clerk/nextjs";
+import { acceptRequest, capturePaymentIntent, fetchDjById, fetchEventById, fetchPaymentById, fetchRequestsByEventId, markRequestAsPlayed } from "@/api/apiService";
 
 export interface request {
   requestId: string;
@@ -52,17 +53,6 @@ const Loader = () => (
     <Loader2 className="w-6 h-6 text-white animate-spin" />
   </div>
 );
-
-// Helper function to validate API response
-const validateResponse = (response: any) => {
-  if ("ok" in response && !response.ok) {
-    throw new Error("Network response was not ok");
-  }
-  if ("success" in response && !response.success) {
-    throw new Error("Request failed");
-  }
-  return response.json();
-};
 
 const validateResponseNoReturn = (response: any) => {
   if ("ok" in response && !response.ok) {
@@ -110,22 +100,12 @@ const EventAdminPage = () => {
     if (!eventId || !user) return;
 
     localStorage.setItem("eventId", eventId);
+    const djId = localStorage.getItem('djId')
     setLoading(true);
 
-    const fetchEventData = apiFetch(`/events/getById?eventId=${eventId}`).then(
-      validateResponse
-    );
-
-    const fetchSongRequests = apiFetch(
-      `/requests/getByEvent?eventId=${eventId}`
-    )
-      .then(validateResponse)
-      .catch(() => []);
-
-    const djId = localStorage.getItem("djId");
-    const fetchDJData = djId
-      ? apiFetch(`/djs/getById?djId=${djId}`).then(validateResponse)
-      : Promise.resolve(null);
+    const fetchEventData = fetchEventById(eventId);
+    const fetchSongRequests = fetchRequestsByEventId(eventId);
+    const fetchDJData =  localStorage.getItem('djId') ? fetchDjById(djId || '') : Promise.resolve(null);
 
     Promise.all([fetchEventData, fetchSongRequests, fetchDJData])
       .then(([eventData, songRequestsData, djData]) => {
@@ -152,12 +132,9 @@ const EventAdminPage = () => {
       });
   }, [user]);
 
-  const acceptRequest = async (requestId: string) => {
+  const acceptRequestFunc = async (requestId: string) => {
     try {
-      await apiFetch(`/requests/accept?requestId=${requestId}`, {
-        method: "PUT",
-      }).then(validateResponse);
-
+      await acceptRequest(requestId);
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
           req.requestId === requestId ? { ...req, accepted: true } : req
@@ -175,18 +152,11 @@ const EventAdminPage = () => {
       const request = songRequests.find((req) => req.requestId === requestId);
       if (!request?.paymentId) return;
 
-      const paymentData = await apiFetch(`/payment/${request.paymentId}`).then(
-        validateResponse
-      );
-
-      await apiFetch(
-        `/stripe/capturePaymentIntent?intentId=${request.paymentId}&capture=${paymentData.amount}`,
-        { method: "POST" }
-      ).then(validateResponse);
-
-      await apiFetch(`/requests/played?requestId=${requestId}`, {
-        method: "PUT",
-      }).then(validateResponse);
+      const paymentData = await fetchPaymentById(request.paymentId);
+      console.log(paymentData)
+      console.log(request.paymentId)
+      await capturePaymentIntent(request.paymentId, paymentData.amount);
+      await markRequestAsPlayed(requestId);
 
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
@@ -217,9 +187,7 @@ const EventAdminPage = () => {
         apiFetch(`/stripe/cancelPaymentIntent?intentId=${request.paymentId}`, {
           method: "POST",
         }).then(validateResponseNoReturn),
-        apiFetch(`/requests/delete?requestId=${requestId}`, {
-          method: "DELETE",
-        }).then(validateResponseNoReturn),
+        declineRequest(requestId),
       ]);
     } catch (error) {
       console.error("Error cancelling payment:", error);
@@ -398,7 +366,7 @@ const EventAdminPage = () => {
                         />
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
                           <button
-                            onClick={() => acceptRequest(request.requestId)}
+                            onClick={() => acceptRequestFunc(request.requestId)}
                             className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
                           >
                             <FaCheck className="w-6 h-6 text-white" />

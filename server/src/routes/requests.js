@@ -401,10 +401,6 @@ router.get('/getByEvent', async (req, res) => {
                 { model: Event, attributes: ['eventName'] }
             ]
         });
-
-        if (requests.length === 0) {
-            return res.status(404).json({ error: 'No requests found for this event' });
-        }
         res.json(requests);
     } catch (error) {
         res.status(500).json({ 

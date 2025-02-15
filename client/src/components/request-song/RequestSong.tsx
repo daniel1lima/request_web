@@ -85,8 +85,7 @@ export const RequestSong = () => {
         return;
       }
 
-      //console.log("Event data received:", data);
-      // setEventData(data);
+      console.log(data)
       setOptions((prevOptions) => ({
         ...prevOptions,
         amount: data.requestFee,

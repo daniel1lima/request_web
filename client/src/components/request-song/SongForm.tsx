@@ -9,10 +9,18 @@ import {
   useStripe,
 } from "@stripe/react-stripe-js";
 import { redirect } from "next/navigation";
-import apiFetch from "@/utils/api";
+import {
+  fetchPaymentIntent,
+  createPayment,
+  createRequest,
+  checkEmail,
+  submitEmailToWaitlist,
+  requestBody
+} from "@/api/apiService";
 import { v4 as uuidv4 } from "uuid";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { Button } from "../button";
+import { pid } from "process";
 
 interface SpotifyTrack {
   id: string;
@@ -55,34 +63,8 @@ export const SongForm: React.FC<SongFormProps> = ({
   const elements = useElements();
   const stripe = useStripe();
 
-  // const applePayOptions = {
-  //   applePay: {
-  //     deferredPaymentRequest: {
-  //       paymentDescription: 'My deferred payment',
-  //       managementURL: 'https://example.com/billing',
-  //       deferredBilling: {
-  //         amount: 2500,
-  //         label: 'Deferred Fee',
-  //         deferredPaymentDate: new Date('2024-01-05')
-  //       },
-  //     }
-  //   }
-  // };
-
-  const fetchPaymentIntent = async (amount: number, currency: string) => {
-    const response = await apiFetch(
-      `/stripe/createPaymentIntent?amount=${amount}&currency=${currency}`,
-      {
-        method: "POST", // Specify the method if needed
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
-    );
-    if (!response.ok) {
-      throw new Error("Failed to fetch payment intent");
-    }
-    const data = await response.json();
+  const fetchPaymentIntentFunc = async (amount: number, currency: string) => {
+    const data = await fetchPaymentIntent(amount, currency);
     return { client_secret: data.client_secret, id: data.id };
   };
 
@@ -94,10 +76,12 @@ export const SongForm: React.FC<SongFormProps> = ({
 
     setIsLoading(true);
     try {
-      const { client_secret, id: pid } = await fetchPaymentIntent(
+      const { client_secret, id: pid } = await fetchPaymentIntentFunc(
         feedoptions.amount,
         feedoptions.currency
       );
+
+      
 
       const { error } = await stripe.confirmPayment({
         elements,
@@ -108,63 +92,31 @@ export const SongForm: React.FC<SongFormProps> = ({
         redirect: "if_required",
       });
 
+      // create payment
+      const paymentResponse = await createPayment({
+        paymentId: pid,
+        amount: feedoptions.amount,
+        djId: localStorage.getItem("djId") || '',
+      });
+
+      // Save Request to the database
+      const requestBody: requestBody = {
+        songName: selectedTrack?.name || '',
+        songArtist: selectedTrack?.artists[0].name || '',
+        songImage: selectedTrack?.album.images[1]?.url || '',
+        userId: localStorage.getItem("requestapp_userId") || null,
+        eventId: localStorage.getItem("eventId") || '',
+        paymentId: pid,
+      };
+
+      const requestResponse = await createRequest(requestBody);
+
+      setTimeout(() => {
+        redirect(`/success`); // Navigate to the new post page
+      }, 2000);
+
       if (error) {
         console.error("Payment confirmation error:", error.message);
-      } else {
-        //console.log("Payment successful");
-
-        // create payment
-        // Fetch request to create payment
-        const paymentResponse = await apiFetch("/payment/createPayment", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            paymentId: pid,
-            amount: feedoptions.amount,
-            djId: localStorage.getItem("djId"),
-          }),
-        });
-
-        const paymentData = await paymentResponse.json();
-
-        if (!paymentResponse.ok) {
-          throw new Error(paymentData.error || "Failed to create payment");
-        }
-
-        //console.log("Payment created successfully:", paymentData);
-
-        // Save Request to the database
-        const requestBody = {
-          songName: selectedTrack?.name,
-          songArtist: selectedTrack?.artists[0].name,
-          songImage: selectedTrack?.album.images[1]?.url,
-          userId: localStorage.getItem("requestapp_userId") || null,
-          eventId: localStorage.getItem("eventId"), // Replace with actual event ID
-          paymentId: pid,
-        };
-
-        // Fetch request to create the request
-        const requestResponse = await apiFetch("/requests/create", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        });
-
-        const requestData = await requestResponse.json();
-
-        if (!requestResponse.ok) {
-          throw new Error(requestData.error || "Failed to create request");
-        }
-
-        //console.log("Request created successfully:", requestData);
-
-        setTimeout(() => {
-          redirect(`/success`); // Navigate to the new post page
-        }, 3000);
       }
     } catch (error) {
       console.error("Error confirming payment:", error);
@@ -193,22 +145,7 @@ export const SongForm: React.FC<SongFormProps> = ({
 
     try {
       // Check if the email already exists in the waitlist
-      const checkEmailResponse = await apiFetch(`/waitlist/check-email`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!checkEmailResponse.ok) {
-        const errorData = await checkEmailResponse.json();
-        setEmailError(errorData.error || "Error checking email");
-        setEmailLoading(false);
-        return;
-      }
-
-      const emailExists = await checkEmailResponse.json();
+      const emailExists = await checkEmail(email);
       if (emailExists.exists) {
         setEmailError("This email has already been used for a free request");
         setEmailLoading(false);
@@ -216,67 +153,41 @@ export const SongForm: React.FC<SongFormProps> = ({
       }
 
       // First try to submit email to waitlist using the correct endpoint
-      const emailResponse = await apiFetch("/waitlist", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          email, 
-          eventId: localStorage.getItem("eventId"), // Retrieve eventId from local storage
-          songRequested: selectedTrack?.name // Include the song requested
-        }),
+      const emailResponse = await submitEmailToWaitlist({
+        email,
+        eventId: localStorage.getItem("eventId") || '',
+        songRequested: selectedTrack?.name || '',
       });
-
-      if (!emailResponse.ok) {
-        const errorData = await emailResponse.json();
-        setEmailError(
-          errorData.error ||
-            "This email has already been used for a free request"
-        );
-        setEmailLoading(false);
-        return;
-      }
 
       const freePaymentId = `FREE_${uuidv4()}`;
 
       // Create a free payment record first
-      const paymentResponse = await apiFetch("/payment/createPayment", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          paymentId: freePaymentId,
-          amount: 0,
-          djId: localStorage.getItem("djId"),
-        }),
+      const paymentResponse = await createPayment({
+        paymentId: freePaymentId,
+        amount: 0,
+        djId: localStorage.getItem("djId") || '',
       });
 
-      if (!paymentResponse.ok) {
+      console.log(paymentResponse)
+
+      if (!paymentResponse) {
         setEmailLoading(false);
         throw new Error("Failed to create payment record");
       }
 
       // Then create the request with the payment ID
-      const requestBody = {
-        songName: selectedTrack?.name,
-        songArtist: selectedTrack?.artists[0].name,
-        songImage: selectedTrack?.album.images[1]?.url,
+
+      const requestBody: requestBody = {
+        songName: selectedTrack?.name || '',
+        songArtist: selectedTrack?.artists[0].name || '',
+        songImage: selectedTrack?.album.images[1]?.url || '',
         userId: localStorage.getItem("requestapp_userId") || null,
-        eventId: localStorage.getItem("eventId"),
+        eventId: localStorage.getItem("eventId") || '',
         paymentId: freePaymentId,
-        email: email,
       };
 
       // Fetch request to create the request
-      const requestResponse = await apiFetch("/requests/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
+      const requestResponse = await createRequest(requestBody);
 
       if (!requestResponse.ok) {
         setEmailLoading(false);

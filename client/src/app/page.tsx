@@ -35,6 +35,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { fetchAllEvents } from "@/api/apiService";
 
 export interface Event {
   eventId: string;
@@ -376,22 +377,10 @@ const Index = () => {
   }, [date]);
 
   useEffect(() => {
-    // Check if event data is already cached
-    // const cachedEvents = localStorage.getItem("allEvents");
-    // if (cachedEvents) {
-    //   const data = JSON.parse(cachedEvents);
-    //   setAllEvents(data);
-    //   setFadeOut(true);
-    //   setTimeout(() => {
-    //     setLoading(false);
-    //   }, 200);
-    //   return;
-    // }
+    const loadEvents = async () => {
+      try {
+        const data = await fetchAllEvents();
 
-    // Fetch all events if not cached
-    apiFetch("/events/all")
-      .then((response) => response.json())
-      .then((data) => {
         if (!data || data.error) {
           console.error("Error fetching event data:", data?.error || "No data");
           router.push("/404");
@@ -404,11 +393,13 @@ const Index = () => {
         setTimeout(() => {
           setLoading(false);
         }, 200);
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("Error fetching event details:", error);
         router.push("/404");
-      });
+      }
+    };
+
+    loadEvents();
   }, [router]);
 
   const handleSubmit = async () => {
