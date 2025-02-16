@@ -20,7 +20,6 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { Button } from "../button";
-import { pid } from "process";
 import { useRouter } from 'next/navigation'
 
 interface SpotifyTrack {
@@ -96,7 +95,7 @@ export const SongForm: React.FC<SongFormProps> = ({
       });
 
       // create payment
-      const paymentResponse = await createPayment({
+      await createPayment({
         paymentId: pid,
         amount: feedoptions.amount,
         djId: localStorage.getItem("djId") || '',
@@ -112,7 +111,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         paymentId: pid,
       };
 
-      const requestResponse = await createRequest(requestBody);
+      await createRequest(requestBody);
 
       setTimeout(() => {
         redirect(`/success`); // Navigate to the new post page
@@ -156,7 +155,7 @@ export const SongForm: React.FC<SongFormProps> = ({
       }
 
       // First try to submit email to waitlist using the correct endpoint
-      const emailResponse = await submitEmailToWaitlist({
+      await submitEmailToWaitlist({
         email,
         eventId: localStorage.getItem("eventId") || '',
         songRequested: selectedTrack?.name || '',

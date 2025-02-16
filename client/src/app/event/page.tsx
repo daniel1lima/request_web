@@ -146,7 +146,7 @@ const EventPage = () => {
       <div className="bg-gray-900 flex max-w-[600px] w-full h-screen flex-col overflow-hidden items-center mx-auto">
         <EventHeader
           title={eventData?.eventName || "Default Event Title"}
-          imageUrl={eventData?.eventImage}
+          imageUrl={eventData?.eventImage || ''}
         />
         <div className="flex flex-col items-center w-full px-4 pb-20 overflow-y-auto flex-1">
           <DJProfile

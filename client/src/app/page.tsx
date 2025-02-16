@@ -88,21 +88,21 @@ const ExploreView = ({
   const now = new Date();
   const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
-  const [isMobile, setIsMobile] = useState(false);
+  // const [isMobile, setIsMobile] = useState(false);
 
   // Add useEffect to detect mobile device
-  useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth < 768); // Adjust the width as needed for mobile detection
-    };
+  // useEffect(() => {
+  //   const handleResize = () => {
+  //     setIsMobile(window.innerWidth < 768); // Adjust the width as needed for mobile detection
+  //   };
 
-    handleResize(); // Check on initial load
-    window.addEventListener("resize", handleResize);
+  //   handleResize(); // Check on initial load
+  //   window.addEventListener("resize", handleResize);
 
-    return () => {
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
+  //   return () => {
+  //     window.removeEventListener("resize", handleResize);
+  //   };
+  // }, []);
 
   const filterAndSearchEvents = (events: Event[]) => {
     if (!searchQuery) return events;
@@ -211,7 +211,7 @@ const ExploreView = ({
             <div className="flex gap-4">
               {filteredFutureEvents.length > 0 ? (
                 filteredFutureEvents.map((event) => (
-                  <Link href={`/event?eventId=${event.eventId}`}>
+                  <Link key={event.eventId} href={`/event?eventId=${event.eventId}`}>
                     <div
                       key={event.eventId}
                       className="inline-block cursor-pointer  transition"

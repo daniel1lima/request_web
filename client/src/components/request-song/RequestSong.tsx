@@ -30,7 +30,6 @@ export const RequestSong = () => {
     capture_method: "manual",
   });
 
-  const router = useRouter();
 
   useEffect(() => {
     // Disable scrolling on body when component mounts

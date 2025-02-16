@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
-import { FaCheck, FaPencilAlt, FaPencilRuler, FaTimes } from "react-icons/fa";
+import { FaCheck, FaPencilRuler, FaTimes } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import apiFetch from "@/utils/api";
@@ -25,7 +25,6 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/input";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/label";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
