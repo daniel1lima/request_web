@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
-import { redirect, useRouter } from "next/navigation";
+import { notFound, redirect, useRouter } from "next/navigation";
 import "./globals.css";
 import EventCard from "@/components/event/EventCard";
 import apiFetch from "../utils/api";
@@ -22,7 +22,6 @@ import {
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Label } from "@/components/label";
-
 
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
@@ -88,7 +87,7 @@ const ExploreView = ({
 }) => {
   const now = new Date();
   const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  
+
   const [isMobile, setIsMobile] = useState(false);
 
   // Add useEffect to detect mobile device
@@ -195,7 +194,7 @@ const ExploreView = ({
       </section>
 
       {/* Events After 24 Hours */}
-      {!isMobile && (
+      {false && (
         <section className="mt-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold">Events Coming Soon</h2>
@@ -212,20 +211,21 @@ const ExploreView = ({
             <div className="flex gap-4">
               {filteredFutureEvents.length > 0 ? (
                 filteredFutureEvents.map((event) => (
-                  <div
-                    key={event.eventId}
-                    className="inline-block cursor-pointer  transition"
-                    onClick={() => {
-                      redirect(`/event?eventId=${event.eventId}`);
-                    }}
-                  >
-                    <EventCard
-                      image={event.eventImage}
-                      title={event.eventName}
-                      date={new Date(event.eventDateTime).toLocaleDateString()}
-                      location={event.eventLocation}
-                    />
-                  </div>
+                  <Link href={`/event?eventId=${event.eventId}`}>
+                    <div
+                      key={event.eventId}
+                      className="inline-block cursor-pointer  transition"
+                    >
+                      <EventCard
+                        image={event.eventImage}
+                        title={event.eventName}
+                        date={new Date(
+                          event.eventDateTime
+                        ).toLocaleDateString()}
+                        location={event.eventLocation}
+                      />
+                    </div>
+                  </Link>
                 ))
               ) : (
                 <div className="flex flex-col items-center justify-center h-full w-full text-gray-400">
@@ -267,20 +267,19 @@ const AllEventsView = ({
     <div className="h-full overflow-y-auto px-4 pb-20 pt-3">
       <div className="grid grid-cols-1 gap-4">
         {filteredEvents.map((event) => (
-          <div
-            key={event.eventId}
-            className="cursor-pointer hover:bg-gray-700 transition"
-            onClick={() => {
-              redirect(`/event?eventId=${event.eventId}`);
-            }}
-          >
-            <EventCard
-              image={event.eventImage}
-              title={event.eventName}
-              date={new Date(event.eventDateTime).toLocaleDateString()}
-              location={event.eventLocation}
-            />
-          </div>
+          <Link  key={event.eventId} href={`/event?eventId=${event.eventId}`}>
+            <div
+              key={event.eventId}
+              className="cursor-pointer hover:bg-gray-700 transition"
+            >
+              <EventCard
+                image={event.eventImage}
+                title={event.eventName}
+                date={new Date(event.eventDateTime).toLocaleDateString()}
+                location={event.eventLocation}
+              />
+            </div>
+          </Link>
         ))}
         {filteredEvents.length === 0 && (
           <div className="flex flex-col items-center justify-center py-10 text-gray-400">
@@ -299,11 +298,9 @@ const UserView = () => {
 
   useEffect(() => {
     if (isSignedIn) {
-      redirect('/')
-
+      redirect("/");
     }
-
-  }, [isSignedIn])
+  }, [isSignedIn]);
 
   return (
     <div className="h-full flex flex-col items-center justify-center">
@@ -314,15 +311,15 @@ const UserView = () => {
             appearance={{
               elements: {
                 footerAction: "hidden",
-                alternativeMethodsBlockButton: 'text-[white]'
+                alternativeMethodsBlockButton: "text-[white]",
               },
               variables: {
                 colorBackground: "#1a202c",
                 colorPrimary: "rgba(86,105,255,1)",
                 colorText: "white",
                 colorTextSecondary: "white",
-                colorTextOnPrimaryBackground: 'white',
-                colorInputBackground: 'white'
+                colorTextOnPrimaryBackground: "white",
+                colorInputBackground: "white",
               },
             }}
           />
@@ -330,7 +327,7 @@ const UserView = () => {
       )}
     </div>
   );
-}
+};
 
 const Index = () => {
   const router = useRouter();
@@ -352,7 +349,7 @@ const Index = () => {
   const [eventDateError, setEventDateError] = useState(false);
   const [eventLocationError, setEventLocationError] = useState(false);
   const [requestFeeError, setRequestFeeError] = useState(false);
-  const [date, setDate] = React.useState<Date>()
+  const [date, setDate] = React.useState<Date>();
 
   // Add new useEffect for image preloading
   useEffect(() => {
@@ -371,9 +368,9 @@ const Index = () => {
       setImagesLoaded(true);
     });
   }, []);
-  
+
   useEffect(() => {
-    console.log(date)
+    console.log(date);
   }, [date]);
 
   useEffect(() => {
@@ -383,8 +380,7 @@ const Index = () => {
 
         if (!data || data.error) {
           console.error("Error fetching event data:", data?.error || "No data");
-          router.push("/404");
-          return;
+          notFound()
         }
 
         localStorage.setItem("allEvents", JSON.stringify(data));
@@ -395,7 +391,7 @@ const Index = () => {
         }, 200);
       } catch (error) {
         console.error("Error fetching event details:", error);
-        router.push("/404");
+        notFound()
       }
     };
 
@@ -415,72 +411,72 @@ const Index = () => {
 
     // Validate Event Name
     if (!eventName) {
-        setEventNameError(true);
-        isValid = false;
+      setEventNameError(true);
+      isValid = false;
     }
 
     // Validate Event Image URL
     if (!eventImage) {
-        setEventImageError(true);
-        isValid = false;
+      setEventImageError(true);
+      isValid = false;
     }
 
     // Validate Event Location
     if (!eventLocation) {
-        setEventLocationError(true);
-        isValid = false;
+      setEventLocationError(true);
+      isValid = false;
     }
 
     // Validate Request Fee
     if (requestFee <= 50) {
-        setRequestFeeError(true);
-        isValid = false;
+      setRequestFeeError(true);
+      isValid = false;
     }
 
     // If any validation fails, prevent submission
     if (!isValid) {
-        return;
+      return;
     }
 
     // Proceed with event creation logic
     const eventData = {
-        eventName,
-        eventImage,
-        eventDateTime: date ? date.toISOString() : null, // Convert to ISO string
-        eventLocation,
-        requestFee,
-        djId: user?.id, // Use the user's Clerk user ID
+      eventName,
+      eventImage,
+      eventDateTime: date ? date.toISOString() : null, // Convert to ISO string
+      eventLocation,
+      requestFee,
+      djId: user?.id, // Use the user's Clerk user ID
     };
 
     setLoading(true);
 
     try {
-        const response = await apiFetch('/events/create', {
-            method: 'POST',
-            body: JSON.stringify(eventData),
-        });
+      const response = await apiFetch("/events/create", {
+        method: "POST",
+        body: JSON.stringify(eventData),
+      });
 
-        if (response.ok) {
-            console.log("Event created successfully:", await response.json());
-            // Optionally reset form fields after successful submission
-            setEventName("");
-            setEventImage("");
-            setEventLocation("");
-            setRequestFee(0);
-            setDate(undefined); // Reset date
+      if (response.ok) {
+        console.log("Event created successfully:", await response.json());
+        // Optionally reset form fields after successful submission
+        setEventName("");
+        setEventImage("");
+        setEventLocation("");
+        setRequestFee(0);
+        setDate(undefined); // Reset date
 
-            // Close the dialog after a short delay
-            setTimeout(() => {
-                setLoading(false);
-                setFadeOut(true); // Trigger fade out effect
-            }, 1000); // Adjust delay as needed
-        } else {
-            console.error("Failed to create event:", response);
-        }
+        // Close the dialog after a short delay
+        setTimeout(() => {
+          setLoading(false);
+          setFadeOut(true); // Trigger fade out effect
+        }, 1000); // Adjust delay as needed
+      } else {
+        console.error("Failed to create event:", response);
+      }
     } catch (error) {
-        console.error("Error creating event:", error);
+      console.error("Error creating event:", error);
     } finally {
-        setLoading(false); // Ensure loading state is reset
+      setLoading(false); // Ensure loading state is reset
     }
   };
 
@@ -622,7 +618,7 @@ const Index = () => {
         </Dialog>
       )}
       {/* Fixed header and search section */}
-      {!(currentView == 'user') && (
+      {!(currentView == "user") && (
         <div className="fixed top-0 left-0 right-0 z-10 bg-gray-900">
           <header className="bg-gray-900 dark:bg-gray-900 w-full py-1 px-4 flex justify-center h-14 mb-3 mt-2">
             <div className="flex items-center">

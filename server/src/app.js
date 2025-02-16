@@ -12,16 +12,18 @@ const paymentRoutes = require('./routes/payment');
 const waitlistRoutes = require('./routes/waitlist');
 const authRoutes = require('./routes/auth');
 const frontendAuthMiddleware = require('./middleware/auth');
+const bodyParser = require('body-parser');
 
 const app = express();
 
 // Middleware
 app.use(cors({
-    origin: process.env.CLIENT_URL || 'http://localhost:3001',
+    origin: process.env.CLIENT_URL || 'http://localhost:3000',
     credentials: true // Important for cookies
 }));
 app.use(cookieParser()); // Add cookie parser
 app.use(express.json());
+app.use(bodyParser.json());
 app.use(frontendAuthMiddleware);
 
 // Routes

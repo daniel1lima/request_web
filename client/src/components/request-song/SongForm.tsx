@@ -21,6 +21,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { Button } from "../button";
 import { pid } from "process";
+import { useRouter } from 'next/navigation'
 
 interface SpotifyTrack {
   id: string;
@@ -62,6 +63,8 @@ export const SongForm: React.FC<SongFormProps> = ({
   const resultsContainerRef = React.useRef<HTMLDivElement>(null);
   const elements = useElements();
   const stripe = useStripe();
+
+  const router = useRouter();
 
   const fetchPaymentIntentFunc = async (amount: number, currency: string) => {
     const data = await fetchPaymentIntent(amount, currency);
@@ -324,7 +327,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         <div className="flex items-center gap-2">
           <Button
             variant='outline'
-            onClick={() => redirect(`/event?eventId=${localStorage.getItem('eventId')}`)}
+            onClick={() => router.push(`/event?eventId=${localStorage.getItem('eventId')}`)}
             className="p-2 bg-slate-600 hover:bg-white transition-colors"
           >
             

@@ -5,7 +5,7 @@ import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { notFound, useRouter } from "next/navigation";
 import "../globals.css";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/button";
@@ -105,7 +105,7 @@ const EventPage = () => {
       const eventId = url.searchParams.get("eventId");
 
       if (!eventId) {
-        router.push("/404");
+        notFound()
         return;
       }
 
@@ -128,7 +128,7 @@ const EventPage = () => {
         setSongRequests(Array.isArray(requestsData) ? requestsData : []);
       } catch (error) {
         console.error("Error fetching data:", error);
-        router.push("/404");
+        notFound()
       } finally {
         setLoading(false);
       }
