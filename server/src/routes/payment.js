@@ -35,8 +35,12 @@ router.post('/createPayment', async (req, res) => {
 router.get('/:paymentId', async (req, res) => {
   const { paymentId } = req.params; // Extract paymentId from request parameters
 
+  console.log(`Fetching payment with ID: ${paymentId}`); // Log the paymentId being queried
+
   try {
-    const payment = await Payment.findOne({ paymentId: paymentId }); // Query the database for the payment
+    const payment = await Payment.findOne({ where: { paymentId: paymentId } }); // Query the database for the payment
+
+    console.log('Payment found:', payment); // Log the payment found (or null if not found)
 
     if (!payment) {
       return res.status(404).json({ error: 'Payment not found' }); // Handle case where payment is not found

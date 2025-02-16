@@ -125,9 +125,12 @@ router.get('/getByDj', async (req, res) => {
 
 // Update event details
 router.put('/update', async (req, res) => {
+    console.log("Received body:", req.body); // Log the received body
     try {
         const { eventId } = req.query;
         const { eventName, eventImage, eventDateTime, eventLocation, requestFee, djId } = req.body;
+
+
 
         if (!eventId) {
             return res.status(400).json({ 
@@ -154,6 +157,7 @@ router.put('/update', async (req, res) => {
                 });
             }
         }
+
 
         await event.update({
             eventName: eventName || event.eventName,

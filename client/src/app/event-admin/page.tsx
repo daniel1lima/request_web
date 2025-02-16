@@ -2,11 +2,41 @@
 import React, { useEffect, useState } from "react";
 import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
-import { FaCheck, FaTimes } from "react-icons/fa";
+import { FaCheck, FaPencilRuler, FaTimes } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import apiFetch from "@/utils/api";
 import { useUser } from "@clerk/nextjs";
+import {
+  acceptRequest,
+  capturePaymentIntent,
+  fetchDjById,
+  fetchEventById,
+  fetchPaymentById,
+  fetchRequestsByEventId,
+  markRequestAsPlayed,
+  updateEvent,
+} from "@/api/apiService";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
+import { Input } from "@/components/input";
+import { Button } from "@/components/ui/button";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 export interface request {
   requestId: string;
@@ -53,17 +83,6 @@ const Loader = () => (
   </div>
 );
 
-// Helper function to validate API response
-const validateResponse = (response: any) => {
-  if ("ok" in response && !response.ok) {
-    throw new Error("Network response was not ok");
-  }
-  if ("success" in response && !response.success) {
-    throw new Error("Request failed");
-  }
-  return response.json();
-};
-
 const validateResponseNoReturn = (response: any) => {
   if ("ok" in response && !response.ok) {
     throw new Error("Network response was not ok");
@@ -74,11 +93,18 @@ const validateResponseNoReturn = (response: any) => {
   return;
 };
 
+// Define the schema for the form
+const FormSchema = z.object({
+  eventName: z.string().min(1, {
+    message: "Event name is required.",
+  }),
+});
+
 const EventAdminPage = () => {
   const { user } = useUser();
   const [songRequests, setSongRequests] = useState<request[]>([]);
   const [loading, setLoading] = useState(true);
-  const [eventTitle, setEventTitle] = useState("Loading event...");
+  const [eventTitle, setEventTitle] = useState("");
   const [eventImage, setEventImage] = useState("");
   const [requestFee, setRequestFee] = useState(0);
   const [djData, setDjData] = useState<DJ | null>(null);
@@ -91,6 +117,15 @@ const EventAdminPage = () => {
   const [noRequests, setNoRequests] = useState(false);
 
   const [isMobile, setIsMobile] = useState(false); // State to track mobile status
+
+  const {toast} = useToast();
+
+  const form = useForm<z.infer<typeof FormSchema>>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      eventName: eventTitle,
+    },
+  });
 
   useEffect(() => {
     const handleResize = () => {
@@ -110,21 +145,13 @@ const EventAdminPage = () => {
     if (!eventId || !user) return;
 
     localStorage.setItem("eventId", eventId);
+    const djId = localStorage.getItem("djId");
     setLoading(true);
 
-    const fetchEventData = apiFetch(`/events/getById?eventId=${eventId}`).then(
-      validateResponse
-    );
-
-    const fetchSongRequests = apiFetch(
-      `/requests/getByEvent?eventId=${eventId}`
-    )
-      .then(validateResponse)
-      .catch(() => []);
-
-    const djId = localStorage.getItem("djId");
-    const fetchDJData = djId
-      ? apiFetch(`/djs/getById?djId=${djId}`).then(validateResponse)
+    const fetchEventData = fetchEventById(eventId);
+    const fetchSongRequests = fetchRequestsByEventId(eventId);
+    const fetchDJData = localStorage.getItem("djId")
+      ? fetchDjById(djId || "")
       : Promise.resolve(null);
 
     Promise.all([fetchEventData, fetchSongRequests, fetchDJData])
@@ -152,12 +179,9 @@ const EventAdminPage = () => {
       });
   }, [user]);
 
-  const acceptRequest = async (requestId: string) => {
+  const acceptRequestFunc = async (requestId: string) => {
     try {
-      await apiFetch(`/requests/accept?requestId=${requestId}`, {
-        method: "PUT",
-      }).then(validateResponse);
-
+      await acceptRequest(requestId);
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
           req.requestId === requestId ? { ...req, accepted: true } : req
@@ -175,18 +199,11 @@ const EventAdminPage = () => {
       const request = songRequests.find((req) => req.requestId === requestId);
       if (!request?.paymentId) return;
 
-      const paymentData = await apiFetch(`/payment/${request.paymentId}`).then(
-        validateResponse
-      );
-
-      await apiFetch(
-        `/stripe/capturePaymentIntent?intentId=${request.paymentId}&capture=${paymentData.amount}`,
-        { method: "POST" }
-      ).then(validateResponse);
-
-      await apiFetch(`/requests/played?requestId=${requestId}`, {
-        method: "PUT",
-      }).then(validateResponse);
+      const paymentData = await fetchPaymentById(request.paymentId);
+      console.log(paymentData);
+      console.log(request.paymentId);
+      await capturePaymentIntent(request.paymentId, paymentData.amount);
+      await markRequestAsPlayed(requestId);
 
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
@@ -217,9 +234,7 @@ const EventAdminPage = () => {
         apiFetch(`/stripe/cancelPaymentIntent?intentId=${request.paymentId}`, {
           method: "POST",
         }).then(validateResponseNoReturn),
-        apiFetch(`/requests/delete?requestId=${requestId}`, {
-          method: "DELETE",
-        }).then(validateResponseNoReturn),
+        declineRequest(requestId),
       ]);
     } catch (error) {
       console.error("Error cancelling payment:", error);
@@ -227,6 +242,45 @@ const EventAdminPage = () => {
       setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
     }
   };
+
+  function onSubmit(data: z.infer<typeof FormSchema>) {
+    setEventTitle(data.eventName); // Update the event title
+
+    const eventId = localStorage.getItem("eventId"); // Retrieve the event ID
+
+    const updatedEventData = {
+      eventId: eventId, // Include the event ID
+      eventName: data.eventName,
+      eventImage: eventImage,
+      eventLocation: "", // Add the appropriate location if needed
+      requestFee: requestFee,
+      djId: user?.id || ""
+    };
+
+    console.log(' this here')
+    console.log(JSON.stringify(updatedEventData))
+
+    console.log("Updating event with data:", updatedEventData); // Debug log
+
+    // Call the updateEvent function
+    if (eventId) {
+      updateEvent(eventId, updatedEventData)
+        .then(() => {
+          toast({
+            title: "Event updated!",
+            description: `New event name: ${data.eventName}`,
+          });
+        })
+        .catch((error) => {
+          console.error("Error updating event:", error);
+          toast({
+            title: "Update failed",
+            description: "There was an error updating the event.",
+            variant: "destructive",
+          });
+        });
+    }
+  }
 
   if (loading || !isAuthorized) return <Loader />;
 
@@ -265,9 +319,38 @@ const EventAdminPage = () => {
 
             {/* Title content */}
             <div>
-              <h1 className="text-6xl font-bold text-white mb-2">
-                {eventTitle}
-              </h1>
+              <div className="flex flex-row gap-5 ">
+                <h1 className="text-6xl font-bold text-white mb-2">
+                  {eventTitle}
+                </h1>
+                <div className="flex text-center items-center justify-center">
+                  <Popover>
+                    <PopoverTrigger className="flex items-center justify-center mt-5 rounded-md p-2 mb-5 shadow-md bg-slate-600">
+                      <FaPencilRuler />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px]">
+                      <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 p-5">
+                          <FormField
+                            control={form.control}
+                            name="eventName"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Event Name</FormLabel>
+                                <FormControl>
+                                  <Input placeholder={eventTitle} {...field} />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <Button type="submit">Save</Button>
+                        </form>
+                      </Form>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
               <p className="text-2xl text-gray-200">DJ Dashboard</p>
             </div>
 
@@ -289,6 +372,7 @@ const EventAdminPage = () => {
           </div>
         </div>
       </div>
+
       {noRequests ? (
         <div className="flex items-center justify-center h-[80vh] mb-20">
           <div className="text-center">
@@ -300,6 +384,17 @@ const EventAdminPage = () => {
         </div>
       ) : (
         <div className="max-w-7xl mx-auto p-8">
+          <Popover>
+            <PopoverTrigger className="outline outline-slate-600 rounded-md p-3 mb-5 shadow-md bg-slate-600">
+              Settings
+            </PopoverTrigger>
+            <PopoverContent className="w-[500px]">
+              <div className="flex flex-row gap-5 p-5">
+                <p className="">Free Requests</p>
+                <Switch className="mt-[1px]" />
+              </div>
+            </PopoverContent>
+          </Popover>
           {/* Statistics Cards Section */}
           <div className="grid grid-cols-3 gap-4 mb-8">
             {/* Songs Requested Card */}
@@ -398,7 +493,7 @@ const EventAdminPage = () => {
                         />
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
                           <button
-                            onClick={() => acceptRequest(request.requestId)}
+                            onClick={() => acceptRequestFunc(request.requestId)}
                             className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
                           >
                             <FaCheck className="w-6 h-6 text-white" />

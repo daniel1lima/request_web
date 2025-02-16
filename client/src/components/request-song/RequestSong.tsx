@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { notFound, useRouter } from "next/navigation";
 import { SongForm } from "./SongForm";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
@@ -30,7 +30,6 @@ export const RequestSong = () => {
     capture_method: "manual",
   });
 
-  const router = useRouter();
 
   useEffect(() => {
     // Disable scrolling on body when component mounts
@@ -71,8 +70,7 @@ export const RequestSong = () => {
   const fetchEventData = async () => {
     const eventId = localStorage.getItem("eventId");
     if (!eventId) {
-      router.push("/404"); // Redirect to 404 if eventId is null
-      return;
+      notFound()
     }
 
     try {
@@ -81,12 +79,10 @@ export const RequestSong = () => {
 
       if (data.error) {
         console.error("Error fetching event data:", data.error);
-        router.push("/404"); // Redirect to 404 if event does not exist
-        return;
+        notFound()
       }
 
-      //console.log("Event data received:", data);
-      // setEventData(data);
+      console.log(data)
       setOptions((prevOptions) => ({
         ...prevOptions,
         amount: data.requestFee,
@@ -94,7 +90,7 @@ export const RequestSong = () => {
       setLoading(false); // Set loading to false after fetching event data
     } catch (error) {
       console.log("Error fetching event data:", error);
-      router.push("/404"); // Redirect to 404 on fetch error
+      notFound()
     }
   };
 
