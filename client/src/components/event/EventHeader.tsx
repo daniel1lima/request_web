@@ -19,7 +19,7 @@ const isValidImageUrl = (url: string) => {
 
 const EventHeader: React.FC<EventHeaderProps> = ({
   title = "Event Details",
-  imageUrl,
+  imageUrl = '',
 }) => {
   const fallbackImageUrl =
     "/fallback.webp";
@@ -30,17 +30,13 @@ const EventHeader: React.FC<EventHeaderProps> = ({
 
   return (
     <div className="flex flex-col self-stretch relative aspect-[1.697] w-full max-h-[100px] md:max-h-[100px] sm:max-h-[50px] bg-gray-900 bg-opacity-80">
-      <Image
+      <img
         src={imageSrc}
         onError={(e) => {
           e.currentTarget.src = fallbackImageUrl;
         }}
-        fill={true}
         className="absolute h-full w-full object-cover inset-0"
         alt="Event background"
-        placeholder="blur"
-        blurDataURL={fallbackImageUrl}
-        priority
       />
       
       <div className="relative flex mb-[-25px] w-full flex-col items-stretch px-6 py-4">
