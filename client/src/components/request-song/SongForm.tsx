@@ -15,7 +15,7 @@ import {
   createRequest,
   checkEmail,
   submitEmailToWaitlist,
-  requestBody
+  RequestBody
 } from "@/api/apiService";
 import { v4 as uuidv4 } from "uuid";
 import { Loader2, ChevronLeft } from "lucide-react";
@@ -102,7 +102,7 @@ export const SongForm: React.FC<SongFormProps> = ({
       });
 
       // Save Request to the database
-      const requestBody: requestBody = {
+      const RequestBody: RequestBody = {
         songName: selectedTrack?.name || '',
         songArtist: selectedTrack?.artists[0].name || '',
         songImage: selectedTrack?.album.images[1]?.url || '',
@@ -111,7 +111,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         paymentId: pid,
       };
 
-      await createRequest(requestBody);
+      await createRequest(RequestBody);
 
       setTimeout(() => {
         redirect(`/success`); // Navigate to the new post page
@@ -179,7 +179,7 @@ export const SongForm: React.FC<SongFormProps> = ({
 
       // Then create the request with the payment ID
 
-      const requestBody: requestBody = {
+      const RequestBody: RequestBody = {
         songName: selectedTrack?.name || '',
         songArtist: selectedTrack?.artists[0].name || '',
         songImage: selectedTrack?.album.images[1]?.url || '',
@@ -189,7 +189,7 @@ export const SongForm: React.FC<SongFormProps> = ({
       };
 
       // Fetch request to create the request
-      const requestResponse = await createRequest(requestBody);
+      const requestResponse = await createRequest(RequestBody);
 
       if (!requestResponse.ok) {
         setEmailLoading(false);

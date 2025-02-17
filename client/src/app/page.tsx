@@ -7,7 +7,7 @@ import EventCard from "@/components/event/EventCard";
 import { FaHome, FaMusic, FaUser } from "react-icons/fa";
 import Link from "next/link";
 import Fuse from "fuse.js";
-import { useUser, SignIn, UserButton } from "@clerk/nextjs";
+import { useUser, SignIn, UserButton, useAuth } from "@clerk/nextjs";
 import {
   Dialog,
   DialogClose,
@@ -210,7 +210,10 @@ const ExploreView = ({
             <div className="flex gap-4">
               {filteredFutureEvents.length > 0 ? (
                 filteredFutureEvents.map((event) => (
-                  <Link key={event.eventId} href={`/event?eventId=${event.eventId}`}>
+                  <Link
+                    key={event.eventId}
+                    href={`/event?eventId=${event.eventId}`}
+                  >
                     <div
                       key={event.eventId}
                       className="inline-block cursor-pointer  transition"
@@ -266,7 +269,7 @@ const AllEventsView = ({
     <div className="h-full overflow-y-auto px-4 pb-20 pt-3">
       <div className="grid grid-cols-1 gap-4">
         {filteredEvents.map((event) => (
-          <Link  key={event.eventId} href={`/event?eventId=${event.eventId}`}>
+          <Link key={event.eventId} href={`/event?eventId=${event.eventId}`}>
             <div
               key={event.eventId}
               className="cursor-pointer hover:bg-gray-700 transition"
@@ -349,6 +352,7 @@ const Index = () => {
   const [eventLocationError, setEventLocationError] = useState(false);
   const [requestFeeError, setRequestFeeError] = useState(false);
   const [date, setDate] = React.useState<Date>();
+  const {getToken} = useAuth()
 
   // Add new useEffect for image preloading
   useEffect(() => {
@@ -379,7 +383,7 @@ const Index = () => {
 
         if (!data || data.error) {
           console.error("Error fetching event data:", data?.error || "No data");
-          notFound()
+          notFound();
         }
 
         localStorage.setItem("allEvents", JSON.stringify(data));
@@ -390,7 +394,7 @@ const Index = () => {
         }, 200);
       } catch (error) {
         console.error("Error fetching event details:", error);
-        notFound()
+        notFound();
       }
     };
 
@@ -446,16 +450,23 @@ const Index = () => {
     const eventData = {
       eventName,
       eventImage,
-      eventDateTime: date ? date : new Date(), // Use current date if date is null
+      eventDateTime: date ? date.toISOString() : new Date().toISOString(), // Use current date if date is null
       eventLocation,
       requestFee,
       djId: user?.id || "", // Default to an empty string if user?.id is undefined
     };
 
+    
+
     setLoading(true);
 
     try {
-      const response = await createEvent(eventData);
+      const accesstoken = await getToken();
+      if (!accesstoken) {
+        throw new Error("Authentication token is missing.");
+      }
+
+      const response = await createEvent(eventData, accesstoken);
       if (response.ok) {
         console.log("Event created successfully:", response);
         // Optionally reset form fields after successful submission
