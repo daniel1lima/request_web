@@ -1,4 +1,5 @@
 const express = require('express');
+const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
 const router = express.Router();
 const { Request, User, Event, Payment } = require('../models/Index');
 
@@ -147,7 +148,7 @@ router.post('/create', async (req, res) => {
 });
 
 // Accept a request
-router.put('/accept', async (req, res) => {
+router.put('/accept', ClerkExpressRequireAuth(), async (req, res) => {
     try {
         const { requestId } = req.query;
         //console.log('Attempting to accept request:', requestId);
@@ -191,7 +192,7 @@ router.put('/accept', async (req, res) => {
 });
 
 // Mark request as played
-router.put('/played', async (req, res) => {
+router.put('/played', ClerkExpressRequireAuth(), async (req, res) => {
     try {
         const { requestId } = req.query;
         //console.log('Attempting to mark request as played:', requestId);
@@ -243,7 +244,7 @@ router.put('/played', async (req, res) => {
 });
 
 // Delete request
-router.delete('/delete', async (req, res) => {
+router.delete('/delete', ClerkExpressRequireAuth(), async (req, res) => {
     try {
         const { requestId } = req.query;
         
@@ -409,37 +410,5 @@ router.get('/getByEvent', async (req, res) => {
         });
     }
 });
-
-// REDUNDANT ROUTES
-
-// Get all accepted requests within an event
-// router.get('/getaccepted', async (req, res) => {
-//     try {
-//         const eventId = req.query.eventId;
-        
-//         if (!eventId) {
-//             return res.status(400).json({ 
-//                 error: 'Missing event ID', 
-//                 details: 'eventId query parameter is required' 
-//             });
-//         }
-
-//         const requests = await Request.findAll({
-//             where: { 
-//                 accepted: true,
-//                 eventID: eventId
-//             },
-//             include: [
-//                 { model: User, attributes: ['userName'] }
-//             ]
-//         });
-//         res.json(requests);
-//     } catch (error) {
-//         res.status(500).json({
-//             error: 'Failed to fetch accepted requests',
-//             details: error.message
-//         });
-//     }
-// });
 
 module.exports = router;

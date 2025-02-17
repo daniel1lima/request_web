@@ -1,4 +1,5 @@
 const express = require('express');
+const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
 const router = express.Router();
 const { User, Request, Event } = require('../models/Index');
 
@@ -50,7 +51,7 @@ router.get('/getById', async (req, res) => {
 });
 
 // Create new user
-router.post('/create', async (req, res) => {
+router.post('/create', ClerkExpressRequireAuth(), async (req, res) => {
     try {
         const { userName, userEmail, password } = req.body;
 
@@ -85,7 +86,7 @@ router.post('/create', async (req, res) => {
 });
 
 // Update user
-router.put('/update', async (req, res) => {
+router.put('/update', ClerkExpressRequireAuth(), async (req, res) => {
     try {
         const { userId } = req.query;
         
@@ -119,7 +120,7 @@ router.put('/update', async (req, res) => {
 });
 
 // Delete user
-router.delete('/delete', async (req, res) => {
+router.delete('/delete', ClerkExpressRequireAuth(), async (req, res) => {
     try {
         const { userId } = req.query;
 
