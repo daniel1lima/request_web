@@ -129,9 +129,7 @@ router.put('/update', ClerkExpressRequireAuth(), async (req, res) => {
     console.log("Received body:", req.body); // Log the received body
     try {
         const { eventId } = req.query;
-        const { eventName, eventImage, eventDateTime, eventLocation, requestFee, djId } = req.body;
-
-
+        const { eventName, eventImage, eventDateTime, eventLocation, requestFee, djId, acceptRequests, acceptFreeRequests } = req.body;
 
         if (!eventId) {
             return res.status(400).json({ 
@@ -159,14 +157,15 @@ router.put('/update', ClerkExpressRequireAuth(), async (req, res) => {
             }
         }
 
-
         await event.update({
             eventName: eventName || event.eventName,
             eventImage: eventImage || event.eventImage,
             eventDateTime: eventDateTime || event.eventDateTime,
             eventLocation: eventLocation || event.eventLocation,
             requestFee: requestFee || event.requestFee,
-            djId: djId || event.djId
+            djId: djId || event.djId,
+            acceptRequests: acceptRequests !== undefined ? acceptRequests : event.acceptRequests,
+            acceptFreeRequests: acceptFreeRequests !== undefined ? acceptFreeRequests : event.acceptFreeRequests
         });
 
         res.json(event);

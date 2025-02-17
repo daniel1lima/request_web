@@ -12,7 +12,9 @@ const Event = sequelize.define('Event', {
   eventDateTime: { type: DataTypes.DATE, allowNull: false },
   eventLocation: { type: DataTypes.STRING, allowNull: false },
   requestFee: { type: DataTypes.FLOAT, allowNull: false },
-  djId: { type: DataTypes.STRING, allowNull: false }, // Foreign key
+  djId: { type: DataTypes.STRING, allowNull: false }, 
+  acceptRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: true }, 
+  acceptFreeRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: true }, 
 }, { timestamps: true });
 
 module.exports = Event;

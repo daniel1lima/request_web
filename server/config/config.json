@@ -1,0 +1,23 @@
+{
+  "development": {
+    "username": "cpsc304",
+    "password": "daniel123",
+    "database": "cpsc_database",
+    "host": "127.0.0.1",
+    "dialect": "postgres"
+  },
+  "test": {
+    "username": "cpsc304",
+    "password": "daniel123",
+    "database": "cpsc_database",
+    "host": "127.0.0.1",
+    "dialect": "postgres"
+  },
+  "production": {
+    "username": "cpsc304",
+    "password": "daniel123",
+    "database": "cpsc_database",
+    "host": "127.0.0.1",
+    "dialect": "postgres"
+  }
+}

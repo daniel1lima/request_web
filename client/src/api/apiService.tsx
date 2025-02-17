@@ -51,10 +51,6 @@ export const updateEvent = async (eventId: string, eventData: any, accessToken) 
   if (!response) {
     throw new Error("Failed to update event");
   }
-  if (!response) {
-    const errorData = await response.json();
-    throw new Error(`Failed to update event: ${response.status} ${response.statusText} - ${errorData.error || "Unknown error"}`);
-  }
   return await response.json();
 };
 

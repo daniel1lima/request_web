@@ -21,6 +21,7 @@
     "jsonwebtoken": "^9.0.0",
     "pg": "^8.11.3",
     "sequelize": "^6.37.5",
+    "sequelize-cli": "^6.6.2",
     "stripe": "^17.6.0",
     "tailwind-merge": "^2.6.0"
   },
