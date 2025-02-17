@@ -6,7 +6,8 @@ import { SongForm } from "./SongForm";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
 import { Loader2 } from "lucide-react";
-import apiFetch from "@/utils/api";
+import { fetchEventById, spotifyAuth } from "../../api/apiService";
+
 
 // Initialize Stripe
 const stripePromise = loadStripe(
@@ -48,19 +49,14 @@ export const RequestSong = () => {
 
   const getSpotifyToken = async () => {
     try {
-      const response = await apiFetch("/spotify/auth", {
-        headers: {
-          Accept: "application/json",
-        },
-      });
-      const data = await response.json();
+      const response = await spotifyAuth()
+      const data = response
 
       if (data.error) {
         console.error("Error from backend:", data.error);
         return;
       }
 
-      //console.log("Token received");
       setAccessToken(data.access_token);
     } catch (error) {
       console.log("Error fetching Spotify token:", error);
@@ -70,19 +66,16 @@ export const RequestSong = () => {
   const fetchEventData = async () => {
     const eventId = localStorage.getItem("eventId");
     if (!eventId) {
-      notFound()
+      notFound();
     }
 
     try {
-      const response = await apiFetch(`/events/getById?eventId=${eventId}`);
-      const data = await response.json();
-
+      const data = await fetchEventById(eventId);
       if (data.error) {
         console.error("Error fetching event data:", data.error);
-        notFound()
+        notFound();
       }
 
-      console.log(data)
       setOptions((prevOptions) => ({
         ...prevOptions,
         amount: data.requestFee,
@@ -90,7 +83,7 @@ export const RequestSong = () => {
       setLoading(false); // Set loading to false after fetching event data
     } catch (error) {
       console.log("Error fetching event data:", error);
-      notFound()
+      notFound();
     }
   };
 

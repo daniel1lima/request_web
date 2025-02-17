@@ -2,25 +2,27 @@
   "name": "node_demo_project",
   "version": "1.0.0",
   "description": "The sample Node.js project with Next.js frontend",
+  "type": "module",
   "scripts": {
     "start": "node src/app.js",
     "dev": "concurrently \"bun run server\" \"bun run client\""
   },
   "dependencies": {
+    "@clerk/clerk-sdk-node": "^5.1.6",
     "all": "^0.0.0",
     "axios": "^1.7.9",
     "clsx": "^2.1.1",
     "concurrently": "^8.2.2",
+    "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
     "debounce": "^2.2.0",
     "dotenv": "^16.4.7",
     "express": "^4.17.3",
+    "jsonwebtoken": "^9.0.0",
     "pg": "^8.11.3",
     "sequelize": "^6.37.5",
     "stripe": "^17.6.0",
-    "tailwind-merge": "^2.6.0",
-    "cookie-parser": "^1.4.6",
-    "jsonwebtoken": "^9.0.0"
+    "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
     "eslint": "^8.57.1",

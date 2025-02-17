@@ -1,4 +1,5 @@
 const express = require('express');
+const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
 const router = express.Router();
 const { DJ, Event, Payment } = require('../models/Index');
 
@@ -48,7 +49,7 @@ router.get('/getById', async (req, res) => {
 });
 
 // Create new DJ
-router.post('/create', async (req, res) => {
+router.post('/create', ClerkExpressRequireAuth(), async (req, res) => {
     try {
         const { djId, djName, djEmail, djPhone, djInsta } = req.body;
 
@@ -77,7 +78,7 @@ router.post('/create', async (req, res) => {
 });
 
 // Update DJ information
-router.put('/update', async (req, res) => {
+router.put('/update', ClerkExpressRequireAuth(), async (req, res) => {
     try {
         const { djId } = req.query;
         
@@ -112,7 +113,7 @@ router.put('/update', async (req, res) => {
 });
 
 // Delete DJ
-router.delete('/delete', async (req, res) => {
+router.delete('/delete', ClerkExpressRequireAuth(), async (req, res) => {
     try {
         const { djId } = req.query;
         
@@ -166,30 +167,6 @@ router.get('/getEvents', async (req, res) => {
         });
     }
 });
-
-// Get DJ's payments
-// router.get('/getPayments', async (req, res) => {
-//     try {
-//         const djId = parseInt(req.query.djId, 10);
-//         
-//         if (!djId) {
-//             return res.status(400).json({ 
-//                 error: 'Missing DJ ID',
-//                 details: 'djId query parameter is required'
-//             });
-//         }
-//
-//         const payments = await Payment.findAll({
-//             where: { DJID: djId }
-//         });
-//         res.json(payments);
-//     } catch (error) {
-//         res.status(500).json({ 
-//             error: 'Failed to fetch DJ payments',
-//             details: error.message 
-//         });
-//     }
-// });
 
 // Webhook to create a new DJ
 router.post('/webhook/create', async (req, res) => {

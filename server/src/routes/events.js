@@ -1,4 +1,5 @@
 const express = require('express');
+const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
 const router = express.Router();
 const { Event, DJ} = require('../models/Index');
 const { Op } = require('sequelize');
@@ -10,7 +11,7 @@ router.get('/all', async (req, res) => {
 });
 
 // Create an event
-router.post('/create', async (req, res) => {
+router.post('/create', ClerkExpressRequireAuth(), async (req, res) => {
   try {
       const { 
           eventName, 
@@ -124,7 +125,7 @@ router.get('/getByDj', async (req, res) => {
 });
 
 // Update event details
-router.put('/update', async (req, res) => {
+router.put('/update', ClerkExpressRequireAuth(), async (req, res) => {
     console.log("Received body:", req.body); // Log the received body
     try {
         const { eventId } = req.query;
@@ -179,7 +180,7 @@ router.put('/update', async (req, res) => {
 });
 
 // Delete an event
-router.delete('/delete', async (req, res) => {
+router.delete('/delete', ClerkExpressRequireAuth(), async (req, res) => {
     try {
         const { eventId } = req.query;
 

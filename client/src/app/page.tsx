@@ -4,7 +4,6 @@ import Image from "next/image";
 import { notFound, redirect, useRouter } from "next/navigation";
 import "./globals.css";
 import EventCard from "@/components/event/EventCard";
-import apiFetch from "../utils/api";
 import { FaHome, FaMusic, FaUser } from "react-icons/fa";
 import Link from "next/link";
 import Fuse from "fuse.js";
@@ -34,7 +33,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { fetchAllEvents } from "@/api/apiService";
+import { fetchAllEvents, createEvent } from "@/api/apiService";
 
 export interface Event {
   eventId: string;
@@ -438,26 +437,27 @@ const Index = () => {
       return;
     }
 
-    // Proceed with event creation logic
+    if (!date) {
+      setEventDateError(true);
+      return; // Prevent submission if date is not set
+    }
+
+    // Define eventData here
     const eventData = {
       eventName,
       eventImage,
-      eventDateTime: date ? date.toISOString() : null, // Convert to ISO string
+      eventDateTime: date ? date : new Date(), // Use current date if date is null
       eventLocation,
       requestFee,
-      djId: user?.id, // Use the user's Clerk user ID
+      djId: user?.id || "", // Default to an empty string if user?.id is undefined
     };
 
     setLoading(true);
 
     try {
-      const response = await apiFetch("/events/create", {
-        method: "POST",
-        body: JSON.stringify(eventData),
-      });
-
+      const response = await createEvent(eventData);
       if (response.ok) {
-        console.log("Event created successfully:", await response.json());
+        console.log("Event created successfully:", response);
         // Optionally reset form fields after successful submission
         setEventName("");
         setEventImage("");

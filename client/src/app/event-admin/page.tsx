@@ -5,8 +5,7 @@ import SongCard from "@/components/event/SongCard";
 import { FaCheck, FaPencilRuler, FaTimes } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
-import apiFetch from "@/utils/api";
-import { useUser } from "@clerk/nextjs";
+import { useAuth, useUser } from "@clerk/nextjs";
 import {
   acceptRequest,
   capturePaymentIntent,
@@ -16,6 +15,7 @@ import {
   fetchRequestsByEventId,
   markRequestAsPlayed,
   updateEvent,
+  declineRequest,
 } from "@/api/apiService";
 import {
   Popover,
@@ -119,6 +119,8 @@ const EventAdminPage = () => {
   const [isMobile, setIsMobile] = useState(false); // State to track mobile status
 
   const {toast} = useToast();
+  const {getToken} = useAuth()
+  
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -181,7 +183,8 @@ const EventAdminPage = () => {
 
   const acceptRequestFunc = async (requestId: string) => {
     try {
-      await acceptRequest(requestId);
+      const accesstoken = await getToken()
+      await acceptRequest(requestId, accesstoken);
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
           req.requestId === requestId ? { ...req, accepted: true } : req
@@ -200,10 +203,10 @@ const EventAdminPage = () => {
       if (!request?.paymentId) return;
 
       const paymentData = await fetchPaymentById(request.paymentId);
-      console.log(paymentData);
-      console.log(request.paymentId);
       await capturePaymentIntent(request.paymentId, paymentData.amount);
-      await markRequestAsPlayed(requestId);
+
+      const accesstoken = await getToken()
+      await markRequestAsPlayed(requestId, accesstoken);
 
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
@@ -231,9 +234,6 @@ const EventAdminPage = () => {
 
       // Handle API calls in the background
       await Promise.all([
-        apiFetch(`/stripe/cancelPaymentIntent?intentId=${request.paymentId}`, {
-          method: "POST",
-        }).then(validateResponseNoReturn),
         declineRequest(requestId),
       ]);
     } catch (error) {
@@ -243,7 +243,7 @@ const EventAdminPage = () => {
     }
   };
 
-  function onSubmit(data: z.infer<typeof FormSchema>) {
+  async function onSubmit(data: z.infer<typeof FormSchema>) {
     setEventTitle(data.eventName); // Update the event title
 
     const eventId = localStorage.getItem("eventId"); // Retrieve the event ID
@@ -264,21 +264,21 @@ const EventAdminPage = () => {
 
     // Call the updateEvent function
     if (eventId) {
-      updateEvent(eventId, updatedEventData)
-        .then(() => {
-          toast({
-            title: "Event updated!",
-            description: `New event name: ${data.eventName}`,
-          });
-        })
-        .catch((error) => {
-          console.error("Error updating event:", error);
-          toast({
-            title: "Update failed",
-            description: "There was an error updating the event.",
-            variant: "destructive",
-          });
+      const accesstoken = await getToken();
+      try {
+        await updateEvent(eventId, updatedEventData, accesstoken);
+        toast({
+          title: "Event updated!",
+          description: `New event name: ${data.eventName}`,
         });
+      } catch (error) {
+        console.error("Error updating event:", error);
+        toast({
+          title: "Update failed",
+          description: "There was an error updating the event.",
+          variant: "destructive",
+        });
+      }
     }
   }
 
@@ -388,7 +388,7 @@ const EventAdminPage = () => {
             <PopoverTrigger className="outline outline-slate-600 rounded-md p-3 mb-5 shadow-md bg-slate-600">
               Settings
             </PopoverTrigger>
-            <PopoverContent className="w-[500px]">
+            <PopoverContent className="absolute left-12 top-[-100px] w-[500px]">
               <div className="flex flex-row gap-5 p-5">
                 <p className="">Free Requests</p>
                 <Switch className="mt-[1px]" />

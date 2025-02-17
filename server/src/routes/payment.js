@@ -1,4 +1,5 @@
 const express = require('express');
+const { ClerkExpressRequireAuth } = require('@clerk/clerk-sdk-node');
 const router = express.Router();
 const axios = require('axios');
 const Payment = require('../models/Payment'); // Import the Payment model
