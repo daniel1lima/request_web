@@ -1,7 +1,7 @@
 "use client";
-import apiFetch from "@/utils/api";
 import { useState } from "react";
 import { toast } from "react-hot-toast";
+import {submitEmailToWaitlist} from "../api/apiService"
 
 export default function EmailForm() {
   const [email, setEmail] = useState<string>('');
@@ -16,15 +16,13 @@ export default function EmailForm() {
     setIsSubmitting(true);
 
     try {
-      const response = await apiFetch("/waitlist/", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email }),
-      });
+      const response = await submitEmailToWaitlist({
+        email,
+        eventId: '',
+        songRequested: '',
+      })
 
-      if (response.ok) {
+      if (response) {
         setEmail("");
         toast.success("Thank you for joining our waitlist! 🚀");
       } else {

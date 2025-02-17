@@ -258,6 +258,10 @@ const EventAdminPage = () => {
   const acceptRequestFunc = async (requestId: string) => {
     try {
       const accesstoken = await getToken();
+      if (!accesstoken) {
+        throw new Error("Authentication token is missing.");
+      }
+
       await acceptRequest(requestId, accesstoken);
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
@@ -280,6 +284,10 @@ const EventAdminPage = () => {
       await capturePaymentIntent(request.paymentId, paymentData.amount);
 
       const accesstoken = await getToken();
+      if (!accesstoken) {
+        throw new Error("Authentication token is missing.");
+      }
+
       await markRequestAsPlayed(requestId, accesstoken);
 
       setSongRequests((prevRequests) =>
@@ -306,7 +314,11 @@ const EventAdminPage = () => {
       const request = songRequests.find((req) => req.requestId === requestId);
       if (!request?.paymentId) return;
 
-      const accesstoken = await getToken(); // Get the access token
+      const accesstoken = await getToken();
+      if (!accesstoken) {
+        throw new Error("Authentication token is missing.");
+      }
+      
 
       // Handle API calls in the background
       await declineRequestAPI(requestId, accesstoken); // Use the imported declineRequest function
@@ -339,6 +351,10 @@ const EventAdminPage = () => {
     // Call the updateEvent function
     if (eventId) {
       const accesstoken = await getToken();
+      if (!accesstoken) {
+        throw new Error("Authentication token is missing.");
+      }
+      
       try {
         await updateEvent(eventId, updatedEventData, accesstoken);
         toast({
@@ -370,7 +386,11 @@ const EventAdminPage = () => {
       acceptFreeRequests: settings.freeRequests,
     };
 
-    const accesstoken = await getToken(); // Get the access token
+    const accesstoken = await getToken();
+    if (!accesstoken) {
+      throw new Error("Authentication token is missing.");
+    }
+    
 
     try {
       const response = await updateEvent(
@@ -773,7 +793,9 @@ function SettingsDialog(
       </DialogTrigger>
       <DialogContent className=" w-[500px] z-50">
         <DialogHeader>
-          <DialogTitle className="text-center text-3xl">Event Settings</DialogTitle>
+          <DialogTitle className="text-center text-3xl">
+            Event Settings
+          </DialogTitle>
         </DialogHeader>
         <div className="rounded-lg p-3 flex flex-col gap-2 text-center">
           {FeeSetting}
