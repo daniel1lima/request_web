@@ -5,7 +5,7 @@ import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
 import Link from "next/link";
 import Image from "next/image";
-import { notFound, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import "../globals.css";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/button";
@@ -105,7 +105,6 @@ const EventPage = () => {
       const eventId = url.searchParams.get("eventId");
 
       if (!eventId) {
-        notFound()
         return;
       }
 
@@ -113,7 +112,7 @@ const EventPage = () => {
 
       try {
         const eventData = await fetchEventById(eventId);
-        if (!eventData || eventData.error) throw new Error("Event not found");
+        if (!eventData || eventData.error) router.push('/404');
 
         const djId = eventData.djId;
         localStorage.setItem("djId", djId);
@@ -126,12 +125,11 @@ const EventPage = () => {
 
         const requestsData = await fetchRequestsByEventId(eventId);
         setSongRequests(Array.isArray(requestsData) ? requestsData : []);
+        setLoading(false)
       } catch (error) {
         console.error("Error fetching data:", error);
-        notFound()
-      } finally {
-        setLoading(false);
-      }
+        router.push('/404')
+      } 
     };
 
     loadData();
@@ -139,9 +137,7 @@ const EventPage = () => {
 
   if (loading) {
     return <Loader />;
-  }
-
-  return (
+  } else return (
     <div className="w-screen h-screen bg-gray-900 overflow-hidden">
       <div className="bg-gray-900 flex max-w-[600px] w-full h-screen flex-col overflow-hidden items-center mx-auto">
         <EventHeader
