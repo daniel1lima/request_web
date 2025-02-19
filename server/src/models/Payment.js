@@ -7,6 +7,9 @@ const Payment = sequelize.define('Payment', {
     defaultValue: null,
     primaryKey: true
   },
+  requestId: { type: DataTypes.STRING, allowNull: false },
+  songName: { type: DataTypes.STRING, allowNull: false },
+  albumUrl: { type: DataTypes.JSON, allowNull: false },
   amount: { type: DataTypes.FLOAT, allowNull: false },
   paymentDate: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
   status: { type: DataTypes.STRING, defaultValue: 'pending' },

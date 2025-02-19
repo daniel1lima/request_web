@@ -98,11 +98,23 @@ export const SongForm: React.FC<SongFormProps> = ({
 
       // create payment
 
-      await createPayment({
+      console.log({
         paymentId: pid,
+        requestId: selectedTrack?.id,
+        songName: selectedTrack?.name,
+        albumUrl: selectedTrack?.album.images,
         amount: feedoptions.amount,
         djId: localStorage.getItem("djId") || "",
-      });
+      })
+
+      // await createPayment({
+      //   paymentId: pid,
+      //   requestId: selectedTrack?.id
+      //   songName: selectedTrack?.name
+      //   albumUrl: selectedTrack?.album.images
+      //   amount: feedoptions.amount,
+      //   djId: localStorage.getItem("djId") || "",
+      // });
 
       // Save Request to the database
       const RequestBody: RequestBody = {
