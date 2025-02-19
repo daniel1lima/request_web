@@ -20,7 +20,9 @@ router.get("/status", async (req, res) => {
 });
 
 router.post("/createPaymentIntent", async (req, res) => {
-  const { currency, amount, requestId } = req.query;
+  const { currency, amount, requestId } = req.body;
+
+  console.log(currency, amount, requestId)
 
   try {
     const paymentIntent = await stripe.paymentIntents.create({

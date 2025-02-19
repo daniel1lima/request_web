@@ -86,13 +86,13 @@ export const createEvent = async (eventData: EventData, accessToken: string) => 
 };
 
 // Fetch a payment intent
-export const fetchPaymentIntent = async (amount: number, currency: string) => {
+export const fetchPaymentIntent = async (amount: number, currency: string, requestId: string) => {
   const response = await fetch(`/api/stripe/createPaymentIntent`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ amount, currency }),
+    body: JSON.stringify({ currency, amount, requestId }),
   });
 
   if (!response.ok) throw new Error("Failed to fetch payment intent");
