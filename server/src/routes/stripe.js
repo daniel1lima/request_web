@@ -57,7 +57,7 @@ router.post("/createPaymentIntent", async (req, res) => {
 // Cancel all payment intents once the event is over.
 
 router.post("/capturePaymentIntent", async (req, res) => {
-  const { intentId, capture } = req.query;
+  const { intentId, capture } = req.body;
 
   try {
     
