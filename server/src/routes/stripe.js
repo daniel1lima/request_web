@@ -20,7 +20,9 @@ router.get("/status", async (req, res) => {
 });
 
 router.post("/createPaymentIntent", async (req, res) => {
-  const { currency, amount, requestId } = req.query;
+  const { currency, amount, requestId } = req.body;
+
+  console.log(currency, amount, requestId)
 
   try {
     const paymentIntent = await stripe.paymentIntents.create({
@@ -55,7 +57,7 @@ router.post("/createPaymentIntent", async (req, res) => {
 // Cancel all payment intents once the event is over.
 
 router.post("/capturePaymentIntent", async (req, res) => {
-  const { intentId, capture } = req.query;
+  const { intentId, capture } = req.body;
 
   try {
     

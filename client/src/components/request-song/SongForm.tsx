@@ -15,12 +15,12 @@ import {
   createRequest,
   checkEmail,
   submitEmailToWaitlist,
-  RequestBody
+  RequestBody,
 } from "@/api/apiService";
 import { v4 as uuidv4 } from "uuid";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { Button } from "../button";
-import { useRouter } from 'next/navigation'
+import { useRouter } from "next/navigation";
 
 interface SpotifyTrack {
   id: string;
@@ -65,8 +65,9 @@ export const SongForm: React.FC<SongFormProps> = ({
 
   const router = useRouter();
 
-  const fetchPaymentIntentFunc = async (amount: number, currency: string) => {
-    const data = await fetchPaymentIntent(amount, currency);
+  const fetchPaymentIntentFunc = async (amount: number, currency: string, requestId: string) => {
+    console.log(amount, currency, requestId)
+    const data = await fetchPaymentIntent(amount, currency, requestId);
     return { client_secret: data.client_secret, id: data.id };
   };
 
@@ -78,12 +79,13 @@ export const SongForm: React.FC<SongFormProps> = ({
 
     setIsLoading(true);
     try {
+      console.log(feedoptions.amount,
+        feedoptions.currency)
       const { client_secret, id: pid } = await fetchPaymentIntentFunc(
         feedoptions.amount,
-        feedoptions.currency
+        feedoptions.currency,
+        selectedTrack?.id || ''
       );
-
-      
 
       const { error } = await stripe.confirmPayment({
         elements,
@@ -95,19 +97,20 @@ export const SongForm: React.FC<SongFormProps> = ({
       });
 
       // create payment
+
       await createPayment({
         paymentId: pid,
         amount: feedoptions.amount,
-        djId: localStorage.getItem("djId") || '',
+        djId: localStorage.getItem("djId") || "",
       });
 
       // Save Request to the database
       const RequestBody: RequestBody = {
-        songName: selectedTrack?.name || '',
-        songArtist: selectedTrack?.artists[0].name || '',
-        songImage: selectedTrack?.album.images[1]?.url || '',
+        songName: selectedTrack?.name || "",
+        songArtist: selectedTrack?.artists[0].name || "",
+        songImage: selectedTrack?.album.images[1]?.url || "",
         userId: localStorage.getItem("requestapp_userId") || null,
-        eventId: localStorage.getItem("eventId") || '',
+        eventId: localStorage.getItem("eventId") || "",
         paymentId: pid,
       };
 
@@ -157,8 +160,8 @@ export const SongForm: React.FC<SongFormProps> = ({
       // First try to submit email to waitlist using the correct endpoint
       await submitEmailToWaitlist({
         email,
-        eventId: localStorage.getItem("eventId") || '',
-        songRequested: selectedTrack?.name || '',
+        eventId: localStorage.getItem("eventId") || "",
+        songRequested: selectedTrack?.name || "",
       });
 
       const freePaymentId = `FREE_${uuidv4()}`;
@@ -167,10 +170,10 @@ export const SongForm: React.FC<SongFormProps> = ({
       const paymentResponse = await createPayment({
         paymentId: freePaymentId,
         amount: 0,
-        djId: localStorage.getItem("djId") || '',
+        djId: localStorage.getItem("djId") || "",
       });
 
-      console.log(paymentResponse)
+      console.log(paymentResponse);
 
       if (!paymentResponse) {
         setEmailLoading(false);
@@ -180,11 +183,11 @@ export const SongForm: React.FC<SongFormProps> = ({
       // Then create the request with the payment ID
 
       const RequestBody: RequestBody = {
-        songName: selectedTrack?.name || '',
-        songArtist: selectedTrack?.artists[0].name || '',
-        songImage: selectedTrack?.album.images[1]?.url || '',
+        songName: selectedTrack?.name || "",
+        songArtist: selectedTrack?.artists[0].name || "",
+        songImage: selectedTrack?.album.images[1]?.url || "",
         userId: localStorage.getItem("requestapp_userId") || null,
-        eventId: localStorage.getItem("eventId") || '',
+        eventId: localStorage.getItem("eventId") || "",
         paymentId: freePaymentId,
       };
 
@@ -325,11 +328,12 @@ export const SongForm: React.FC<SongFormProps> = ({
         {/* Search Input Container */}
         <div className="flex items-center gap-2">
           <Button
-            variant='outline'
-            onClick={() => router.push(`/event?eventId=${localStorage.getItem('eventId')}`)}
+            variant="outline"
+            onClick={() =>
+              router.push(`/event?eventId=${localStorage.getItem("eventId")}`)
+            }
             className="p-2 bg-slate-600 hover:bg-white transition-colors"
           >
-            
             <ChevronLeft className="w-5 h-5 text-gray-400" />
           </Button>
 
@@ -340,7 +344,11 @@ export const SongForm: React.FC<SongFormProps> = ({
             <input
               id="song-input"
               type="text"
-              value={selectedTrack ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}` : searchInput}
+              value={
+                selectedTrack
+                  ? `${selectedTrack.name} - ${selectedTrack.artists[0].name}`
+                  : searchInput
+              }
               onChange={(e) => {
                 const newValue = e.target.value;
                 setSearchInput(newValue);
@@ -435,7 +443,7 @@ export const SongForm: React.FC<SongFormProps> = ({
             <img
               loading="lazy"
               src={selectedTrack.album.images[1]?.url || ""}
-              className="w-28 h-28 md:w-48 md:h-48 lg:w-64 lg:h-64 rounded-lg object-cover shadow-lg" 
+              className="w-28 h-28 md:w-48 md:h-48 lg:w-64 lg:h-64 rounded-lg object-cover shadow-lg"
               alt={selectedTrack.name}
             />
             <h2 className="text-gray-800 dark:text-gray-200 text-lg md:text-xl lg:text-2xl font-medium mt-4 text-center px-4">
@@ -519,7 +527,16 @@ export const SongForm: React.FC<SongFormProps> = ({
                   </div>
                 )}
               </div>
-              <ExpressCheckoutElement onConfirm={onConfirm} />
+              <ExpressCheckoutElement
+                onConfirm={onConfirm}
+                onClick={({ resolve }) => {
+                  const options = {
+                    emailRequired: true,
+                    phoneNumberRequired: true,
+                  };
+                  resolve(options);
+                }}
+              />
             </>
           )}
           <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">

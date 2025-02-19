@@ -7,7 +7,7 @@ import Link from "next/link";
 const NotFound: React.FC = () => {
 
   return (
-    <div className="bg-gray-900 dark:bg-gray-900 w-screen h-screen flex flex-col gap-10 items-center justify-center text-center">
+    <div className="text-white bg-gray-900 dark:bg-gray-900 w-screen h-screen flex flex-col gap-10 items-center justify-center text-center">
       <Image
         src="/RequestLogoLight.png"
         alt="DJ Request Logo"
@@ -17,9 +17,9 @@ const NotFound: React.FC = () => {
         priority
         style={{ objectFit: "contain" }}
       />
-      <p className="text-xl">The page you&apos;re looking for doesn&apos;t exist!</p>
+      <p className="text-xl text-white">The page you&apos;re looking for doesn&apos;t exist!</p>
       <Link href='/'>
-        <Button>
+        <Button className='bg-white text-black'>
           <ChevronLeft />
           Take me back
         </Button>
