@@ -411,4 +411,21 @@ router.get('/getByEvent', async (req, res) => {
     }
 });
 
+router.get('/getByPid', async (req, res) => {
+    const { pid } = req.query;
+  
+    try {
+      const request = await Request.findOne({ where: { paymentId: pid } });
+  
+      if (!request) {
+        return res.status(404).json({ error: 'Request not found' });
+      }
+  
+      res.status(200).json(request);
+    } catch (error) {
+      console.error('Error fetching request:', error);
+      res.status(500).json({ error: 'Internal Server Error' });
+    }
+  });
+
 module.exports = router;
