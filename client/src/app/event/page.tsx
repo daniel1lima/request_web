@@ -124,7 +124,8 @@ const EventPage = () => {
         }
 
         const requestsData = await fetchRequestsByEventId(eventId);
-        setSongRequests(Array.isArray(requestsData) ? requestsData : []);
+        console.log(requestsData)
+        setSongRequests(Array.isArray(requestsData) ? requestsData.filter(request => request.status === 'accepted') : []);
         setLoading(false)
       } catch (error) {
         console.error("Error fetching data:", error);

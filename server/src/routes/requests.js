@@ -167,7 +167,7 @@ router.put('/accept', ClerkExpressRequireAuth(), async (req, res) => {
             return res.status(404).json({ error: 'Request not found' });
         }
 
-        await request.update({ accepted: true });
+        await request.update({ accepted: true, status: 'accepted' });
 
         const fullRequest = await Request.findOne({
             where: { requestId },
@@ -219,7 +219,7 @@ router.put('/played', ClerkExpressRequireAuth(), async (req, res) => {
             });
         }
 
-        await request.update({ played: true });
+        await request.update({ played: true, status: 'completed' });
 
         const fullRequest = await Request.findOne({
             where: { requestId },
@@ -276,6 +276,56 @@ router.delete('/delete', ClerkExpressRequireAuth(), async (req, res) => {
         console.error('Delete request error:', error);
         res.status(500).json({
             error: 'Failed to delete request',
+            details: error.message
+        });
+    }
+});
+
+// Delete request
+router.get('/cancel-request/:requestId', async (req, res) => {
+    try {
+        const { requestId } = req.params; // Changed from req.query to req.params
+        
+        if (!requestId) {
+            return res.status(400).json({ 
+                error: 'Missing request ID', 
+                details: 'requestId parameter is required' 
+            });
+        }
+
+        const request = await Request.findOne({ where: { requestId } });
+        
+        if (!request) {
+            return res.status(404).json({ error: 'Request not found' });
+        }
+
+        // Check if the request is already cancelled or completed
+        if (request.status === 'cancelled' || request.status === 'completed') {
+            return res.status(400).json({ 
+                error: 'Invalid request status', 
+                details: `Request is already ${request.status}` 
+            });
+        }
+
+        const deletedRequest = {
+            requestId: request.requestId,
+            eventId: request.eventId,
+            status: 'cancelled' // Add status to the deletedRequest object
+        };
+
+        // Update the request status to 'cancelled' instead of destroying it
+        await request.update({ status: 'cancelled' });
+        
+        res.json({ 
+            message: 'Request cancelled successfully',
+            request: deletedRequest
+        });
+
+        
+    } catch (error) {
+        console.error('Cancel request error:', error);
+        res.status(500).json({
+            error: 'Failed to cancel request',
             details: error.message
         });
     }

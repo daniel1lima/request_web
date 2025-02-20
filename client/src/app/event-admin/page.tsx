@@ -59,6 +59,7 @@ export interface request {
   accepted: boolean;
   paymentId?: string;
   played: boolean;
+  status: string
 }
 
 export interface DJ {
@@ -265,7 +266,7 @@ const EventAdminPage = () => {
       await acceptRequest(requestId, accesstoken);
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
-          req.requestId === requestId ? { ...req, accepted: true } : req
+          req.requestId === requestId ? { ...req, accepted: true, status: 'accepted' } : req
         )
       );
     } catch (error) {
@@ -292,7 +293,7 @@ const EventAdminPage = () => {
 
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
-          req.requestId === requestId ? { ...req, played: true } : req
+          req.requestId === requestId ? { ...req, played: true, status: 'completed' } : req
         )
       );
     } catch (error) {
@@ -732,7 +733,7 @@ const EventAdminPage = () => {
               </h2>
               <div className="space-y-4">
                 {songRequests
-                  .filter((req) => !req.accepted && !req.played)
+                  .filter((req) => req.status == 'pending')
                   .map((request) => (
                     <div
                       key={request.requestId}
