@@ -16,6 +16,7 @@ import {
   checkEmail,
   submitEmailToWaitlist,
   RequestBody,
+  freeOrderConfirm,
 } from "@/api/apiService";
 import { v4 as uuidv4 } from "uuid";
 import { Loader2, ChevronLeft } from "lucide-react";
@@ -199,6 +200,8 @@ export const SongForm: React.FC<SongFormProps> = ({
       if (!requestResponse.ok) {
         setEmailLoading(false);
       }
+      
+      await freeOrderConfirm(email, freePaymentId)
 
       setEmailSuccess(true);
       setEmailLoading(false);
@@ -206,7 +209,7 @@ export const SongForm: React.FC<SongFormProps> = ({
       // Redirect to success page
       setTimeout(() => {
         redirect(`/success`);
-      }, 500);
+      }, 2000);
     } catch (error) {
       console.error("Error:", error);
       setEmailError("Something went wrong. Please try again.");

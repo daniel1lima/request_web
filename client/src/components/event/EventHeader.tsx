@@ -14,6 +14,7 @@ interface EventHeaderProps {
 
 const isValidImageUrl = (url: string) => {
   const pattern = /\.(jpg|jpeg|png|gif|webp)$/i;
+  return true
   return pattern.test(url);
 };
 

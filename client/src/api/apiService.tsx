@@ -183,6 +183,20 @@ export const cancelRequest = async (requestId: string, pi: string) => {
   return response.json();
 };
 
+// Cancel a request
+export const freeOrderConfirm = async (email: string, pi: string) => {
+  const response = await fetch(`/api/mailgun/freeOrderConfirmed`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({freePaymentId: pi, email: email})
+  });
+
+  if (!response.ok) throw new Error("Failed to confirm request");
+  return response.json();
+};
+
 // Capture a payment intent
 export const capturePaymentIntent = async (paymentId: string, amount: number) => {
   const response = await fetch(`/api/stripe/capturePaymentIntent`, {
@@ -220,6 +234,19 @@ export const declineRequest = async (requestId: string, accessToken: string) => 
   });
 
   if (!response.ok) throw new Error("Failed to decline request");
+  return response.json();
+};
+
+// Delete Event
+export const deleteEvent = async (eventId: string, accessToken: string) => {
+  const response = await fetch(`/api/events/delete?eventId=${eventId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) throw new Error("Failed to delete event");
   return response.json();
 };
 

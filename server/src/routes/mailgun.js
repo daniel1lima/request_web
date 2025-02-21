@@ -6,7 +6,14 @@ const Mailgun = require("mailgun.js"); // mailgun.js v11.1.0
 const { Request } = require("../models/Index");
 require("dotenv").config();
 
-async function sendSimpleMessageTemplate(customerName, songName, destinationEmail, orderId, cancelUrl, songImage) {
+async function sendSimpleMessageTemplate(
+  customerName,
+  songName,
+  destinationEmail,
+  orderId,
+  cancelUrl,
+  songImage
+) {
   const mailgun = new Mailgun(FormData);
 
   const mg = mailgun.client({
@@ -77,7 +84,7 @@ async function sendSimpleMessageTemplate(customerName, songName, destinationEmai
     });
     return data;
   } catch (error) {
-    console.error('Error sending email:', error);
+    console.error("Error sending email:", error);
     throw error;
   }
 }
@@ -89,7 +96,9 @@ router.post("/orderConfirmed", async (req, res) => {
   try {
     console.log(id, amount, billing_details, receipt_url, payment_intent);
 
-    const request = await Request.findOne({ where: { paymentId: payment_intent } });
+    const request = await Request.findOne({
+      where: { paymentId: payment_intent },
+    });
 
     if (!request) {
       return res.status(404).json({ error: "Request not found" });
@@ -100,9 +109,54 @@ router.post("/orderConfirmed", async (req, res) => {
     const destinationEmail = billing_details.email;
     const requestId = request.requestId;
     const songImage = request.songImage;
-    
+
     // Construct the cancel URL - replace with your actual domain and path
     const cancelUrl = `${process.env.API_BASE_URL}/cancel-request?requestId=${requestId}&pi=${payment_intent}`;
+
+    // Send the email with all required parameters, including songImage
+    await sendSimpleMessageTemplate(
+      customerName,
+      songName,
+      destinationEmail,
+      requestId,
+      cancelUrl,
+      songImage
+    );
+
+    res.status(201).json({
+      message: "Order confirmation email sent successfully",
+      entry: req.body.data,
+    });
+  } catch (error) {
+    console.error("Error processing order confirmation:", error);
+    res.status(500).json({
+      error: "Failed to process order confirmation",
+      details: error.message,
+    });
+  }
+});
+
+router.post("/freeOrderConfirmed", async (req, res) => {
+  const {email, freePaymentId } = req.body;
+
+  try {
+
+    const request = await Request.findOne({
+      where: { paymentId: freePaymentId },
+    });
+
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    const songName = request.songName;
+    const customerName = email
+    const destinationEmail = email
+    const requestId = request.requestId;
+    const songImage = request.songImage;
+
+    // Construct the cancel URL - replace with your actual domain and path
+    const cancelUrl = `${process.env.API_BASE_URL}/cancel-request?requestId=${requestId}&pi=${freePaymentId}`;
 
     // Send the email with all required parameters, including songImage
     await sendSimpleMessageTemplate(
