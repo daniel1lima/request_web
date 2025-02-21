@@ -349,7 +349,7 @@ const EventAdminPage = () => {
     }
     deleteEvent(eventId, accesstoken);
 
-    redirect('/404')
+    redirect('/')
   }
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
