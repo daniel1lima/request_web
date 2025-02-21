@@ -72,7 +72,6 @@ export const SongForm: React.FC<SongFormProps> = ({
     currency: string,
     requestId: string
   ) => {
-    console.log(amount, currency, requestId);
     const data = await fetchPaymentIntent(amount, currency, requestId);
     return { client_secret: data.client_secret, id: data.id };
   };
@@ -85,7 +84,6 @@ export const SongForm: React.FC<SongFormProps> = ({
 
     setIsLoading(true);
     try {
-      console.log(feedoptions.amount, feedoptions.currency);
       const { client_secret, id: pid } = await fetchPaymentIntentFunc(
         feedoptions.amount,
         feedoptions.currency,
@@ -178,7 +176,6 @@ export const SongForm: React.FC<SongFormProps> = ({
         djId: localStorage.getItem("djId") || "",
       });
 
-      console.log(paymentResponse);
 
       if (!paymentResponse) {
         setEmailLoading(false);

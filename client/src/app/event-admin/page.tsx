@@ -244,8 +244,6 @@ const EventAdminPage = () => {
           freeRequests: eventData.acceptFreeRequests || false,
         });
 
-        console.log(eventData.requestFee);
-
         setSliderValue([eventData.requestFee || 0]);
       })
       .catch((error) => {
@@ -343,11 +341,6 @@ const EventAdminPage = () => {
       requestFee: requestFee,
       djId: user?.id || "",
     };
-
-    console.log(" this here");
-    console.log(JSON.stringify(updatedEventData));
-
-    console.log("Updating event with data:", updatedEventData); // Debug log
 
     // Call the updateEvent function
     if (eventId) {
@@ -696,7 +689,7 @@ const EventAdminPage = () => {
               </h2>
               <div className="space-y-4">
                 {songRequests
-                  .filter((req) => req.accepted && !req.played)
+                  .filter((req) => req.accepted && !req.played && req.status == 'accepted')
                   .map((request) => (
                     <div
                       key={request.requestId}

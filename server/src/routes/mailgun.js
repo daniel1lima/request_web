@@ -75,7 +75,6 @@ async function sendSimpleMessageTemplate(customerName, songName, destinationEmai
       subject: `Order Confirmation for "${songName}"`,
       html: htmlTemplate,
     });
-    console.log('Email sent successfully:', data);
     return data;
   } catch (error) {
     console.error('Error sending email:', error);
@@ -103,7 +102,7 @@ router.post("/orderConfirmed", async (req, res) => {
     const songImage = request.songImage;
     
     // Construct the cancel URL - replace with your actual domain and path
-    const cancelUrl = `${process.env.API_BASE_URL}/requests/cancel-request/${requestId}`;
+    const cancelUrl = `${process.env.API_BASE_URL}/cancel-request?requestId=${requestId}&pi=${payment_intent}`;
 
     // Send the email with all required parameters, including songImage
     await sendSimpleMessageTemplate(
