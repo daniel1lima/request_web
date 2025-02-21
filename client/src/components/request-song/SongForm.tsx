@@ -39,12 +39,14 @@ interface SongFormProps {
     amount: number;
     currency: string;
   };
+  free: boolean;
 }
 
 export const SongForm: React.FC<SongFormProps> = ({
   accessToken,
   onSongSelect,
   feedoptions,
+  free,
 }) => {
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
@@ -65,8 +67,11 @@ export const SongForm: React.FC<SongFormProps> = ({
 
   const router = useRouter();
 
-  const fetchPaymentIntentFunc = async (amount: number, currency: string, requestId: string) => {
-    console.log(amount, currency, requestId)
+  const fetchPaymentIntentFunc = async (
+    amount: number,
+    currency: string,
+    requestId: string
+  ) => {
     const data = await fetchPaymentIntent(amount, currency, requestId);
     return { client_secret: data.client_secret, id: data.id };
   };
@@ -79,12 +84,10 @@ export const SongForm: React.FC<SongFormProps> = ({
 
     setIsLoading(true);
     try {
-      console.log(feedoptions.amount,
-        feedoptions.currency)
       const { client_secret, id: pid } = await fetchPaymentIntentFunc(
         feedoptions.amount,
         feedoptions.currency,
-        selectedTrack?.id || ''
+        selectedTrack?.id || ""
       );
 
       const { error } = await stripe.confirmPayment({
@@ -173,7 +176,6 @@ export const SongForm: React.FC<SongFormProps> = ({
         djId: localStorage.getItem("djId") || "",
       });
 
-      console.log(paymentResponse);
 
       if (!paymentResponse) {
         setEmailLoading(false);
@@ -467,50 +469,50 @@ export const SongForm: React.FC<SongFormProps> = ({
       {/* Bottom Action Section */}
       <div
         className="fixed bottom-0 left-0 right-0 bg-gray-900 dark:bg-gray-900 
-           p-4 pb-8"
+     p-4 pb-8"
         suppressHydrationWarning
       >
         <div className="max-w-[480px] mx-auto mb-2 bg-transparent">
           {selectedTrack && (
             <>
-              <div>
-                {showEmailInput ? (
-                  <div className="flex flex-col gap-2 pb-4">
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setEmailError("");
-                        setEmailLoading(false);
-                      }}
-                      placeholder="Enter your e-mail"
-                      className={`w-full px-4 py-2 rounded-lg bg-gray-800 text-white border 
-                        ${emailError ? "border-red-500" : "border-gray-700"} 
-                        ${emailSuccess ? "border-green-400" : "border-gray-700"} 
-                        focus:outline-none focus:border-blue-500
-                        transition-all duration-300 ease-in-out opacity-100 transform translate-y-0`}
-                    />
-                    {emailError && (
-                      <p className="text-red-500 text-sm text-center transition-opacity duration-200">
-                        {emailError}
-                      </p>
-                    )}
-                    <button
-                      onClick={handleFreeRequest}
-                      className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
-                        shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
-                        mt-2 mb-2 rounded-[8px] transition-all duration-300 ease-in-out"
-                    >
-                      {emailLoading ? (
-                        <Loader2 className="animate-spin mx-auto" />
-                      ) : (
-                        "Submit Free Request"
+              {free && (
+                <div className="mb-4">
+                  {showEmailInput ? (
+                    <div className="flex flex-col gap-2">
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => {
+                          setEmail(e.target.value);
+                          setEmailError("");
+                          setEmailLoading(false);
+                        }}
+                        placeholder="Enter your e-mail"
+                        className={`w-full px-4 py-2 rounded-lg bg-gray-800 text-white border 
+                    ${emailError ? "border-red-500" : "border-gray-700"} 
+                    ${emailSuccess ? "border-green-400" : "border-gray-700"} 
+                    focus:outline-none focus:border-blue-500
+                    transition-all duration-300 ease-in-out opacity-100 transform translate-y-0`}
+                      />
+                      {emailError && (
+                        <p className="text-red-500 text-sm text-center transition-opacity duration-200">
+                          {emailError}
+                        </p>
                       )}
-                    </button>
-                  </div>
-                ) : (
-                  <div className="pb-4">
+                      <button
+                        onClick={handleFreeRequest}
+                        className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
+                    shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
+                    mt-2 rounded-[8px] transition-all duration-300 ease-in-out"
+                      >
+                        {emailLoading ? (
+                          <Loader2 className="animate-spin mx-auto" />
+                        ) : (
+                          "Submit Free Request"
+                        )}
+                      </button>
+                    </div>
+                  ) : (
                     <button
                       onClick={() => {
                         setShowEmailInput(true);
@@ -519,14 +521,14 @@ export const SongForm: React.FC<SongFormProps> = ({
                         setEmailSuccess(false);
                       }}
                       className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
-                        shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
-                        mb-2 mt-2 rounded-[8px] transition-all duration-300 ease-in-out"
+                  shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
+                  rounded-[8px] transition-all duration-300 ease-in-out"
                     >
                       Get First Request Free!
                     </button>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
               <ExpressCheckoutElement
                 onConfirm={onConfirm}
                 onClick={({ resolve }) => {

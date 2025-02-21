@@ -59,6 +59,7 @@ export interface request {
   accepted: boolean;
   paymentId?: string;
   played: boolean;
+  status: string
 }
 
 export interface DJ {
@@ -243,8 +244,6 @@ const EventAdminPage = () => {
           freeRequests: eventData.acceptFreeRequests || false,
         });
 
-        console.log(eventData.requestFee);
-
         setSliderValue([eventData.requestFee || 0]);
       })
       .catch((error) => {
@@ -265,7 +264,7 @@ const EventAdminPage = () => {
       await acceptRequest(requestId, accesstoken);
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
-          req.requestId === requestId ? { ...req, accepted: true } : req
+          req.requestId === requestId ? { ...req, accepted: true, status: 'accepted' } : req
         )
       );
     } catch (error) {
@@ -292,7 +291,7 @@ const EventAdminPage = () => {
 
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
-          req.requestId === requestId ? { ...req, played: true } : req
+          req.requestId === requestId ? { ...req, played: true, status: 'completed' } : req
         )
       );
     } catch (error) {
@@ -342,11 +341,6 @@ const EventAdminPage = () => {
       requestFee: requestFee,
       djId: user?.id || "",
     };
-
-    console.log(" this here");
-    console.log(JSON.stringify(updatedEventData));
-
-    console.log("Updating event with data:", updatedEventData); // Debug log
 
     // Call the updateEvent function
     if (eventId) {
@@ -695,7 +689,7 @@ const EventAdminPage = () => {
               </h2>
               <div className="space-y-4">
                 {songRequests
-                  .filter((req) => req.accepted && !req.played)
+                  .filter((req) => req.accepted && !req.played && req.status == 'accepted')
                   .map((request) => (
                     <div
                       key={request.requestId}
@@ -732,7 +726,7 @@ const EventAdminPage = () => {
               </h2>
               <div className="space-y-4">
                 {songRequests
-                  .filter((req) => !req.accepted && !req.played)
+                  .filter((req) => req.status == 'pending')
                   .map((request) => (
                     <div
                       key={request.requestId}

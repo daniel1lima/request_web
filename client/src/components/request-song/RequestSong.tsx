@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { notFound, useRouter } from "next/navigation";
+import { notFound, redirect, useRouter } from "next/navigation";
 import { SongForm } from "./SongForm";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
@@ -30,6 +30,10 @@ export const RequestSong = () => {
     currency: "cad",
     capture_method: "manual",
   });
+  
+  const [freeReq, setFreeReq] = useState(true)
+
+  const router = useRouter()
 
 
   useEffect(() => {
@@ -69,8 +73,17 @@ export const RequestSong = () => {
       notFound();
     }
 
+    
+
     try {
       const data = await fetchEventById(eventId);
+
+      if (!(data.acceptRequests)) {
+        router.push(`/event?eventId=${eventId}`)
+      }
+
+      setFreeReq(data?.acceptFreeRequests || false)
+
       if (data.error) {
         console.error("Error fetching event data:", data.error);
         notFound();
@@ -124,6 +137,7 @@ export const RequestSong = () => {
             accessToken={accessToken}
             onSongSelect={handleSongSelect}
             feedoptions={{ amount: options.amount!, currency: options.currency! }}
+            free={freeReq}
           />
         </Elements>
       </div>

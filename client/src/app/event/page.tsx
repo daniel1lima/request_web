@@ -27,6 +27,8 @@ export interface Event {
   eventImage: string;
   eventDateTime: string;
   eventLocation: string;
+  acceptRequests: string;
+  acceptFreeRequests: string;
   requestFee: number;
   djId: string;
   createdAt: string;
@@ -124,7 +126,7 @@ const EventPage = () => {
         }
 
         const requestsData = await fetchRequestsByEventId(eventId);
-        setSongRequests(Array.isArray(requestsData) ? requestsData : []);
+        setSongRequests(Array.isArray(requestsData) ? requestsData.filter(request => request.status === 'accepted') : []);
         setLoading(false)
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -167,6 +169,7 @@ const EventPage = () => {
               </div>
             ))}
           </div>
+          {eventData?.acceptRequests &&
           <div className={`flex items-center justify-center w-full h-[50px] bg-transparent ${isMobile ? "mb-[50px]" : ""}`}>
             <Link href="/request-song">
               <button className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] shadow-[0px_10px_35px_rgba(111,126,201,0.25)] fill-[#5669FF] w-full px-[100px] py-[19px] rounded-[15px]">
@@ -174,6 +177,7 @@ const EventPage = () => {
               </button>
             </Link>
           </div>
+          }
         </div>
       </div>
     </div>

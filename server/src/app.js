@@ -10,6 +10,7 @@ const spotifyRoutes = require('./routes/spotify');
 const stripeRoutes = require('./routes/stripe');
 const paymentRoutes = require('./routes/payment');
 const waitlistRoutes = require('./routes/waitlist');
+const mailgunRoutes = require('./routes/mailgun');
 const bodyParser = require('body-parser');
 
 const app = express();
@@ -32,6 +33,7 @@ app.use('/spotify', spotifyRoutes);
 app.use('/stripe', stripeRoutes);
 app.use('/payment', paymentRoutes);
 app.use('/waitlist', waitlistRoutes);
+app.use('/mailgun', mailgunRoutes);
 
 app.get('/', function(req, res) {
     res.json("Server is running")

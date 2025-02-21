@@ -173,6 +173,15 @@ export const acceptRequest = async (requestId: string, accessToken: string) => {
   if (!response.ok) throw new Error("Failed to accept request");
   return response.json();
 };
+// Cancel a request
+export const cancelRequest = async (requestId: string, pi: string) => {
+  const response = await fetch(`/api/requests/cancel-request?requestId=${requestId}&pi=${pi}`, {
+    method: "GET",
+  });
+
+  if (!response.ok) throw new Error("Failed to cancel request");
+  return response.json();
+};
 
 // Capture a payment intent
 export const capturePaymentIntent = async (paymentId: string, amount: number) => {

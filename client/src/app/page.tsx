@@ -468,7 +468,6 @@ const Index = () => {
 
       const response = await createEvent(eventData, accesstoken);
       if (response.ok) {
-        console.log("Event created successfully:", response);
         // Optionally reset form fields after successful submission
         setEventName("");
         setEventImage("");
