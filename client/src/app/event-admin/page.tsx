@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
-import { FaCheck, FaPencilRuler, FaTimes } from "react-icons/fa";
+import { FaCheck, FaPencilRuler, FaTimes, FaTrash } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useAuth, useUser } from "@clerk/nextjs";
@@ -16,6 +16,7 @@ import {
   markRequestAsPlayed,
   updateEvent,
   declineRequest as declineRequestAPI,
+  deleteEvent,
 } from "@/api/apiService";
 import {
   Popover,
@@ -48,7 +49,7 @@ import {
 } from "@/components/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 export interface request {
   requestId: string;
@@ -59,7 +60,7 @@ export interface request {
   accepted: boolean;
   paymentId?: string;
   played: boolean;
-  status: string
+  status: string;
 }
 
 export interface DJ {
@@ -209,50 +210,58 @@ const EventAdminPage = () => {
   useEffect(() => {
     const eventId = new URL(window.location.href).searchParams.get("eventId");
     if (!eventId || !user) return;
-
+  
     localStorage.setItem("eventId", eventId);
     const djId = localStorage.getItem("djId");
     setLoading(true);
-
+  
     const fetchEventData = fetchEventById(eventId);
     const fetchSongRequests = fetchRequestsByEventId(eventId);
     const fetchDJData = localStorage.getItem("djId")
       ? fetchDjById(djId || "")
       : Promise.resolve(null);
-
+  
     Promise.all([fetchEventData, fetchSongRequests, fetchDJData])
       .then(([eventData, songRequestsData, djData]) => {
+        // Handle event data error if thrown by fetchEventById
+        if (!eventData || eventData.error) {
+          window.location.href = '/404';
+          return;
+        }
+  
         if (user?.id !== djData?.djId) {
           window.location.href = `/event?eventId=${eventId}`;
           return;
         }
+  
         setIsAuthorized(true);
         setEventTitle(eventData.eventName || "Event");
         setEventImage(eventData.eventImage || "");
         setRequestFee(eventData.requestFee || 0);
-        setSongRequests(
-          Array.isArray(songRequestsData) ? songRequestsData : []
-        );
+        setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : []);
         setDjData(djData && !djData.error ? djData : null);
-
+  
         setNoRequests(songRequestsData.length === 0);
-
+  
         setSettings({
           requestFee: eventData.requestFee || 0,
           eventImage: eventData.eventImage || "",
           acceptRequests: eventData.acceptRequests || false,
           freeRequests: eventData.acceptFreeRequests || false,
         });
-
+  
         setSliderValue([eventData.requestFee || 0]);
       })
       .catch((error) => {
         console.error("Error fetching data:", error);
+        // In case of any error, redirect to /404
+        window.location.href = '/404';
       })
       .finally(() => {
         setLoading(false);
       });
   }, [user]);
+  
 
   const acceptRequestFunc = async (requestId: string) => {
     try {
@@ -264,7 +273,9 @@ const EventAdminPage = () => {
       await acceptRequest(requestId, accesstoken);
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
-          req.requestId === requestId ? { ...req, accepted: true, status: 'accepted' } : req
+          req.requestId === requestId
+            ? { ...req, accepted: true, status: "accepted" }
+            : req
         )
       );
     } catch (error) {
@@ -291,7 +302,9 @@ const EventAdminPage = () => {
 
       setSongRequests((prevRequests) =>
         prevRequests.map((req) =>
-          req.requestId === requestId ? { ...req, played: true, status: 'completed' } : req
+          req.requestId === requestId
+            ? { ...req, played: true, status: "completed" }
+            : req
         )
       );
     } catch (error) {
@@ -317,7 +330,6 @@ const EventAdminPage = () => {
       if (!accesstoken) {
         throw new Error("Authentication token is missing.");
       }
-      
 
       // Handle API calls in the background
       await declineRequestAPI(requestId, accesstoken); // Use the imported declineRequest function
@@ -327,6 +339,18 @@ const EventAdminPage = () => {
       setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
     }
   };
+
+  async function handleDeleteEvent() {
+    const eventId = localStorage.getItem("eventId") || "";
+
+    const accesstoken = await getToken();
+    if (!accesstoken) {
+      throw new Error("Authentication token is missing.");
+    }
+    deleteEvent(eventId, accesstoken);
+
+    redirect('/404')
+  }
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
     setEventTitle(data.eventName); // Update the event title
@@ -348,7 +372,7 @@ const EventAdminPage = () => {
       if (!accesstoken) {
         throw new Error("Authentication token is missing.");
       }
-      
+
       try {
         await updateEvent(eventId, updatedEventData, accesstoken);
         toast({
@@ -384,7 +408,6 @@ const EventAdminPage = () => {
     if (!accesstoken) {
       throw new Error("Authentication token is missing.");
     }
-    
 
     try {
       const response = await updateEvent(
@@ -533,6 +556,77 @@ const EventAdminPage = () => {
     </div>
   );
 
+  const DeleteEvent = (
+    <div className="flex text-center items-center justify-center">
+      <Dialog>
+        <DialogTrigger className="flex items-center justify-center mt-5 rounded-md p-2 mb-5 shadow-md bg-slate-600 hover:outline">
+          <FaTrash className=" text-red-500"/>
+        </DialogTrigger>
+        <DialogContent className="w-[500px]">
+          <DialogTitle className="text-center">
+            Are you sure you want to delete this event?
+          </DialogTitle>
+          <div className="text-center flex flex-col gap-10 items-center mt-10">
+            <Label className="text-pretty leading-8">
+              We highly suggest closing the event - You will lose any analytics
+              or payments regarding this event if it is deleted.
+            </Label>
+            <Button
+              type="submit"
+              variant={"outline"}
+              className="max-w-[200px] bg-green-500 hover:bg-green-800 outline-none text-white"
+            >
+              Close Event
+            </Button>
+            <Button
+              type="submit"
+              variant={"outline"}
+              className="max-w-[100px] bg-red-600 hover:bg-red-900 outline-none text-white"
+              onClick={() => {
+                handleDeleteEvent();
+              }}
+            >
+              Delete Event
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+
+  const ChangeEventName = (
+    <div className="flex text-center items-center ">
+      <Popover>
+        <PopoverTrigger className="flex items-center justify-center rounded-md p-2 shadow-md bg-slate-600 hover:outline">
+          <FaPencilRuler className="text-white"/>
+        </PopoverTrigger>
+        <PopoverContent className="w-[300px]">
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-5 p-5"
+            >
+              <FormField
+                control={form.control}
+                name="eventName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Event Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder={eventTitle} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <Button type="submit">Save</Button>
+            </form>
+          </Form>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+
   return (
     <div
       className={`bg-gray-900 dark:bg-gray-900 ${
@@ -572,50 +666,22 @@ const EventAdminPage = () => {
                 <h1 className="text-6xl font-bold text-white mb-2">
                   {eventTitle}
                 </h1>
-                <div className="flex text-center items-center justify-center">
-                  <Popover>
-                    <PopoverTrigger className="flex items-center justify-center mt-5 rounded-md p-2 mb-5 shadow-md bg-slate-600">
-                      <FaPencilRuler />
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[300px]">
-                      <Form {...form}>
-                        <form
-                          onSubmit={form.handleSubmit(onSubmit)}
-                          className="space-y-5 p-5"
-                        >
-                          <FormField
-                            control={form.control}
-                            name="eventName"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Event Name</FormLabel>
-                                <FormControl>
-                                  <Input placeholder={eventTitle} {...field} />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <Button type="submit">Save</Button>
-                        </form>
-                      </Form>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+                
               </div>
-              <div className="flex-row flex gap-8">
-                <p className="text-2xl text-gray-200">DJ Dashboard</p>
+              <div className="flex-row flex gap-4 items-center">
                 {SettingsDialog(
                   FeeSetting,
                   EventImageSetting,
                   RequestLimitingSetting,
                   handleSettingsSubmit
                 )}
+                {ChangeEventName}
+                {DeleteEvent}
               </div>
             </div>
 
             {/* DJ Profile moved to header with transparent grey card, aligned to the absolute right */}
-            <div className="absolute right-0 bg-opacity-90 rounded-lg flex items-center justify-center pr-8">
+            <div className="absolute right-20 bg-opacity-90 rounded-lg flex items-center justify-center pr-8">
               <DJProfile
                 name={djData?.djName || "DJ Zo"}
                 role="Main Event DJ"
@@ -689,7 +755,10 @@ const EventAdminPage = () => {
               </h2>
               <div className="space-y-4">
                 {songRequests
-                  .filter((req) => req.accepted && !req.played && req.status == 'accepted')
+                  .filter(
+                    (req) =>
+                      req.accepted && !req.played && req.status == "accepted"
+                  )
                   .map((request) => (
                     <div
                       key={request.requestId}
@@ -726,7 +795,7 @@ const EventAdminPage = () => {
               </h2>
               <div className="space-y-4">
                 {songRequests
-                  .filter((req) => req.status == 'pending')
+                  .filter((req) => req.status == "pending")
                   .map((request) => (
                     <div
                       key={request.requestId}
@@ -781,7 +850,7 @@ function SettingsDialog(
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button className=" rounded-md p-3 mb-5 shadow-lg text-white hover:outline bg-gradient-to-r from-violet-700 to-fuchsia-700  ">
+        <Button className=" rounded-md p-3 shadow-lg text-white hover:outline bg-gradient-to-r from-violet-700 to-fuchsia-700  ">
           Settings
         </Button>
       </DialogTrigger>
