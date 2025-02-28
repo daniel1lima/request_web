@@ -1,0 +1,54 @@
+AWSTemplateFormatVersion: "2010-09-09"
+
+Resources:
+  S3Bucket:
+    Type: "AWS::S3::Bucket" # Defines an S3 bucket resource
+    Properties:
+      BucketName: !Sub "request-images-cad" # Sets the bucket name
+      PublicAccessBlockConfiguration: # Configures public access settings for the bucket
+        BlockPublicAcls: true # Blocks public ACLs
+        BlockPublicPolicy: false # Allows custom bucket policies
+        IgnorePublicAcls: true # Ignores public ACLs
+        RestrictPublicBuckets: true # Restricts public bucket access
+      VersioningConfiguration:
+        Status: Enabled # Enables versioning for the bucket
+
+  S3BucketPolicy:
+    Type: "AWS::S3::BucketPolicy" # Defines a bucket policy resource
+    Properties:
+      Bucket: !Ref S3Bucket # References the S3 bucket created above
+      PolicyDocument:
+        Version: "2012-10-17" # Specifies the version of the policy language
+        Statement:
+          - Effect: Allow # Allows the specified actions
+            Principal: "*" # Applies to all principals (users)
+            Action: "s3:GetObject" # Allows the GetObject action
+            Resource: !Sub "${S3Bucket.Arn}/*" # Applies to all objects in the bucket
+            Condition:
+              Bool:
+                aws:SecureTransport: "true" # Requires requests to use HTTPS
+          - Effect: Allow # Allows the specified actions
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:role/RequestImages" # Allows the IAM role to access the bucket
+            Action: "s3:PutObject" # Allows the PutObject action
+            Resource: !Sub "${S3Bucket.Arn}/*" # Applies to all objects in the bucket
+
+  MyAppIAMRole:
+    Type: AWS::IAM::Role # Defines an IAM Role resource
+    Properties:
+      RoleName: RequestImages # Assigns a name to the IAM role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17" # Specifies the version of the policy language
+        Statement:
+          - Effect: Allow # Allows the following action
+            Principal:
+              Service: "ec2.amazonaws.com" # Specifies that the EC2 service can assume this role
+            Action: "sts:AssumeRole" # Allows EC2 instances to assume the role
+      Policies:
+        - PolicyName: S3AccessPolicy # Names the inline policy for the role
+          PolicyDocument:
+            Version: "2012-10-17" # Specifies the version of the policy language
+            Statement:
+              - Effect: Allow # Allows the following actions
+                Action: "s3:PutObject" # Grants permission to upload objects to S3
+                Resource: !Sub "${S3Bucket.Arn}/*" # Applies to all objects in the specified S3 bucket
