@@ -1,11 +1,12 @@
-"use client";
-import React, { useEffect, useState } from "react";
-import DJProfile from "@/components/event/DJprofile";
-import SongCard from "@/components/event/SongCard";
-import { FaCheck, FaPencilRuler, FaTimes, FaTrash } from "react-icons/fa";
-import { Loader2 } from "lucide-react";
-import Image from "next/image";
-import { useAuth, useUser } from "@clerk/nextjs";
+"use client"
+import type React from "react"
+import { useEffect, useState } from "react"
+import DJProfile from "@/components/event/DJprofile"
+import SongCard from "@/components/event/SongCard"
+import { FaCheck, FaPencilRuler, FaTimes, FaTrash } from "react-icons/fa"
+import { Loader2 } from "lucide-react"
+import Image from "next/image"
+import { useAuth, useUser } from "@clerk/nextjs"
 import {
   acceptRequest,
   capturePaymentIntent,
@@ -17,345 +18,347 @@ import {
   updateEvent,
   declineRequest as declineRequestAPI,
   deleteEvent,
-} from "@/api/apiService";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/input";
-import { Button } from "@/components/ui/button";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { useToast } from "@/hooks/use-toast";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/dialog";
-import { Slider } from "@/components/ui/slider";
-import { Label } from "@/components/ui/label";
-import { notFound, redirect } from "next/navigation";
+  uploadFileApi,
+} from "@/api/apiService"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/input"
+import { Button } from "@/components/ui/button"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { useToast } from "@/hooks/use-toast"
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/dialog"
+import { Slider } from "@/components/ui/slider"
+import { Label } from "@/components/ui/label"
+import { notFound, redirect } from "next/navigation"
 
 export interface request {
-  requestId: string;
-  songImage: string;
-  songName: string;
-  songArtist: string;
-  requestUpvotes: number;
-  accepted: boolean;
-  paymentId?: string;
-  played: boolean;
-  status: string;
+  requestId: string
+  songImage: string
+  songName: string
+  songArtist: string
+  requestUpvotes: number
+  accepted: boolean
+  paymentId?: string
+  played: boolean
+  status: string
 }
 
 export interface DJ {
-  djId: string;
-  djName: string;
-  djEmail: string;
-  djPhone: string;
-  djInsta: string;
-  createdAt: string;
-  updatedAt: string;
+  djId: string
+  djName: string
+  djEmail: string
+  djPhone: string
+  djInsta: string
+  createdAt: string
+  updatedAt: string
   Events: Array<{
-    eventId: string;
-    eventName: string;
-    eventImage: string;
-    eventDateTime: string;
-    eventLocation: string;
-    requestFee: number;
-    djId: string;
-    createdAt: string;
-    updatedAt: string;
-  }>;
+    eventId: string
+    eventName: string
+    eventImage: string
+    eventDateTime: string
+    eventLocation: string
+    requestFee: number
+    djId: string
+    createdAt: string
+    updatedAt: string
+  }>
   Payments: Array<{
-    paymentId: string;
-    amount: number;
-    paymentDate: string;
-    status: string;
-    djId: string;
-  }>;
+    paymentId: string
+    amount: number
+    paymentDate: string
+    status: string
+    djId: string
+  }>
 }
 
 const Loader = () => (
   <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
     <Loader2 className="w-6 h-6 text-white animate-spin" />
   </div>
-);
+)
 
 const validateResponseNoReturn = (response: any) => {
   if ("ok" in response && !response.ok) {
-    throw new Error("Network response was not ok");
+    throw new Error("Network response was not ok")
   }
   if ("success" in response && !response.success) {
-    throw new Error("Request failed");
+    throw new Error("Request failed")
   }
-  return;
-};
+  return
+}
 
 // Define the schema for the form
 const FormSchema = z.object({
   eventName: z.string().min(1, {
     message: "Event name is required.",
   }),
-});
+})
 
 const EventAdminPage = () => {
-  const { user } = useUser();
-  const [songRequests, setSongRequests] = useState<request[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [eventTitle, setEventTitle] = useState("");
-  const [eventImage, setEventImage] = useState("");
-  const [requestFee, setRequestFee] = useState(0);
-  const [djData, setDjData] = useState<DJ | null>(null);
-  const [isAuthorized, setIsAuthorized] = useState(false);
+  const { user } = useUser()
+  const [songRequests, setSongRequests] = useState<request[]>([])
+  const [loading, setLoading] = useState(true)
+  const [eventTitle, setEventTitle] = useState("")
+  const [eventImage, setEventImage] = useState("")
+  const [requestFee, setRequestFee] = useState(0)
+  const [djData, setDjData] = useState<DJ | null>(null)
+  const [isAuthorized, setIsAuthorized] = useState(false)
 
-  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
-    {}
-  );
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({})
 
-  const [noRequests, setNoRequests] = useState(false);
+  const [noRequests, setNoRequests] = useState(false)
 
-  const [isMobile, setIsMobile] = useState(false); // State to track mobile status
+  const [isMobile, setIsMobile] = useState(false) // State to track mobile status
 
-  const { toast } = useToast();
-  const { getToken } = useAuth();
+  const { toast } = useToast()
+  const { getToken } = useAuth()
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
       eventName: eventTitle,
     },
-  });
+  })
 
-  const [selectedFile, setSelectedFile] = useState<File | null>(null); // State to manage the selected file
-  const [imagePreview, setImagePreview] = useState<string | null>(null); // State for image preview
+  const [selectedFile, setSelectedFile] = useState<File | null>(null) // State to manage the selected file
+  const [imagePreview, setImagePreview] = useState<string | null>(null) // State for image preview
 
   const [settings, setSettings] = useState({
     requestFee: 0,
     eventImage: "",
     acceptRequests: false,
     freeRequests: false,
-  });
+  })
 
-  const [sliderValue, setSliderValue] = useState<number[]>([50]); // Initialize to 50 cents
+  const [sliderValue, setSliderValue] = useState<number[]>([50]) // Initialize to 50 cents
 
   // Update settings when slider changes
   const handleSliderChange = (value: number[]) => {
-    setSliderValue(value);
-    setSettings((prev) => ({ ...prev, requestFee: value[0] })); // Update request fee
-  };
+    setSliderValue(value)
+    setSettings((prev) => ({ ...prev, requestFee: value[0] })) // Update request fee
+  }
 
   // Update settings when file is selected
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null;
-    setSelectedFile(file);
+    const file = event.target.files?.[0] || null
+    setSelectedFile(file)
     if (file) {
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
-      setSettings((prev) => ({ ...prev, eventImage: previewUrl })); // Update event image
+      const previewUrl = URL.createObjectURL(file)
+      setImagePreview(previewUrl)
     }
-  };
+  }
+
+  const uploadFile = async () => {
+    try {
+      if (!selectedFile) {
+        toast({
+          variant: "destructive",
+          title: "Missing Event Image!",
+          description: `No file selected for Event Image`,
+        })
+        return null // Return null if no file is selected
+      }
+
+      const data = new FormData()
+      data.append("file", selectedFile)
+
+      const s3response = await uploadFileApi(data)
+
+      if (s3response && s3response.url) {
+        setSettings((prevSettings) => ({
+          ...prevSettings,
+          eventImage: s3response.url,
+        }))
+
+        return s3response.url // Return the URL
+      }
+      return null
+    } catch (e) {
+
+      toast({
+        variant: "destructive",
+        title: "An error occurred while trying to upload an image!",
+        description: `${e}`,
+      })
+      return null
+    }
+  }
 
   // Handle drag events
   const handleDragOver = (event: React.DragEvent<HTMLLabelElement>) => {
-    event.preventDefault(); // Prevent default behavior
-    event.stopPropagation(); // Stop propagation
-  };
+    event.preventDefault() // Prevent default behavior
+    event.stopPropagation() // Stop propagation
+  }
   const handleAcceptRequestsChange = (value: boolean) => {
-    setSettings((prev) => ({ ...prev, acceptRequests: value }));
-  };
+    setSettings((prev) => ({ ...prev, acceptRequests: value }))
+  }
 
   const handleFreeRequestsChange = (value: boolean) => {
-    setSettings((prev) => ({ ...prev, freeRequests: value }));
-  };
+    setSettings((prev) => ({ ...prev, freeRequests: value }))
+  }
   const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
-    event.preventDefault(); // Prevent default behavior
-    event.stopPropagation(); // Stop propagation
-    const file = event.dataTransfer.files[0]; // Get the dropped file
+    event.preventDefault() // Prevent default behavior
+    event.stopPropagation() // Stop propagation
+    const file = event.dataTransfer.files[0] // Get the dropped file
     if (file) {
-      setSelectedFile(file); // Update the state with the dropped file
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl); // Update the image preview state
+      setSelectedFile(file) // Update the state with the dropped file
+      const previewUrl = URL.createObjectURL(file)
+      setImagePreview(previewUrl) // Update the image preview state
     }
-  };
+  }
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768); // Check if the device is mobile
-    };
+      setIsMobile(window.innerWidth <= 768) // Check if the device is mobile
+    }
 
-    handleResize(); // Initial check
-    window.addEventListener("resize", handleResize); // Add event listener
+    handleResize() // Initial check
+    window.addEventListener("resize", handleResize) // Add event listener
 
     return () => {
-      window.removeEventListener("resize", handleResize); // Cleanup listener
-    };
-  }, []);
+      window.removeEventListener("resize", handleResize) // Cleanup listener
+    }
+  }, [])
 
   useEffect(() => {
-    const eventId = new URL(window.location.href).searchParams.get("eventId");
-    if (!eventId || !user) return;
-  
-    localStorage.setItem("eventId", eventId);
-    const djId = localStorage.getItem("djId");
-    setLoading(true);
-  
-    const fetchEventData = fetchEventById(eventId);
-    const fetchSongRequests = fetchRequestsByEventId(eventId);
-    const fetchDJData = localStorage.getItem("djId")
-      ? fetchDjById(djId || "")
-      : Promise.resolve(null);
-  
+    const eventId = new URL(window.location.href).searchParams.get("eventId")
+    if (!eventId || !user) return
+
+    localStorage.setItem("eventId", eventId)
+    const djId = localStorage.getItem("djId")
+    setLoading(true)
+
+    const fetchEventData = fetchEventById(eventId)
+    const fetchSongRequests = fetchRequestsByEventId(eventId)
+    const fetchDJData = localStorage.getItem("djId") ? fetchDjById(djId || "") : Promise.resolve(null)
+
     Promise.all([fetchEventData, fetchSongRequests, fetchDJData])
       .then(([eventData, songRequestsData, djData]) => {
         // Handle event data error if thrown by fetchEventById
         if (!eventData || eventData.error) {
-          window.location.href = '/404';
-          return;
+          window.location.href = "/404"
+          return
         }
-  
+
         if (user?.id !== djData?.djId) {
-          window.location.href = `/event?eventId=${eventId}`;
-          return;
+          window.location.href = `/event?eventId=${eventId}`
+          return
         }
-  
-        setIsAuthorized(true);
-        setEventTitle(eventData.eventName || "Event");
-        setEventImage(eventData.eventImage || "");
-        setRequestFee(eventData.requestFee || 0);
-        setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : []);
-        setDjData(djData && !djData.error ? djData : null);
-  
-        setNoRequests(songRequestsData.length === 0);
-  
+
+        setIsAuthorized(true)
+        setEventTitle(eventData.eventName || "Event")
+        setEventImage(eventData.eventImage || "")
+        setRequestFee(eventData.requestFee || 0)
+        setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : [])
+        setDjData(djData && !djData.error ? djData : null)
+
+        setNoRequests(songRequestsData.length === 0)
+
         setSettings({
           requestFee: eventData.requestFee || 0,
           eventImage: eventData.eventImage || "",
           acceptRequests: eventData.acceptRequests || false,
           freeRequests: eventData.acceptFreeRequests || false,
-        });
-  
-        setSliderValue([eventData.requestFee || 0]);
+        })
+
+        setSliderValue([eventData.requestFee || 0])
       })
       .catch((error) => {
-        console.error("Error fetching data:", error);
+        console.error("Error fetching data:", error)
         // In case of any error, redirect to /404
-        window.location.href = '/404';
+        window.location.href = "/404"
       })
       .finally(() => {
-        setLoading(false);
-      });
-  }, [user]);
-  
+        setLoading(false)
+      })
+  }, [user])
 
   const acceptRequestFunc = async (requestId: string) => {
     try {
-      const accesstoken = await getToken();
+      const accesstoken = await getToken()
       if (!accesstoken) {
-        throw new Error("Authentication token is missing.");
+        throw new Error("Authentication token is missing.")
       }
 
-      await acceptRequest(requestId, accesstoken);
+      await acceptRequest(requestId, accesstoken)
       setSongRequests((prevRequests) =>
-        prevRequests.map((req) =>
-          req.requestId === requestId
-            ? { ...req, accepted: true, status: "accepted" }
-            : req
-        )
-      );
+        prevRequests.map((req) => (req.requestId === requestId ? { ...req, accepted: true, status: "accepted" } : req)),
+      )
     } catch (error) {
-      console.error("Error accepting request:", error);
+      console.error("Error accepting request:", error)
     }
-  };
+  }
 
   const playedRequest = async (requestId: string) => {
-    setLoadingStates((prev) => ({ ...prev, [requestId]: true }));
+    setLoadingStates((prev) => ({ ...prev, [requestId]: true }))
 
     try {
-      const request = songRequests.find((req) => req.requestId === requestId);
-      if (!request?.paymentId) return;
+      const request = songRequests.find((req) => req.requestId === requestId)
+      if (!request?.paymentId) return
 
-      const paymentData = await fetchPaymentById(request.paymentId);
-      await capturePaymentIntent(request.paymentId, paymentData.amount);
+      const paymentData = await fetchPaymentById(request.paymentId)
+      await capturePaymentIntent(request.paymentId, paymentData.amount)
 
-      const accesstoken = await getToken();
+      const accesstoken = await getToken()
       if (!accesstoken) {
-        throw new Error("Authentication token is missing.");
+        throw new Error("Authentication token is missing.")
       }
 
-      await markRequestAsPlayed(requestId, accesstoken);
+      await markRequestAsPlayed(requestId, accesstoken)
 
       setSongRequests((prevRequests) =>
-        prevRequests.map((req) =>
-          req.requestId === requestId
-            ? { ...req, played: true, status: "completed" }
-            : req
-        )
-      );
+        prevRequests.map((req) => (req.requestId === requestId ? { ...req, played: true, status: "completed" } : req)),
+      )
     } catch (error) {
-      console.error("Error processing payment:", error);
+      console.error("Error processing payment:", error)
     } finally {
-      setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
+      setLoadingStates((prev) => ({ ...prev, [requestId]: false }))
     }
-  };
+  }
 
   const declineRequest = async (requestId: string) => {
-    setLoadingStates((prev) => ({ ...prev, [requestId]: true }));
+    setLoadingStates((prev) => ({ ...prev, [requestId]: true }))
 
     // Immediately update UI
-    setSongRequests((prevRequests) =>
-      prevRequests.filter((req) => req.requestId !== requestId)
-    );
+    setSongRequests((prevRequests) => prevRequests.filter((req) => req.requestId !== requestId))
 
     try {
-      const request = songRequests.find((req) => req.requestId === requestId);
-      if (!request?.paymentId) return;
+      const request = songRequests.find((req) => req.requestId === requestId)
+      if (!request?.paymentId) return
 
-      const accesstoken = await getToken();
+      const accesstoken = await getToken()
       if (!accesstoken) {
-        throw new Error("Authentication token is missing.");
+        throw new Error("Authentication token is missing.")
       }
 
       // Handle API calls in the background
-      await declineRequestAPI(requestId, accesstoken); // Use the imported declineRequest function
+      await declineRequestAPI(requestId, accesstoken) // Use the imported declineRequest function
     } catch (error) {
-      console.error("Error cancelling payment:", error);
+      console.error("Error cancelling payment:", error)
     } finally {
-      setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
+      setLoadingStates((prev) => ({ ...prev, [requestId]: false }))
     }
-  };
+  }
 
   async function handleDeleteEvent() {
-    const eventId = localStorage.getItem("eventId") || "";
+    const eventId = localStorage.getItem("eventId") || ""
 
-    const accesstoken = await getToken();
+    const accesstoken = await getToken()
     if (!accesstoken) {
-      throw new Error("Authentication token is missing.");
+      throw new Error("Authentication token is missing.")
     }
-    deleteEvent(eventId, accesstoken);
+    deleteEvent(eventId, accesstoken)
 
-    redirect('/')
+    redirect("/")
   }
 
   async function onSubmit(data: z.infer<typeof FormSchema>) {
-    setEventTitle(data.eventName); // Update the event title
+    setEventTitle(data.eventName) // Update the event title
 
-    const eventId = localStorage.getItem("eventId"); // Retrieve the event ID
+    const eventId = localStorage.getItem("eventId") // Retrieve the event ID
 
     const updatedEventData = {
       eventId: eventId, // Include the event ID
@@ -364,79 +367,77 @@ const EventAdminPage = () => {
       eventLocation: "", // Add the appropriate location if needed
       requestFee: requestFee,
       djId: user?.id || "",
-    };
+    }
 
     // Call the updateEvent function
     if (eventId) {
-      const accesstoken = await getToken();
+      const accesstoken = await getToken()
       if (!accesstoken) {
-        throw new Error("Authentication token is missing.");
+        throw new Error("Authentication token is missing.")
       }
 
       try {
-        await updateEvent(eventId, updatedEventData, accesstoken);
+        await updateEvent(eventId, updatedEventData, accesstoken)
         toast({
           title: "Event updated!",
           description: `New event name: ${data.eventName}`,
-        });
+        })
       } catch (error) {
-        console.error("Error updating event:", error);
         toast({
           title: "Update failed",
-          description: "There was an error updating the event.",
+          description: `There was an error updating the event. ${error}`,
           variant: "destructive",
-        });
+        })
       }
     }
   }
 
   async function handleSettingsSubmit(): Promise<void> {
-    const eventId = localStorage.getItem("eventId"); // Retrieve the event ID
+    const eventId = localStorage.getItem("eventId")
 
     if (!eventId) {
-      notFound();
+      notFound()
     }
 
+    // Get the image URL from uploadFile if a file was selected
+    const imageUrl = await uploadFile()
+
     const updatedEventData = {
-      eventImage: settings.eventImage,
+      // Use the returned URL if available, otherwise use the current settings.eventImage
+      eventImage: imageUrl || settings.eventImage,
       requestFee: settings.requestFee,
       acceptRequests: settings.acceptRequests,
       acceptFreeRequests: settings.freeRequests,
-    };
+    }
 
-    const accesstoken = await getToken();
+
+    const accesstoken = await getToken()
     if (!accesstoken) {
-      throw new Error("Authentication token is missing.");
+      throw new Error("Authentication token is missing.")
     }
 
     try {
-      const response = await updateEvent(
-        eventId,
-        updatedEventData,
-        accesstoken
-      ); // Call the updateEvent function
+      const response = await updateEvent(eventId, updatedEventData, accesstoken)
 
-      // Check if the response indicates success
       if (response && response.eventId) {
-        console.log(response);
+
         toast({
           title: "Settings updated!",
           description: "Your settings have been successfully updated.",
-        });
+        })
       } else {
-        throw new Error("Failed to update settings"); // Trigger the catch block
+        throw new Error("Failed to update settings")
       }
     } catch (error) {
-      console.error("Error updating settings:", error);
       toast({
         title: "Update failed",
         description: "There was an error updating your settings.",
         variant: "destructive",
-      });
+      })
     }
   }
 
-  if (loading || !isAuthorized) return <Loader />;
+  if (loading || !isAuthorized) return <Loader />
 
   const FeeBadge = (
     <div className="relative group">
@@ -448,7 +449,7 @@ const EventAdminPage = () => {
         </div>
       </div>
     </div>
-  );
+  )
 
   const FeeSetting = (
     <div className="  rounded-lg p-3">
@@ -468,7 +469,7 @@ const EventAdminPage = () => {
         {FeeBadge}
       </div>
     </div>
-  );
+  )
 
   const EventImageSetting = (
     <div className="rounded-lg p-3">
@@ -500,12 +501,9 @@ const EventAdminPage = () => {
                     />
                   </svg>
                   <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
-                    <span className="font-semibold">Click to upload</span> or
-                    drag and drop
+                    <span className="font-semibold">Click to upload</span> or drag and drop
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
-                    SVG, PNG, JPG or GIF (MAX. 800x400px)
-                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">SVG, PNG, JPG or GIF (MAX. 800x400px)</p>
                 </div>
                 <input
                   id="dropzone-file"
@@ -521,7 +519,7 @@ const EventAdminPage = () => {
           {selectedFile && imagePreview && (
             <div className="mb-4 items-center justify-center flex flex-col gap-5">
               <Image
-                src={imagePreview}
+                src={imagePreview || "/placeholder.svg"}
                 alt="Image Preview"
                 width={100} // Set desired width
                 height={100} // Set desired height
@@ -535,41 +533,33 @@ const EventAdminPage = () => {
         </div>
       </div>
     </div>
-  );
+  )
 
   const RequestLimitingSetting = (
     <div className="flex flex-row w-full items-center justify-center gap-20">
       <div className="flex flex-col mb-5 gap-5 text-center items-center justify-center">
         <Label>Accept Requests</Label>
-        <Switch
-          checked={settings.acceptRequests}
-          onCheckedChange={handleAcceptRequestsChange}
-        />
+        <Switch checked={settings.acceptRequests} onCheckedChange={handleAcceptRequestsChange} />
       </div>
       <div className="flex flex-col mb-5 gap-5 text-center items-center justify-center">
         <Label>Free Requests</Label>
-        <Switch
-          checked={settings.freeRequests}
-          onCheckedChange={handleFreeRequestsChange}
-        />
+        <Switch checked={settings.freeRequests} onCheckedChange={handleFreeRequestsChange} />
       </div>
     </div>
-  );
+  )
 
   const DeleteEvent = (
     <div className="flex text-center items-center justify-center">
       <Dialog>
         <DialogTrigger className="flex items-center justify-center mt-5 rounded-md p-2 mb-5 shadow-md bg-slate-600 hover:outline">
-          <FaTrash className=" text-red-500"/>
+          <FaTrash className=" text-red-500" />
         </DialogTrigger>
         <DialogContent className="w-[500px]">
-          <DialogTitle className="text-center">
-            Are you sure you want to delete this event?
-          </DialogTitle>
+          <DialogTitle className="text-center">Are you sure you want to delete this event?</DialogTitle>
           <div className="text-center flex flex-col gap-10 items-center mt-10">
             <Label className="text-pretty leading-8">
-              We highly suggest closing the event - You will lose any analytics
-              or payments regarding this event if it is deleted.
+              We highly suggest closing the event - You will lose any analytics or payments regarding this event if it
+              is deleted.
             </Label>
             <Button
               type="submit"
@@ -583,7 +573,7 @@ const EventAdminPage = () => {
               variant={"outline"}
               className="max-w-[100px] bg-red-600 hover:bg-red-900 outline-none text-white"
               onClick={() => {
-                handleDeleteEvent();
+                handleDeleteEvent()
               }}
             >
               Delete Event
@@ -592,20 +582,17 @@ const EventAdminPage = () => {
         </DialogContent>
       </Dialog>
     </div>
-  );
+  )
 
   const ChangeEventName = (
     <div className="flex text-center items-center ">
       <Popover>
         <PopoverTrigger className="flex items-center justify-center rounded-md p-2 shadow-md bg-slate-600 hover:outline">
-          <FaPencilRuler className="text-white"/>
+          <FaPencilRuler className="text-white" />
         </PopoverTrigger>
         <PopoverContent className="w-[300px]">
           <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(onSubmit)}
-              className="space-y-5 p-5"
-            >
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 p-5">
               <FormField
                 control={form.control}
                 name="eventName"
@@ -625,13 +612,12 @@ const EventAdminPage = () => {
         </PopoverContent>
       </Popover>
     </div>
-  );
+  )
 
   return (
     <div
       className={`bg-gray-900 dark:bg-gray-900 ${
-        songRequests.filter((req) => req.accepted && !req.played).length ===
-          0 &&
+        songRequests.filter((req) => req.accepted && !req.played).length === 0 &&
         songRequests.filter((req) => !req.accepted && !req.played).length === 0
           ? "h-screen"
           : "h-full"
@@ -652,29 +638,15 @@ const EventAdminPage = () => {
           {/* Content container with flex layout */}
           <div className="flex items-center h-full space-x-8">
             {/* Logo - increased height */}
-            <Image
-              src="/RequestLogoDark.png"
-              alt="Logo"
-              width={225}
-              height={225}
-              priority
-            />
+            <Image src="/RequestLogoDark.png" alt="Logo" width={225} height={225} priority />
 
             {/* Title content */}
             <div>
               <div className="flex flex-row gap-5 ">
-                <h1 className="text-6xl font-bold text-white mb-2">
-                  {eventTitle}
-                </h1>
-                
+                <h1 className="text-6xl font-bold text-white mb-2">{eventTitle}</h1>
               </div>
               <div className="flex-row flex gap-4 items-center">
-                {SettingsDialog(
-                  FeeSetting,
-                  EventImageSetting,
-                  RequestLimitingSetting,
-                  handleSettingsSubmit
-                )}
+                {SettingsDialog(FeeSetting, EventImageSetting, RequestLimitingSetting, handleSettingsSubmit)}
                 {ChangeEventName}
                 {DeleteEvent}
               </div>
@@ -703,9 +675,7 @@ const EventAdminPage = () => {
         <div className="flex items-center justify-center h-[80vh] mb-20">
           <div className="text-center">
             <h2 className="text-4xl font-bold">No requests yet</h2>
-            <p className="text-2xl text-gray-500">
-              Check back later for song requests
-            </p>
+            <p className="text-2xl text-gray-500">Check back later for song requests</p>
           </div>
         </div>
       ) : (
@@ -714,13 +684,9 @@ const EventAdminPage = () => {
             {/* Songs Requested Card */}
             <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-bold text-white">
-                  Songs Requested
-                </h3>
+                <h3 className="text-xl font-bold text-white">Songs Requested</h3>
               </div>
-              <p className="text-4xl font-semibold text-white">
-                {songRequests.length}
-              </p>
+              <p className="text-4xl font-semibold text-white">{songRequests.length}</p>
             </div>
 
             {/* Songs Played Card */}
@@ -728,9 +694,7 @@ const EventAdminPage = () => {
               <div>
                 <h3 className="text-xl font-bold text-white">Songs Played</h3>
               </div>
-              <p className="text-4xl font-semibold text-white">
-                {songRequests.filter((req) => req.played).length}
-              </p>
+              <p className="text-4xl font-semibold text-white">{songRequests.filter((req) => req.played).length}</p>
             </div>
 
             {/* DJ Earnings Card */}
@@ -739,10 +703,7 @@ const EventAdminPage = () => {
                 <h3 className="text-xl font-bold text-white">DJ Earnings</h3>
               </div>
               <p className="text-4xl font-semibold text-white">
-                $
-                {(songRequests.filter((req) => req.played).length *
-                  requestFee) /
-                  100}
+                ${(songRequests.filter((req) => req.played).length * requestFee) / 100}
               </p>
             </div>
           </div>
@@ -750,15 +711,10 @@ const EventAdminPage = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-full">
             {/* Accepted Songs Column */}
             <div className="bg-gray-800 rounded-xl p-6 shadow-xl overflow-y-auto">
-              <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
-                Accepted Requests
-              </h2>
+              <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">Accepted Requests</h2>
               <div className="space-y-4">
                 {songRequests
-                  .filter(
-                    (req) =>
-                      req.accepted && !req.played && req.status == "accepted"
-                  )
+                  .filter((req) => req.accepted && !req.played && req.status == "accepted")
                   .map((request) => (
                     <div
                       key={request.requestId}
@@ -790,9 +746,7 @@ const EventAdminPage = () => {
 
             {/* Requested Songs Column */}
             <div className="bg-gray-800 rounded-xl p-6 shadow-xl  overflow-y-auto">
-              <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
-                New Requests
-              </h2>
+              <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">New Requests</h2>
               <div className="space-y-4">
                 {songRequests
                   .filter((req) => req.status == "pending")
@@ -836,16 +790,16 @@ const EventAdminPage = () => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default EventAdminPage;
+export default EventAdminPage
 
 function SettingsDialog(
   FeeSetting: React.JSX.Element,
   EventImageSetting: React.JSX.Element,
   RequestLimitingSetting: React.JSX.Element,
-  handleSettingsSubmit: () => Promise<void>
+  handleSettingsSubmit: () => Promise<void>,
 ) {
   return (
     <Dialog>
@@ -856,9 +810,7 @@ function SettingsDialog(
       </DialogTrigger>
       <DialogContent className=" w-[500px] z-50">
         <DialogHeader>
-          <DialogTitle className="text-center text-3xl">
-            Event Settings
-          </DialogTitle>
+          <DialogTitle className="text-center text-3xl">Event Settings</DialogTitle>
         </DialogHeader>
         <div className="rounded-lg p-3 flex flex-col gap-2 text-center">
           {FeeSetting}
@@ -871,7 +823,7 @@ function SettingsDialog(
             <Button
               className="bg-purple-600 text-white rounded-md p-2 mt-2 hover:bg-blue-600 transition-colors ease-in-out duration-200"
               onClick={() => {
-                handleSettingsSubmit();
+                handleSettingsSubmit()
               }}
             >
               Save
@@ -880,5 +832,6 @@ function SettingsDialog(
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }
+

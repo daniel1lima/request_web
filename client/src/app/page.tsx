@@ -21,19 +21,17 @@ import {
 import { Button } from "@/components/button";
 import { Input } from "@/components/input";
 import { Label } from "@/components/label";
-
 import { format } from "date-fns";
 import { CalendarIcon } from "lucide-react";
-
 import { cn } from "@/lib/utils";
-
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { fetchAllEvents, createEvent } from "@/api/apiService";
+import { fetchAllEvents, createEvent, uploadFileApi } from "@/api/apiService";
+import { useToast } from "@/hooks/use-toast";
 
 export interface Event {
   eventId: string;
@@ -63,18 +61,16 @@ const Loader = () => (
   </div>
 );
 
-// Add this helper function after the Event interface
 const createFuseInstance = (events: Event[]) => {
   return new Fuse(events, {
     keys: ["eventName", "eventLocation"],
-    threshold: 0.4, // Lower = more strict matching
+    threshold: 0.4,
     location: 0,
     distance: 100,
     minMatchCharLength: 2,
   });
 };
 
-// Components for different views
 const ExploreView = ({
   allEvents,
   searchQuery,
@@ -86,22 +82,6 @@ const ExploreView = ({
 }) => {
   const now = new Date();
   const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
-  // const [isMobile, setIsMobile] = useState(false);
-
-  // Add useEffect to detect mobile device
-  // useEffect(() => {
-  //   const handleResize = () => {
-  //     setIsMobile(window.innerWidth < 768); // Adjust the width as needed for mobile detection
-  //   };
-
-  //   handleResize(); // Check on initial load
-  //   window.addEventListener("resize", handleResize);
-
-  //   return () => {
-  //     window.removeEventListener("resize", handleResize);
-  //   };
-  // }, []);
 
   const filterAndSearchEvents = (events: Event[]) => {
     if (!searchQuery) return events;
@@ -128,7 +108,6 @@ const ExploreView = ({
 
   return (
     <main className="flex-1 overflow-y-auto pb-20 px-4">
-      {/* Current Events */}
       <section className="mt-4">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold">Events Right Now</h2>
@@ -139,29 +118,23 @@ const ExploreView = ({
             See All
           </button>
         </div>
-
-        {/* Events grid or list */}
         <div className="mt-4 p-4 pb-4 bg-white bg-opacity-5 rounded-lg shadow-md h-48 overflow-hidden whitespace-nowrap ">
           <div className="flex gap-4">
             {filteredCurrentEvents.length > 0 ? (
-              filteredCurrentEvents.map((event) => {
-                return (
-                  <div
-                    key={event.eventId}
-                    className="cursor-pointer transition"
-                    onClick={() => {
-                      redirect(`/event?eventId=${event.eventId}`);
-                    }}
-                  >
-                    <EventCard
-                      image={event.eventImage}
-                      title={event.eventName}
-                      date={new Date(event.eventDateTime).toLocaleDateString()}
-                      location={event.eventLocation}
-                    />
-                  </div>
-                );
-              })
+              filteredCurrentEvents.map((event) => (
+                <div
+                  key={event.eventId}
+                  className="cursor-pointer transition"
+                  onClick={() => redirect(`/event?eventId=${event.eventId}`)}
+                >
+                  <EventCard
+                    image={event.eventImage}
+                    title={event.eventName}
+                    date={new Date(event.eventDateTime).toLocaleDateString()}
+                    location={event.eventLocation}
+                  />
+                </div>
+              ))
             ) : (
               <div className="flex flex-col items-center justify-center h-full w-full text-gray-400">
                 <p className="text-5xl mb-2">😔</p>
@@ -174,7 +147,6 @@ const ExploreView = ({
         </div>
       </section>
 
-      {/* Invite friends banner */}
       <section className="mt-8">
         <div className="relative bg-indigo-600 rounded-lg p-4 flex items-center">
           <h3 className="text-5xl font-bold">🙋‍♂️</h3>
@@ -191,56 +163,6 @@ const ExploreView = ({
           </Link>
         </div>
       </section>
-
-      {/* Events After 24 Hours */}
-      {false && (
-        <section className="mt-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Events Coming Soon</h2>
-            <button
-              onClick={() => setCurrentView("events")}
-              className="text-sm text-indigo-400"
-            >
-              See All
-            </button>
-          </div>
-
-          {/* Events grid or list */}
-          <div className="mt-4 p-4 bg-white bg-opacity-5 rounded-lg shadow-md h-58 overflow-x-auto whitespace-nowrap ">
-            <div className="flex gap-4">
-              {filteredFutureEvents.length > 0 ? (
-                filteredFutureEvents.map((event) => (
-                  <Link
-                    key={event.eventId}
-                    href={`/event?eventId=${event.eventId}`}
-                  >
-                    <div
-                      key={event.eventId}
-                      className="inline-block cursor-pointer  transition"
-                    >
-                      <EventCard
-                        image={event.eventImage}
-                        title={event.eventName}
-                        date={new Date(
-                          event.eventDateTime
-                        ).toLocaleDateString()}
-                        location={event.eventLocation}
-                      />
-                    </div>
-                  </Link>
-                ))
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full w-full text-gray-400">
-                  <p className="text-5xl mb-2">😔</p>
-                  <p className="text-center text-sm">
-                    Sorry, Nothing Here Just Yet
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
     </main>
   );
 };
@@ -294,14 +216,11 @@ const AllEventsView = ({
   );
 };
 
-// UserView component
 const UserView = () => {
   const { isSignedIn } = useUser();
 
   useEffect(() => {
-    if (isSignedIn) {
-      redirect("/");
-    }
+    if (isSignedIn) redirect("/");
   }, [isSignedIn]);
 
   return (
@@ -352,142 +271,154 @@ const Index = () => {
   const [eventLocationError, setEventLocationError] = useState(false);
   const [requestFeeError, setRequestFeeError] = useState(false);
   const [date, setDate] = React.useState<Date>();
-  const {getToken} = useAuth()
+  const { getToken } = useAuth();
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  // Add new useEffect for image preloading
+  const { toast } = useToast();
+
+  const uploadFile = async () => {
+    try {
+      if (!selectedFile) {
+        toast({
+          variant: "destructive",
+          title: "Missing Event Image!",
+          description: `No file selected for Event Image`,
+        });
+        return; // Early return if no file is selected
+      }
+
+      const data = new FormData();
+      data.append("file", selectedFile); // Fix: Ensure "file" matches backend key
+
+      console.log(selectedFile);
+
+      const s3response = await uploadFileApi(data); // Await file upload
+
+      if (s3response && s3response.url) {
+        setEventImage(s3response.url); // Set the event image URL once uploaded
+      }
+
+      return s3response.url
+
+    } catch (e) {
+      console.error(e);
+      toast({
+        variant: "destructive",
+        title: "An error occurred while trying to upload an image!",
+        description: `${e}`,
+      });
+    }
+  };
+
   useEffect(() => {
     const logoImage = new window.Image();
     logoImage.src = "/RequestLogoDark.png";
-
-    document.ontouchmove = function (event) {
-      event.preventDefault();
-    };
-
-    Promise.all([
-      new Promise((resolve) => {
-        logoImage.onload = resolve;
-      }),
-    ]).then(() => {
-      setImagesLoaded(true);
-    });
+    document.ontouchmove = (event) => event.preventDefault();
+    logoImage.onload = () => setImagesLoaded(true);
   }, []);
-
-  useEffect(() => {
-    console.log(date);
-  }, [date]);
 
   useEffect(() => {
     const loadEvents = async () => {
       try {
         const data = await fetchAllEvents();
-
         if (!data || data.error) {
           console.error("Error fetching event data:", data?.error || "No data");
           notFound();
         }
-
         localStorage.setItem("allEvents", JSON.stringify(data));
         setAllEvents(data);
         setFadeOut(true);
-        setTimeout(() => {
-          setLoading(false);
-        }, 200);
+        setTimeout(() => setLoading(false), 200);
       } catch (error) {
         console.error("Error fetching event details:", error);
         notFound();
       }
     };
-
     loadEvents();
   }, [router]);
 
   const handleSubmit = async () => {
-    // Reset error states
-    setEventNameError(false);
-    setEventImageError(false);
-    setEventDateError(false);
-    setEventLocationError(false);
-    setRequestFeeError(false);
-
-    // Validation flags
-    let isValid = true;
-
-    // Validate Event Name
-    if (!eventName) {
-      setEventNameError(true);
-      isValid = false;
-    }
-
-    // Validate Event Image URL
-    if (!eventImage) {
-      setEventImageError(true);
-      isValid = false;
-    }
-
-    // Validate Event Location
-    if (!eventLocation) {
-      setEventLocationError(true);
-      isValid = false;
-    }
-
-    // Validate Request Fee
-    if (requestFee <= 50) {
-      setRequestFeeError(true);
-      isValid = false;
-    }
-
-    // If any validation fails, prevent submission
-    if (!isValid) {
-      return;
-    }
-
-    if (!date) {
-      setEventDateError(true);
-      return; // Prevent submission if date is not set
-    }
-
-    // Define eventData here
-    const eventData = {
-      eventName,
-      eventImage,
-      eventDateTime: date ? date.toISOString() : new Date().toISOString(), // Use current date if date is null
-      eventLocation,
-      requestFee,
-      djId: user?.id || "", // Default to an empty string if user?.id is undefined
-    };
-
-    
-
-    setLoading(true);
-
     try {
+      // Ensure the file is uploaded before continuing
+      const imageUrl = await uploadFile(); // This waits for the image upload to complete
+
+      // Check if eventImage is set (meaning upload succeeded)
+
+      setEventNameError(!eventName);
+      setEventLocationError(!eventLocation);
+      setRequestFeeError(requestFee <= 50);
+      setEventDateError(!date);
+
+      // Make sure all required fields are filled
+      if (!eventName || !eventLocation || requestFee <= 50 || !date) return;
+
+      const eventData = {
+        eventName,
+        eventImage: imageUrl,
+        eventDateTime: date.toISOString(),
+        eventLocation,
+        requestFee,
+        djId: user?.id || "",
+      };
+
+
+      setLoading(true);
       const accesstoken = await getToken();
-      if (!accesstoken) {
-        throw new Error("Authentication token is missing.");
-      }
+      if (!accesstoken) throw new Error("Authentication token is missing.");
 
       const response = await createEvent(eventData, accesstoken);
-      if (response.ok) {
-        // Optionally reset form fields after successful submission
+      
+      if (response) {
+        // Reset form after successful creation
         setEventName("");
         setEventImage("");
         setEventLocation("");
         setRequestFee(0);
-        setDate(undefined); // Reset date
+        setDate(undefined);
 
-        // Close the dialog after a short delay
         setTimeout(() => {
           setLoading(false);
-          setFadeOut(true); // Trigger fade out effect
-        }, 1000); // Adjust delay as needed
+          setFadeOut(true);
+        }, 1000);
       } else {
         console.error("Failed to create event:", response);
+        toast({
+          variant: "destructive",
+          title: "Event Creation Failed!",
+          description: "Please try again.",
+        });
+        return; // Early return to stop further submission
       }
     } catch (error) {
-      console.error("Error creating event:", error);
+      console.error("Error in handleSubmit:", error);
+      toast({
+        variant: "destructive",
+        title: "Event Creation Failed!",
+        description: `Error: ${error}`,
+      });
     } finally {
-      setLoading(false); // Ensure loading state is reset
+      setLoading(false);
     }
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    setSelectedFile(file);
+    if (file) setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    const file = event.dataTransfer.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
   };
 
   if (loading || !imagesLoaded) {
@@ -503,12 +434,8 @@ const Index = () => {
   return (
     <div
       className="fixed inset-0 bg-gray-900 text-white"
-      style={{
-        overscrollBehavior: "none",
-        touchAction: "none",
-      }}
+      style={{ overscrollBehavior: "none", touchAction: "none" }}
     >
-      {/* Conditional Dialog Button */}
       {isSignedIn && (
         <Dialog>
           <DialogTrigger asChild>
@@ -523,9 +450,11 @@ const Index = () => {
                 Fill in the details to create a new event.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4">
-              <div>
-                <Label htmlFor="eventName">Event Name</Label>
+            <div className="grid gap-5">
+              <div className="flex flex-col gap-3">
+                <Label htmlFor="eventName" className="ml-1">
+                  Event Name
+                </Label>
                 <Input
                   id="eventName"
                   value={eventName}
@@ -537,21 +466,83 @@ const Index = () => {
                   <p className="text-red-500">Event name is required.</p>
                 )}
               </div>
-              <div>
-                <Label htmlFor="eventImage">Event Image URL</Label>
-                <Input
-                  id="eventImage"
-                  value={eventImage}
-                  onChange={(e) => setEventImage(e.target.value)}
-                  placeholder="Enter event image URL"
-                  className={eventImageError ? "border-red-500" : ""}
-                />
-                {eventImageError && (
-                  <p className="text-red-500">Image URL is required.</p>
+              <div className="flex flex-col gap-3">
+                <Label htmlFor="eventImage" className="ml-1">
+                  Event Image
+                </Label>
+                {selectedFile && imagePreview ? (
+                  <div className="mb-4 items-center justify-center flex flex-col gap-5">
+                    <Image
+                      src={imagePreview}
+                      alt="Image Preview"
+                      width={100}
+                      height={100}
+                      className="rounded-lg"
+                    />
+                    <div className="flex-row flex gap-1 items-center">
+                      <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                        <span className="font-semibold">
+                          {selectedFile.name.length > 20
+                            ? selectedFile.name.substring(0, 17) + "..."
+                            : selectedFile.name}
+                        </span>
+                      </p>
+                      <Button
+                        className="mt-2 text-sm text-gray-600 dark:text-gray-400 bg-inherit hover:bg-inherit hover:text-white"
+                        onClick={() => {
+                          setImagePreview(null);
+                          setSelectedFile(null);
+                        }}
+                      >
+                        <p className="hover:text-white">X</p>
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <label
+                    htmlFor="dropzone-file"
+                    className="flex flex-col items-center justify-center w-full h-60 border-2 border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 hover:bg-gray-300 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600"
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                  >
+                    <div className="flex flex-col items-center justify-center pt-3 pb-3">
+                      <svg
+                        className="w-5 h-5 mb-4 text-gray-500 dark:text-gray-400"
+                        aria-hidden="true"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 20 16"
+                      >
+                        <path
+                          stroke="currentColor"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"
+                        />
+                      </svg>
+                      <p className="mb-2 text-sm text-gray-500 dark:text-gray-400">
+                        <span className="font-semibold">Click to upload</span>{" "}
+                        or drag and drop
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        SVG, PNG, JPG or GIF (MAX. 800x400px)
+                      </p>
+                    </div>
+                    <input
+                      id="dropzone-file"
+                      type="file"
+                      className="hidden"
+                      accept="image/png, image/jpeg, image/gif, image/svg+xml"
+                      onChange={handleFileChange}
+                    />
+                  </label>
                 )}
               </div>
-              <div>
-                <Label htmlFor="eventDateTime">Event Date & Time</Label>
+              <div className="flex flex-col gap-3">
+                <Label htmlFor="eventDateTime" className="ml-1">
+                  Event Date & Time
+                </Label>
                 <Popover>
                   <PopoverTrigger asChild>
                     <Button
@@ -579,8 +570,10 @@ const Index = () => {
                   <p className="text-red-500">Date must be in the future.</p>
                 )}
               </div>
-              <div>
-                <Label htmlFor="eventLocation">Event Location</Label>
+              <div className="flex flex-col gap-3">
+                <Label htmlFor="eventLocation" className="ml-1">
+                  Event Location
+                </Label>
                 <Input
                   id="eventLocation"
                   value={eventLocation}
@@ -592,8 +585,10 @@ const Index = () => {
                   <p className="text-red-500">Location is required.</p>
                 )}
               </div>
-              <div>
-                <Label htmlFor="requestFee">Request Fee</Label>
+              <div className="flex flex-col gap-3">
+                <Label htmlFor="requestFee" className="ml-1">
+                  Request Fee
+                </Label>
                 <Input
                   id="requestFee"
                   type="number"
@@ -627,7 +622,6 @@ const Index = () => {
           </DialogContent>
         </Dialog>
       )}
-      {/* Fixed header and search section */}
       {!(currentView == "user") && (
         <div className="fixed top-0 left-0 right-0 z-10 bg-gray-900">
           <header className="bg-gray-900 dark:bg-gray-900 w-full py-1 px-4 flex justify-center h-14 mb-3 mt-2">
@@ -642,8 +636,6 @@ const Index = () => {
               />
             </div>
           </header>
-
-          {/* Search bar */}
           <div className="px-4 py-3 bg-gray-900">
             <div className="flex items-center bg-gray-800 rounded-lg px-3 py-2">
               <svg
@@ -679,8 +671,6 @@ const Index = () => {
           </div>
         </div>
       )}
-
-      {/* Content area */}
       <div className="absolute inset-0 pt-32 pb-16">
         {currentView === "explore" ? (
           <ExploreView
@@ -694,8 +684,6 @@ const Index = () => {
           <AllEventsView allEvents={allEvents} searchQuery={searchQuery} />
         )}
       </div>
-
-      {/* Bottom nav bar */}
       <nav className="fixed bottom-0 w-full bg-gray-900 border-t border-gray-800 py-2 flex justify-around items-center">
         <button
           className={`flex flex-col items-center text-xs ${currentView === "explore" ? "text-white" : "text-gray-400"}`}
@@ -704,7 +692,6 @@ const Index = () => {
           <FaHome className="h-5 w-5 mb-1" />
           Explore
         </button>
-
         <button
           className={`flex flex-col items-center text-xs ${currentView === "events" ? "text-white" : "text-gray-400"}`}
           onClick={() => setCurrentView("events")}
@@ -712,7 +699,6 @@ const Index = () => {
           <FaMusic className="h-5 w-5 mb-1" />
           Events
         </button>
-
         {isSignedIn ? (
           <UserButton />
         ) : (

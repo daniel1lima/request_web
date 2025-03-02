@@ -11,6 +11,7 @@ const stripeRoutes = require('./routes/stripe');
 const paymentRoutes = require('./routes/payment');
 const waitlistRoutes = require('./routes/waitlist');
 const mailgunRoutes = require('./routes/mailgun');
+const s3Routes = require('./routes/s3');
 const bodyParser = require('body-parser');
 
 const app = express();
@@ -34,6 +35,7 @@ app.use('/stripe', stripeRoutes);
 app.use('/payment', paymentRoutes);
 app.use('/waitlist', waitlistRoutes);
 app.use('/mailgun', mailgunRoutes);
+app.use('/s3', s3Routes);
 
 app.get('/', function(req, res) {
     res.json("Server is running")

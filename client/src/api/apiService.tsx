@@ -1,5 +1,4 @@
-
-
+import { NextResponse, type NextRequest } from "next/server";
 // TYPES
 
 export interface EventData {
@@ -48,27 +47,36 @@ export const updateEvent = async (
 
 // Fetch a single event by ID
 export const fetchEventById = async (eventId: string) => {
-  const response = await fetch(`/api/events/getById?eventId=${eventId}`, { next: { revalidate: 60 } });
+  const response = await fetch(`/api/events/getById?eventId=${eventId}`, {
+    next: { revalidate: 60 },
+  });
   if (!response.ok) throw new Error("Failed to fetch event");
   return response.json();
 };
 
 // Fetch DJ details by ID
 export const fetchDjById = async (djId: string) => {
-  const response = await fetch(`/api/djs/getById?djId=${djId}`, { next: { revalidate: 60 } });
+  const response = await fetch(`/api/djs/getById?djId=${djId}`, {
+    next: { revalidate: 60 },
+  });
   if (!response.ok) throw new Error("Failed to fetch DJ");
   return response.json();
 };
 
 // Fetch song requests for an event
 export const fetchRequestsByEventId = async (eventId: string) => {
-  const response = await fetch(`/api/requests/getByEvent?eventId=${eventId}`, { next: { revalidate: 60 } });
+  const response = await fetch(`/api/requests/getByEvent?eventId=${eventId}`, {
+    next: { revalidate: 60 },
+  });
   if (!response.ok) throw new Error("Failed to fetch requests");
   return response.json();
 };
 
 // Create a new event
-export const createEvent = async (eventData: EventData, accessToken: string) => {
+export const createEvent = async (
+  eventData: EventData,
+  accessToken: string
+) => {
   const response = await fetch("/api/events/create", {
     method: "POST",
     headers: {
@@ -80,13 +88,19 @@ export const createEvent = async (eventData: EventData, accessToken: string) => 
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(`Failed to create event: ${errorData.error || "Unknown error"}`);
+    throw new Error(
+      `Failed to create event: ${errorData.error || "Unknown error"}`
+    );
   }
   return response.json();
 };
 
 // Fetch a payment intent
-export const fetchPaymentIntent = async (amount: number, currency: string, requestId: string) => {
+export const fetchPaymentIntent = async (
+  amount: number,
+  currency: string,
+  requestId: string
+) => {
   const response = await fetch(`/api/stripe/createPaymentIntent`, {
     method: "POST",
     headers: {
@@ -100,7 +114,11 @@ export const fetchPaymentIntent = async (amount: number, currency: string, reque
 };
 
 // Create a payment
-export const createPayment = async (paymentData: { paymentId: string; amount: number; djId: string }) => {
+export const createPayment = async (paymentData: {
+  paymentId: string;
+  amount: number;
+  djId: string;
+}) => {
   const response = await fetch("/api/payment/createPayment", {
     method: "POST",
     headers: {
@@ -128,7 +146,9 @@ export const createRequest = async (requestBody: RequestBody) => {
 
   if (!response.ok) {
     const errorData = await response.json();
-    throw new Error(`Failed to create request: ${errorData.error || "Unknown error"}`);
+    throw new Error(
+      `Failed to create request: ${errorData.error || "Unknown error"}`
+    );
   }
   return response.json();
 };
@@ -148,7 +168,11 @@ export const checkEmail = async (email: string) => {
 };
 
 // Submit email to the waitlist
-export const submitEmailToWaitlist = async (emailData: { email: string; eventId: string; songRequested: string }) => {
+export const submitEmailToWaitlist = async (emailData: {
+  email: string;
+  eventId: string;
+  songRequested: string;
+}) => {
   const response = await fetch("/api/waitlist", {
     method: "POST",
     headers: {
@@ -175,9 +199,12 @@ export const acceptRequest = async (requestId: string, accessToken: string) => {
 };
 // Cancel a request
 export const cancelRequest = async (requestId: string, pi: string) => {
-  const response = await fetch(`/api/requests/cancel-request?requestId=${requestId}&pi=${pi}`, {
-    method: "GET",
-  });
+  const response = await fetch(
+    `/api/requests/cancel-request?requestId=${requestId}&pi=${pi}`,
+    {
+      method: "GET",
+    }
+  );
 
   if (!response.ok) throw new Error("Failed to cancel request");
   return response.json();
@@ -190,7 +217,7 @@ export const freeOrderConfirm = async (email: string, pi: string) => {
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({freePaymentId: pi, email: email})
+    body: JSON.stringify({ freePaymentId: pi, email: email }),
   });
 
   if (!response.ok) throw new Error("Failed to confirm request");
@@ -198,7 +225,10 @@ export const freeOrderConfirm = async (email: string, pi: string) => {
 };
 
 // Capture a payment intent
-export const capturePaymentIntent = async (paymentId: string, amount: number) => {
+export const capturePaymentIntent = async (
+  paymentId: string,
+  amount: number
+) => {
   const response = await fetch(`/api/stripe/capturePaymentIntent`, {
     method: "POST",
     headers: {
@@ -212,7 +242,10 @@ export const capturePaymentIntent = async (paymentId: string, amount: number) =>
 };
 
 // Mark a request as played
-export const markRequestAsPlayed = async (requestId: string, accessToken: string) => {
+export const markRequestAsPlayed = async (
+  requestId: string,
+  accessToken: string
+) => {
   const response = await fetch(`/api/requests/played?requestId=${requestId}`, {
     method: "PUT",
     headers: {
@@ -225,7 +258,10 @@ export const markRequestAsPlayed = async (requestId: string, accessToken: string
 };
 
 // Decline a request
-export const declineRequest = async (requestId: string, accessToken: string) => {
+export const declineRequest = async (
+  requestId: string,
+  accessToken: string
+) => {
   const response = await fetch(`/api/requests/delete?requestId=${requestId}`, {
     method: "DELETE",
     headers: {
@@ -248,6 +284,40 @@ export const deleteEvent = async (eventId: string, accessToken: string) => {
 
   if (!response.ok) throw new Error("Failed to delete event");
   return response.json();
+};
+
+export const uploadFileApi = async (formData: FormData) => {
+  const response = await fetch("/api/s3/upload", {
+    method: "POST",
+    body: formData, // No need for headers; `fetch` sets it automatically
+  });
+
+  
+
+  if (!response.ok) throw new Error("Failed to upload file");
+
+
+  // message: 'File uploaded successfully',
+  // url: data.Location,
+  // fileKey: fileKey,
+  // presignedUrl: presignedUrl
+
+  return response.json();
+};
+
+export const fetchFileApi = async (cid: string) => {
+  const response = await fetch("/api/pinata/fetchFile", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ cid: cid }),
+  });
+
+  if (!response.ok) throw new Error("Failed to upload file");
+
+  const blob = await response.blob(); // Convert response to a Blob
+  return blob; // Return the Blob
 };
 
 // Fetch a payment by ID
