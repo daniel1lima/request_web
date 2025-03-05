@@ -4,11 +4,21 @@ import React from "react";
 import { Button } from "../button";
 import { ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
+import DJProfile from "./DJprofile";
+import DJ from "../../app/event/page";
 
 interface EventHeaderProps {
   time?: string;
   title?: string;
   imageUrl: string;
+  djData: DJ;
+}
+
+export interface DJ {
+  djId: string;
+  djName: string;
+  djInsta?: string;
+  djImageUrl: string;
 }
 
 const isValidImageUrl = (url: string) => {
@@ -19,6 +29,7 @@ const isValidImageUrl = (url: string) => {
 const EventHeader: React.FC<EventHeaderProps> = ({
   title = "Event Details",
   imageUrl = "",
+  djData,
 }) => {
   const fallbackImageUrl = "/fallback.webp";
   const router = useRouter();
@@ -40,22 +51,23 @@ const EventHeader: React.FC<EventHeaderProps> = ({
       <div className="absolute inset-0 bg-black opacity-50"></div>
 
       {/* Content */}
-      <div className="relative flex w-full flex-col items-stretch px-6 py-4">
-        <div className="flex items-center justify-center relative w-full text-2xl text-white font-medium mt-4">
-          {/* Back Button (keeps it on the left) */}
-          <Button
-            variant="outline"
-            size="icon"
-            className="absolute left-6 bg-slate-600"
-            onClick={() => {
-              router.push("/");
-            }}
-          >
-            <ChevronLeft />
-          </Button>
+      <div className="relative flex w-full h-full items-center px-6">
+        <div className="flex items-center w-full text-2xl text-white font-medium">
+          {/* Back Button and Title Group */}
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="icon"
+              className="bg-slate-600"
+              onClick={() => {
+                router.push("/");
+              }}
+            >
+              <ChevronLeft />
+            </Button>
+            <div className="text-white">{title}</div>
+          </div>
 
-          {/* Centered Title */}
-          <div className="flex-grow ml-20">{title}</div>
         </div>
       </div>
     </div>

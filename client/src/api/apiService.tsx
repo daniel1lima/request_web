@@ -118,6 +118,7 @@ export const createPayment = async (paymentData: {
   paymentId: string;
   amount: number;
   djId: string;
+  email: string;
 }) => {
   const response = await fetch("/api/payment/createPayment", {
     method: "POST",
@@ -260,8 +261,12 @@ export const markRequestAsPlayed = async (
 // Decline a request
 export const declineRequest = async (
   requestId: string,
-  accessToken: string
+  accessToken: string,
+  paymentId: string
 ) => {
+
+  await sendDeclinedRequestEmail(requestId, paymentId);
+
   const response = await fetch(`/api/requests/delete?requestId=${requestId}`, {
     method: "DELETE",
     headers: {
@@ -334,5 +339,18 @@ export const spotifyAuth = async () => {
   });
 
   if (!response.ok) throw new Error("Failed to fetch Spotify auth");
+  return response.json();
+};
+
+// Send a declined request notification email
+export const sendDeclinedRequestEmail = async (requestId: string, paymentId: string) => {
+  const response = await fetch(`/api/mailgun/requestDeclined`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ requestId, paymentId }),
+  });
+
   return response.json();
 };

@@ -16,13 +16,28 @@ import {
 } from "@/api/apiService";
 
 // Define interfaces for requests, events, and DJs
+// Update the Request interface to match the API response
 export interface Request {
-  requestId: number;
-  songImage: string;
+  requestId: string;  // Changed from number to string
   songName: string;
   songArtist: string;
-  requestUpvotes: number;
+  songImage: string;
+  accepted: boolean;  // Added
   played: boolean;
+  requestUpvotes: number;
+  userId: string | null;  // Added
+  eventId: string;  // Added
+  paymentId: string;  // Added
+  status: string;
+  createdAt: string;  // Added
+  updatedAt: string;  // Added
+  User: null | any;  // Added
+  Event: {  // Added
+    eventName: string;
+  };
+  Payment: {  // Added
+    amount: number;
+  };
 }
 
 export interface Event {
@@ -96,6 +111,7 @@ const EventPage = () => {
   const [eventData, setEventData] = useState<Event | null>(null);
   const [djData, setDjData] = useState<DJ | null>(null);
   const [songRequests, setSongRequests] = useState<Request[]>([]);
+  const { user } = useUser();
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -159,25 +175,30 @@ const EventPage = () => {
   } else
     return (
       <div className="w-screen h-screen bg-gray-900 overflow-hidden">
-        <div className="bg-gray-900 flex max-w-[600px] w-full h-screen flex-col overflow-hidden items-center mx-auto gap-5">
+        <div className="bg-gray-900 flex max-w-[600px] w-full h-screen flex-col overflow-hidden items-center mx-auto gap-2">
           <EventHeader
             title={eventData?.eventName || "Default Event Title"}
             imageUrl={eventData?.eventImage || ""}
+            djData={djData || { djId: "", djName: "", djImageUrl: "" }}
           />
-          <div className="flex flex-col items-center w-full px-4 pb-20 overflow-y-auto flex-1">
+
+          <div className="bg-black/40 backdrop-blur-sm rounded-lg px-4 py-2 scale-[0.85] sm:scale-75 md:scale-120 transform-origin-right">
             <DJProfile
               name={djData?.djName || "DJ Zo"}
               role="Main Event DJ"
-              image={djData?.djImageUrl || ''}
+              image={djData?.djImageUrl || ""}
               insta={
                 djData?.djInsta
-                  ? isMobile
-                    ? `https://www.instagram.com/${djData.djInsta}`
-                    : `https://www.instagram.com/${djData.djInsta}`
+                  ? `https://www.instagram.com/${djData.djInsta}`
                   : ""
               }
             />
-            <EventOwnershipDisclaimer djId={eventData?.djId ?? ""} />
+          </div>
+
+          <div className="flex flex-col items-center w-full px-4 pb-20 mt-[-20] overflow-y-auto flex-1">
+            {djData?.djId && user?.id === djData.djId && (
+              <EventOwnershipDisclaimer djId={djData.djId} />
+            )}
             <h2 className="text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">
               Accepted Song Queue
             </h2>
@@ -191,19 +212,34 @@ const EventPage = () => {
                       title={request.songName}
                       artist={request.songArtist}
                       reactions={request.requestUpvotes}
+                      payment={request.Payment}
+                      isAdminView={false}
                     />
                   </div>
                 ))}
             </div>
-            {eventData?.acceptRequests && (
+            {eventData?.acceptRequests ? (
               <div
-                className={`flex items-center justify-center w-full h-[50px] bg-transparent ${isMobile ? "mb-[50px]" : ""}`}
+                className={`flex items-center justify-center w-full h-[50px] bg-transparent ${isMobile ? "mb-[30px]" : ""}`}
               >
                 <Link href="/request-song">
                   <button className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] shadow-[0px_10px_35px_rgba(111,126,201,0.25)] fill-[#5669FF] w-full px-[100px] py-[19px] rounded-[15px]">
                     Request a song
                   </button>
                 </Link>
+              </div>
+            ) : (
+              <div
+                className={`flex items-center justify-center w-full h-[20px]  bg-transparent ${isMobile ? "mb-[20px]" : ""}`}
+              >
+                <button className="bg-black/40 dark:bg-black/40 shadow-[0px_10px_35px_rgba(111,126,201,0.25)] fill-[#5669FF] 
+                  w-[90%] sm:w-[75%] md:w-[60%] 
+                  px-[15px] sm:px-[20px] md:px-[30px] 
+                  py-[8px] sm:py-[10px] md:py-[12px] 
+                  rounded-[15px] 
+                  text-xs sm:text-sm md:text-base">
+                  Requests are currently disabled
+                </button>
               </div>
             )}
           </div>
