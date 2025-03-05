@@ -11,7 +11,7 @@ interface DJProfileProps {
 
 const DJProfile: React.FC<DJProfileProps> = ({ name, role, image, insta }) => {
   return (
-    <div className="flex w-full max-w-[331px]  gap-5 font-light items-center justify-center pt-6">
+    <div className="flex w-full max-w-[331px]  gap-5 font-light items-center justify-center pt-2">
       <div className="flex items-stretch gap-[20px]">
         <img
           loading="lazy"

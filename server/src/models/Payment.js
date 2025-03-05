@@ -9,6 +9,7 @@ const Payment = sequelize.define('Payment', {
   },
   amount: { type: DataTypes.FLOAT, allowNull: false },
   paymentDate: { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  email: { type: DataTypes.STRING, defaultValue: '' },
   status: { type: DataTypes.STRING, defaultValue: 'pending' },
   djId: { type: DataTypes.STRING, allowNull: false }, // Foreign key
 }, { timestamps: false });

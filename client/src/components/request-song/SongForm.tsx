@@ -109,6 +109,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         paymentId: pid,
         amount: feedoptions.amount,
         djId: localStorage.getItem("djId") || "",
+        email: "",
       });
 
       // Save Request to the database
@@ -150,6 +151,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         paymentId: freePaymentId,
         amount: 0,
         djId: localStorage.getItem("djId") || "",
+        email: "",
       });
 
       if (!paymentResponse) {
@@ -224,6 +226,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         paymentId: freePaymentId,
         amount: 0,
         djId: localStorage.getItem("djId") || "",
+        email: email,
       });
 
       if (!paymentResponse) {
@@ -245,17 +248,19 @@ export const SongForm: React.FC<SongFormProps> = ({
       // Fetch request to create the request
       const requestResponse = await createRequest(RequestBody);
 
-      if (!requestResponse.ok) {
-        setEmailLoading(false);
+      if (!requestResponse) {
+        setEmailSuccess(true);
       }
+
 
       await freeOrderConfirm(email, freePaymentId);
 
-      setEmailSuccess(true);
-      setEmailLoading(false);
+      
 
       // Redirect to success page
       setTimeout(() => {
+        setEmailLoading(false);
+        setEmailSuccess(true);
         redirect(`/success`);
       }, 2000);
     } catch (error) {
