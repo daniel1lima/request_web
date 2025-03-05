@@ -77,9 +77,9 @@ async function sendSimpleMessageTemplate(
 
   try {
     const data = await mg.messages.create("mg.request-app.me", {
-      from: "Request App <postmaster@mg.request-app.me>",
+      from: "Request App <no-reply@mg.request-app.me>",
       to: [`${customerName} <${destinationEmail}>`],
-      subject: `Order Confirmation for "${songName}"`,
+      subject: `Request Confirmation for "${songName}"`,
       html: htmlTemplate,
     });
     return data;
