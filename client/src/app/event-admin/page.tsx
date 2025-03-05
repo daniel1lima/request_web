@@ -1,6 +1,6 @@
 "use client"
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import DJProfile from "@/components/event/DJprofile"
 import SongCard from "@/components/event/SongCard"
 import { FaCheck, FaPencilRuler, FaTimes, FaTrash } from "react-icons/fa"
@@ -115,6 +115,27 @@ const EventAdminPage = () => {
 
   const { toast } = useToast()
   const { getToken } = useAuth()
+
+  const fetchEventData = useCallback(async () => {
+    const eventId = localStorage.getItem("eventId")
+    if (!eventId || !user) return
+
+    try {
+      const [songRequestsData] = await Promise.all([
+        fetchRequestsByEventId(eventId)
+      ])
+
+      setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : [])
+      setNoRequests(songRequestsData.length === 0)
+    } catch (error) {
+      console.error("Error refreshing data:", error)
+      toast({
+        title: "Refresh Failed",
+        description: "Could not update event data",
+        variant: "destructive"
+      })
+    }
+  }, [user, toast])
 
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
@@ -231,12 +252,14 @@ const EventAdminPage = () => {
     const djId = localStorage.getItem("djId")
     setLoading(true)
 
-    const fetchEventData = fetchEventById(eventId)
-    const fetchSongRequests = fetchRequestsByEventId(eventId)
-    const fetchDJData = localStorage.getItem("djId") ? fetchDjById(djId || "") : Promise.resolve(null)
+    const fetchInitialData = async () => {
+      try {
+        const [eventData, songRequestsData, djData] = await Promise.all([
+          fetchEventById(eventId),
+          fetchRequestsByEventId(eventId),
+          localStorage.getItem("djId") ? fetchDjById(djId || "") : Promise.resolve(null)
+        ])
 
-    Promise.all([fetchEventData, fetchSongRequests, fetchDJData])
-      .then(([eventData, songRequestsData, djData]) => {
         // Handle event data error if thrown by fetchEventById
         if (!eventData || eventData.error) {
           window.location.href = "/404"
@@ -265,16 +288,30 @@ const EventAdminPage = () => {
         })
 
         setSliderValue([eventData.requestFee || 0])
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("Error fetching data:", error)
-        // In case of any error, redirect to /404
         window.location.href = "/404"
-      })
-      .finally(() => {
+      } finally {
         setLoading(false)
-      })
+      }
+    }
+
+    fetchInitialData()
   }, [user])
+
+
+  useEffect(() => {
+    // Only start periodic refresh if authorized and not loading
+    if (!isAuthorized || loading) return
+
+    // Set up interval to refresh data every 30 seconds
+    const intervalId = setInterval(() => {
+      fetchEventData()
+    }, 60000) // 30 seconds
+
+    // Cleanup interval on component unmount or when dependencies change
+    return () => clearInterval(intervalId)
+  }, [isAuthorized, loading, fetchEventData])
 
   const acceptRequestFunc = async (requestId: string) => {
     try {
