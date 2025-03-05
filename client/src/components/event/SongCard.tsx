@@ -25,12 +25,12 @@ const SongCard: React.FC<SongCardProps> = ({ image, title, artist}) => {
 
   return (
     <div className="bg-gray-800 dark:bg-gray-800 shadow-[0px_10px_35px_rgba(87,92,138,0.06)] flex items-stretch gap-5 justify-between px-2 py-1 rounded-2xl overflow-hidden">
-      <div className="flex items-stretch gap-[17px]">
+      <div className="flex items-center gap-[17px]">
         <img
           loading="lazy"
           srcSet={image}
-          className="object-cover w-[70px] h-[70px] shrink-0 border rounded-full max-w-full max-h-full"
-          alt={title}
+          className="object-cover w-[60px] ml-2 h-[60px] shrink-0 border sm:rounded-[2px] lg:rounded-[4px] max-w-full max-h-full items-center align-middle justify-center"
+          alt={title} 
         />
         <div className="flex flex-col items-stretch mt-[9px] p-2 overflow-hidden">
           <div 

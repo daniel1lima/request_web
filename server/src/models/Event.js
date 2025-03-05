@@ -15,6 +15,7 @@ const Event = sequelize.define('Event', {
   djId: { type: DataTypes.STRING, allowNull: false }, 
   acceptRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: true }, 
   acceptFreeRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: true }, 
+  acceptEmailRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: true }, 
 }, { timestamps: true });
 
 module.exports = Event;

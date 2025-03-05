@@ -1,6 +1,6 @@
 "use client"
 import type React from "react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import DJProfile from "@/components/event/DJprofile"
 import SongCard from "@/components/event/SongCard"
 import { FaCheck, FaPencilRuler, FaTimes, FaTrash } from "react-icons/fa"
@@ -52,6 +52,7 @@ export interface DJ {
   djEmail: string
   djPhone: string
   djInsta: string
+  djImageUrl: string
   createdAt: string
   updatedAt: string
   Events: Array<{
@@ -116,6 +117,27 @@ const EventAdminPage = () => {
   const { toast } = useToast()
   const { getToken } = useAuth()
 
+  const fetchEventData = useCallback(async () => {
+    const eventId = localStorage.getItem("eventId")
+    if (!eventId || !user) return
+
+    try {
+      const [songRequestsData] = await Promise.all([
+        fetchRequestsByEventId(eventId)
+      ])
+
+      setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : [])
+      setNoRequests(songRequestsData.length === 0)
+    } catch (error) {
+      console.error("Error refreshing data:", error)
+      toast({
+        title: "Refresh Failed",
+        description: "Could not update event data",
+        variant: "destructive"
+      })
+    }
+  }, [user, toast])
+
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
@@ -131,6 +153,7 @@ const EventAdminPage = () => {
     eventImage: "",
     acceptRequests: false,
     freeRequests: false,
+    freeEmailRequests: false
   })
 
   const [sliderValue, setSliderValue] = useState<number[]>([50]) // Initialize to 50 cents
@@ -197,8 +220,21 @@ const EventAdminPage = () => {
   }
 
   const handleFreeRequestsChange = (value: boolean) => {
-    setSettings((prev) => ({ ...prev, freeRequests: value }))
+    setSettings((prev) => ({ 
+      ...prev, 
+      freeRequests: value, 
+      freeEmailRequests: value ? false : prev.freeEmailRequests 
+    }))
   }
+  
+  const handleFreeEmailRequestsChange = (value: boolean) => {
+    setSettings((prev) => ({ 
+      ...prev, 
+      freeEmailRequests: value, 
+      freeRequests: value ? false : prev.freeRequests 
+    }))
+  }
+
   const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
     event.preventDefault() // Prevent default behavior
     event.stopPropagation() // Stop propagation
@@ -231,12 +267,14 @@ const EventAdminPage = () => {
     const djId = localStorage.getItem("djId")
     setLoading(true)
 
-    const fetchEventData = fetchEventById(eventId)
-    const fetchSongRequests = fetchRequestsByEventId(eventId)
-    const fetchDJData = localStorage.getItem("djId") ? fetchDjById(djId || "") : Promise.resolve(null)
+    const fetchInitialData = async () => {
+      try {
+        const [eventData, songRequestsData, djData] = await Promise.all([
+          fetchEventById(eventId),
+          fetchRequestsByEventId(eventId),
+          localStorage.getItem("djId") ? fetchDjById(djId || "") : Promise.resolve(null)
+        ])
 
-    Promise.all([fetchEventData, fetchSongRequests, fetchDJData])
-      .then(([eventData, songRequestsData, djData]) => {
         // Handle event data error if thrown by fetchEventById
         if (!eventData || eventData.error) {
           window.location.href = "/404"
@@ -262,19 +300,34 @@ const EventAdminPage = () => {
           eventImage: eventData.eventImage || "",
           acceptRequests: eventData.acceptRequests || false,
           freeRequests: eventData.acceptFreeRequests || false,
+          freeEmailRequests: eventData.acceptEmailRequests || false,
         })
 
         setSliderValue([eventData.requestFee || 0])
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("Error fetching data:", error)
-        // In case of any error, redirect to /404
         window.location.href = "/404"
-      })
-      .finally(() => {
+      } finally {
         setLoading(false)
-      })
+      }
+    }
+
+    fetchInitialData()
   }, [user])
+
+
+  useEffect(() => {
+    // Only start periodic refresh if authorized and not loading
+    if (!isAuthorized || loading) return
+
+    // Set up interval to refresh data every 30 seconds
+    const intervalId = setInterval(() => {
+      fetchEventData()
+    }, 30000) // 30 seconds
+
+    // Cleanup interval on component unmount or when dependencies change
+    return () => clearInterval(intervalId)
+  }, [isAuthorized, loading, fetchEventData])
 
   const acceptRequestFunc = async (requestId: string) => {
     try {
@@ -408,6 +461,7 @@ const EventAdminPage = () => {
       requestFee: settings.requestFee,
       acceptRequests: settings.acceptRequests,
       acceptFreeRequests: settings.freeRequests,
+      acceptEmailRequests: settings.freeEmailRequests,
     }
 
 
@@ -542,6 +596,10 @@ const EventAdminPage = () => {
         <Switch checked={settings.acceptRequests} onCheckedChange={handleAcceptRequestsChange} />
       </div>
       <div className="flex flex-col mb-5 gap-5 text-center items-center justify-center">
+        <Label>Free Email Requests</Label>
+        <Switch checked={settings.freeEmailRequests} onCheckedChange={handleFreeEmailRequestsChange} />
+      </div>
+      <div className="flex flex-col mb-5 gap-5 text-center items-center justify-center">
         <Label>Free Requests</Label>
         <Switch checked={settings.freeRequests} onCheckedChange={handleFreeRequestsChange} />
       </div>
@@ -657,11 +715,11 @@ const EventAdminPage = () => {
               <DJProfile
                 name={djData?.djName || "DJ Zo"}
                 role="Main Event DJ"
-                image="https://cdn.builder.io/api/v1/image/assets/TEMP/07768e6beee3d7f47f88d0798e6e2e885f8e8b62f39f33f7eac92fdf4c2d3eeb?placeholderIfAbsent=true"
+                image={djData?.djImageUrl || ""}
                 insta={
                   djData?.djInsta
                     ? isMobile
-                      ? `instagram://user/${djData.djInsta}`
+                      ? `https://www.instagram.com/${djData.djInsta}`
                       : `https://www.instagram.com/${djData.djInsta}`
                     : ""
                 }

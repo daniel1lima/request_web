@@ -89,7 +89,7 @@ router.put('/update', ClerkExpressRequireAuth(), async (req, res) => {
             });
         }
 
-        const { djName, djEmail, djPhone, djInsta } = req.body;
+        const { djName, djEmail, djPhone, djInsta, djImageUrl } = req.body;
         const dj = await DJ.findByPk(djId);
 
         if (!dj) {
@@ -100,7 +100,8 @@ router.put('/update', ClerkExpressRequireAuth(), async (req, res) => {
             djName: djName || dj.djName,
             djEmail: djEmail || dj.djEmail,
             djPhone: djPhone || dj.djPhone,
-            djInsta: djInsta || dj.djInsta
+            djInsta: djInsta || dj.djInsta,
+            djImageUrl: djImageUrl || dj.djImageUrl
         });
 
         res.json(dj);
@@ -187,7 +188,6 @@ router.post('/webhook/create', async (req, res) => {
             djId, // Assigning userId to djId
             djName: firstName, // Assuming djName is the first name
             djEmail: email,
-            // You can add more fields if needed, e.g., phone, Instagram, etc.
         });
 
         res.status(201).json(newDJ);
