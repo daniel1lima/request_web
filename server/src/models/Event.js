@@ -14,8 +14,8 @@ const Event = sequelize.define('Event', {
   requestFee: { type: DataTypes.FLOAT, allowNull: false },
   djId: { type: DataTypes.STRING, allowNull: false }, 
   acceptRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: true }, 
-  acceptFreeRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: true }, 
-  acceptEmailRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: true }, 
+  acceptFreeRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: false }, 
+  acceptEmailRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: false }, 
 }, { timestamps: true });
 
 module.exports = Event;
