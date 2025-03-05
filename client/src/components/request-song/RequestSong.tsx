@@ -32,6 +32,7 @@ export const RequestSong = () => {
   });
   
   const [freeReq, setFreeReq] = useState(true)
+  const [freeEmailReq, setFreeEmailReq] = useState(true)
 
   const router = useRouter()
 
@@ -83,6 +84,7 @@ export const RequestSong = () => {
       }
 
       setFreeReq(data?.acceptFreeRequests || false)
+      setFreeEmailReq(data?.acceptEmailRequests || false)
 
       if (data.error) {
         console.error("Error fetching event data:", data.error);
@@ -137,7 +139,8 @@ export const RequestSong = () => {
             accessToken={accessToken}
             onSongSelect={handleSongSelect}
             feedoptions={{ amount: options.amount!, currency: options.currency! }}
-            free={freeReq}
+            freeReq={freeReq}
+            freeEmailReq={freeEmailReq}
           />
         </Elements>
       </div>

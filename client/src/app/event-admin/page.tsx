@@ -52,6 +52,7 @@ export interface DJ {
   djEmail: string
   djPhone: string
   djInsta: string
+  djImageUrl: string
   createdAt: string
   updatedAt: string
   Events: Array<{
@@ -152,6 +153,7 @@ const EventAdminPage = () => {
     eventImage: "",
     acceptRequests: false,
     freeRequests: false,
+    freeEmailRequests: false
   })
 
   const [sliderValue, setSliderValue] = useState<number[]>([50]) // Initialize to 50 cents
@@ -218,8 +220,21 @@ const EventAdminPage = () => {
   }
 
   const handleFreeRequestsChange = (value: boolean) => {
-    setSettings((prev) => ({ ...prev, freeRequests: value }))
+    setSettings((prev) => ({ 
+      ...prev, 
+      freeRequests: value, 
+      freeEmailRequests: value ? false : prev.freeEmailRequests 
+    }))
   }
+  
+  const handleFreeEmailRequestsChange = (value: boolean) => {
+    setSettings((prev) => ({ 
+      ...prev, 
+      freeEmailRequests: value, 
+      freeRequests: value ? false : prev.freeRequests 
+    }))
+  }
+
   const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
     event.preventDefault() // Prevent default behavior
     event.stopPropagation() // Stop propagation
@@ -285,6 +300,7 @@ const EventAdminPage = () => {
           eventImage: eventData.eventImage || "",
           acceptRequests: eventData.acceptRequests || false,
           freeRequests: eventData.acceptFreeRequests || false,
+          freeEmailRequests: eventData.acceptEmailRequests || false,
         })
 
         setSliderValue([eventData.requestFee || 0])
@@ -307,7 +323,7 @@ const EventAdminPage = () => {
     // Set up interval to refresh data every 30 seconds
     const intervalId = setInterval(() => {
       fetchEventData()
-    }, 60000) // 30 seconds
+    }, 30000) // 30 seconds
 
     // Cleanup interval on component unmount or when dependencies change
     return () => clearInterval(intervalId)
@@ -445,6 +461,7 @@ const EventAdminPage = () => {
       requestFee: settings.requestFee,
       acceptRequests: settings.acceptRequests,
       acceptFreeRequests: settings.freeRequests,
+      acceptEmailRequests: settings.freeEmailRequests,
     }
 
 
@@ -579,6 +596,10 @@ const EventAdminPage = () => {
         <Switch checked={settings.acceptRequests} onCheckedChange={handleAcceptRequestsChange} />
       </div>
       <div className="flex flex-col mb-5 gap-5 text-center items-center justify-center">
+        <Label>Free Email Requests</Label>
+        <Switch checked={settings.freeEmailRequests} onCheckedChange={handleFreeEmailRequestsChange} />
+      </div>
+      <div className="flex flex-col mb-5 gap-5 text-center items-center justify-center">
         <Label>Free Requests</Label>
         <Switch checked={settings.freeRequests} onCheckedChange={handleFreeRequestsChange} />
       </div>
@@ -694,11 +715,11 @@ const EventAdminPage = () => {
               <DJProfile
                 name={djData?.djName || "DJ Zo"}
                 role="Main Event DJ"
-                image="https://cdn.builder.io/api/v1/image/assets/TEMP/07768e6beee3d7f47f88d0798e6e2e885f8e8b62f39f33f7eac92fdf4c2d3eeb?placeholderIfAbsent=true"
+                image={djData?.djImageUrl || ""}
                 insta={
                   djData?.djInsta
                     ? isMobile
-                      ? `instagram://user/${djData.djInsta}`
+                      ? `https://www.instagram.com/${djData.djInsta}`
                       : `https://www.instagram.com/${djData.djInsta}`
                     : ""
                 }

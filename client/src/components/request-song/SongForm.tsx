@@ -40,14 +40,16 @@ interface SongFormProps {
     amount: number;
     currency: string;
   };
-  free: boolean;
+  freeReq: boolean;
+  freeEmailReq: boolean;
 }
 
 export const SongForm: React.FC<SongFormProps> = ({
   accessToken,
   onSongSelect,
   feedoptions,
-  free,
+  freeEmailReq,
+  freeReq,
 }) => {
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
@@ -61,6 +63,7 @@ export const SongForm: React.FC<SongFormProps> = ({
   const [emailError, setEmailError] = useState("");
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailSuccess, setEmailSuccess] = useState(false);
+  const [freeRequestLoading, setFreeRequestLoading] = useState(false);
 
   const resultsContainerRef = React.useRef<HTMLDivElement>(null);
   const elements = useElements();
@@ -137,6 +140,54 @@ export const SongForm: React.FC<SongFormProps> = ({
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/; // Regex for email validation
 
   const handleFreeRequest = async () => {
+    setFreeRequestLoading(true);
+
+    try {
+      const freePaymentId = `FREE_${uuidv4()}`;
+
+      // Create a free payment record first
+      const paymentResponse = await createPayment({
+        paymentId: freePaymentId,
+        amount: 0,
+        djId: localStorage.getItem("djId") || "",
+      });
+
+      if (!paymentResponse) {
+        // setRequestLoading(false);
+        throw new Error("Failed to create payment record");
+      }
+
+      // Create the request with the payment ID
+      const RequestBody: RequestBody = {
+        songName: selectedTrack?.name || "",
+        songArtist: selectedTrack?.artists[0].name || "",
+        songImage: selectedTrack?.album.images[1]?.url || "",
+        userId: localStorage.getItem("requestapp_userId") || null,
+        eventId: localStorage.getItem("eventId") || "",
+        paymentId: freePaymentId,
+      };
+
+      // Fetch request to create the request
+      const requestResponse = await createRequest(RequestBody);
+
+      if (!requestResponse) {
+        setFreeRequestLoading(false);
+        throw new Error("Failed to create request");
+      }
+
+      
+
+      // Redirect to success page
+      setTimeout(() => {
+        setFreeRequestLoading(false);
+        redirect(`/success`);
+      }, 2000);
+    } catch (error) {
+      console.error("Error:", error);
+    }
+  };
+
+  const handleFreeEmailRequest = async () => {
     setEmailLoading(true);
 
     if (!email) {
@@ -177,7 +228,6 @@ export const SongForm: React.FC<SongFormProps> = ({
         djId: localStorage.getItem("djId") || "",
       });
 
-
       if (!paymentResponse) {
         setEmailLoading(false);
         throw new Error("Failed to create payment record");
@@ -200,8 +250,8 @@ export const SongForm: React.FC<SongFormProps> = ({
       if (!requestResponse.ok) {
         setEmailLoading(false);
       }
-      
-      await freeOrderConfirm(email, freePaymentId)
+
+      await freeOrderConfirm(email, freePaymentId);
 
       setEmailSuccess(true);
       setEmailLoading(false);
@@ -478,7 +528,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         <div className="max-w-[480px] mx-auto mb-2 bg-transparent">
           {selectedTrack && (
             <>
-              {free && (
+              {freeEmailReq ? (
                 <div className="mb-4">
                   {showEmailInput ? (
                     <div className="flex flex-col gap-2">
@@ -503,7 +553,7 @@ export const SongForm: React.FC<SongFormProps> = ({
                         </p>
                       )}
                       <button
-                        onClick={handleFreeRequest}
+                        onClick={handleFreeEmailRequest}
                         className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
                     shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
                     mt-2 rounded-[8px] transition-all duration-300 ease-in-out"
@@ -531,22 +581,48 @@ export const SongForm: React.FC<SongFormProps> = ({
                     </button>
                   )}
                 </div>
+              ) : (
+                <div className="mb-4">
+                  {freeRequestLoading ? (
+                    <div
+                      className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
+      shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
+      rounded-[8px] transition-all duration-300 ease-in-out z-50 
+      flex items-center justify-center"
+                    >
+                      <Loader2 className="animate-spin" />
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleFreeRequest}
+                      className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
+      shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
+      rounded-[8px] transition-all duration-300 ease-in-out z-50"
+                    >
+                      Request For Free!
+                    </button>
+                  )}
+                </div>
               )}
-              <ExpressCheckoutElement
-                onConfirm={onConfirm}
-                onClick={({ resolve }) => {
-                  const options = {
-                    emailRequired: true,
-                    phoneNumberRequired: true,
-                  };
-                  resolve(options);
-                }}
-              />
+              {!freeReq && (
+                <>
+                  <ExpressCheckoutElement
+                    onConfirm={onConfirm}
+                    onClick={({ resolve }) => {
+                      const options = {
+                        emailRequired: true,
+                        phoneNumberRequired: true,
+                      };
+                      resolve(options);
+                    }}
+                  />
+                  <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
+                    You will not be charged until your song is played
+                  </p>
+                </>
+              )}
             </>
           )}
-          <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-5">
-            You will not be charged until your song is played
-          </p>
         </div>
       </div>
     </div>
