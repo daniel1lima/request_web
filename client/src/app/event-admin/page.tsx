@@ -130,7 +130,7 @@ const FormSchema = z.object({
 
 const EventAdminPage = () => {
   const { user } = useUser();
-  const [songRequests, setSongRequests] = useState<request[]>([]);
+  const [songRequests, setSongRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
   const [eventTitle, setEventTitle] = useState("");
   const [eventImage, setEventImage] = useState("");
