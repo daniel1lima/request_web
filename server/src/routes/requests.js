@@ -279,6 +279,10 @@ router.delete("/delete", ClerkExpressRequireAuth(), async (req, res) => {
       return res.status(404).json({ error: "Request not found" });
     }
 
+   await stripe.paymentIntents.cancel(
+      `${request.paymentId}`
+    );
+
     const deletedRequest = {
       requestId: request.requestId,
       eventId: request.eventId,
