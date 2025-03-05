@@ -175,8 +175,6 @@ export const SongForm: React.FC<SongFormProps> = ({
         throw new Error("Failed to create request");
       }
 
-      
-
       // Redirect to success page
       setTimeout(() => {
         setFreeRequestLoading(false);
@@ -581,7 +579,7 @@ export const SongForm: React.FC<SongFormProps> = ({
                     </button>
                   )}
                 </div>
-              ) : (
+              ) : freeReq && (
                 <div className="mb-4">
                   {freeRequestLoading ? (
                     <div

@@ -159,7 +159,7 @@ const EventPage = () => {
   } else
     return (
       <div className="w-screen h-screen bg-gray-900 overflow-hidden">
-        <div className="bg-gray-900 flex max-w-[600px] w-full h-screen flex-col overflow-hidden items-center mx-auto">
+        <div className="bg-gray-900 flex max-w-[600px] w-full h-screen flex-col overflow-hidden items-center mx-auto gap-5">
           <EventHeader
             title={eventData?.eventName || "Default Event Title"}
             imageUrl={eventData?.eventImage || ""}
@@ -179,9 +179,9 @@ const EventPage = () => {
             />
             <EventOwnershipDisclaimer djId={eventData?.djId ?? ""} />
             <h2 className="text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">
-              Song Queue
+              Accepted Song Queue
             </h2>
-            <div className="gap-[13px] w-full pt-5 overflow-y-auto flex-1 scrollbar max-h-[500px]">
+            <div className="gap-[13px] w-full pt-5 mb-6 overflow-y-auto flex-1 scrollbar max-h-[500px]">
               {songRequests
                 .filter((request) => !request.played)
                 .map((request) => (
