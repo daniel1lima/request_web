@@ -188,7 +188,7 @@ const EventAdminPage = () => {
     freeEmailRequests: false,
   });
 
-  const [sliderValue, setSliderValue] = useState<number[]>([50]); // Initialize to 50 cents
+  const [sliderValue, setSliderValue] = useState<number[]>([99]); // Initialize to 50 cents
 
   // Update settings when slider changes
   const handleSliderChange = (value: number[]) => {
@@ -571,8 +571,8 @@ const EventAdminPage = () => {
       <div className="flex flex-col mb-4 gap-5 items-center">
         <Slider
           value={sliderValue}
-          min={50}
-          max={1500}
+          min={99}
+          max={2499}
           step={50}
           onValueChange={handleSliderChange}
           className="cursor-pointer"
@@ -659,7 +659,7 @@ const EventAdminPage = () => {
         />
       </div>
       <div className="flex flex-col mb-5 gap-5 text-center items-center justify-center">
-        <Label>Free Email Requests</Label>
+        <Label>First Request Free</Label>
         <Switch
           checked={settings.freeEmailRequests}
           onCheckedChange={handleFreeEmailRequestsChange}

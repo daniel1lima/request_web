@@ -182,7 +182,7 @@ const EventPage = () => {
             djData={djData || { djId: "", djName: "", djImageUrl: "" }}
           />
 
-          <div className="bg-black/40 backdrop-blur-sm rounded-lg px-4 py-2 scale-[0.85] sm:scale-75 md:scale-120 transform-origin-right">
+          
             <DJProfile
               name={djData?.djName || "DJ Zo"}
               role="Main Event DJ"
@@ -193,7 +193,7 @@ const EventPage = () => {
                   : ""
               }
             />
-          </div>
+
 
           <div className="flex flex-col items-center w-full px-4 pb-20 mt-[-20] overflow-y-auto flex-1">
             {djData?.djId && user?.id === djData.djId && (
@@ -230,15 +230,16 @@ const EventPage = () => {
               </div>
             ) : (
               <div
-                className={`flex items-center justify-center w-full h-[20px]  bg-transparent ${isMobile ? "mb-[20px]" : ""}`}
+                className={`flex items-center justify-center w-full h-[40px]  bg-transparent ${isMobile ? "mb-[20px]" : ""}`}
               >
-                <button className="bg-black/40 dark:bg-black/40 shadow-[0px_10px_35px_rgba(111,126,201,0.25)] fill-[#5669FF] 
-                  w-[90%] sm:w-[75%] md:w-[60%] 
-                  px-[15px] sm:px-[20px] md:px-[30px] 
-                  py-[8px] sm:py-[10px] md:py-[12px] 
+                <button className="bg-black/40 dark:bg-black/40 text-white shadow-[0px_10px_35px_rgba(111,126,201,0.25)] fill-[#5669FF] 
+                  w-[90%]
+                  h-12  
+                  px-[15px]  
+                  py-[8px]  
                   rounded-[15px] 
-                  text-xs sm:text-sm md:text-base">
-                  Requests are currently disabled
+                  text-xs">
+                  <strong>Requests are currently disabled</strong>
                 </button>
               </div>
             )}
