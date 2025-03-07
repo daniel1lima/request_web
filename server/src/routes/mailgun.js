@@ -289,17 +289,17 @@ router.post("/requestDeclined", async (req, res) => {
       }
     }
 
-    const songName = request.songName;
-    const songImage = request.songImage;
+    // const songName = request.songName;
+    // const songImage = request.songImage;
 
     // Send the declined notification email
-    await sendDeclinedRequestTemplate(
-      customerName,
-      songName,
-      destinationEmail,
-      requestId,
-      songImage
-    );
+    // await sendDeclinedRequestTemplate(
+    //   customerName,
+    //   songName,
+    //   destinationEmail,
+    //   requestId,
+    //   songImage
+    // );
 
     res.status(200).json({
       message: "Request declined email sent successfully",
