@@ -80,37 +80,19 @@ const ExploreView = ({
   searchQuery: string;
   setCurrentView: (view: "explore" | "events") => void;
 }) => {
-  const now = new Date();
-  const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-
   const filterAndSearchEvents = (events: Event[]) => {
     if (!searchQuery) return events;
     const fuse = createFuseInstance(events);
     return fuse.search(searchQuery).map((result) => result.item);
   };
 
-  const currentEvents = allEvents?.filter((event: Event) => {
-    const eventDate = new Date(event.eventDateTime);
-    return eventDate >= now && eventDate <= next24Hours;
-  });
-
-  const futureEvents = allEvents?.filter((event: Event) => {
-    const eventDate = new Date(event.eventDateTime);
-    return eventDate > next24Hours;
-  });
-
-  const filteredCurrentEvents = currentEvents
-    ? filterAndSearchEvents(currentEvents)
-    : [];
-  const filteredFutureEvents = futureEvents
-    ? filterAndSearchEvents(futureEvents)
-    : [];
+  const filteredEvents = allEvents ? filterAndSearchEvents(allEvents) : [];
 
   return (
     <main className="flex-1 overflow-y-auto pb-20 px-4">
       <section className="mt-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Events Right Now</h2>
+          <h2 className="text-lg font-semibold">All Events</h2>
           <button
             onClick={() => setCurrentView("events")}
             className="text-sm text-indigo-400"
@@ -120,8 +102,8 @@ const ExploreView = ({
         </div>
         <div className="mt-4 p-4 pb-4 bg-white bg-opacity-5 rounded-lg shadow-md h-48 overflow-hidden whitespace-nowrap ">
           <div className="flex gap-4">
-            {filteredCurrentEvents.length > 0 ? (
-              filteredCurrentEvents.map((event) => (
+            {filteredEvents.length > 0 ? (
+              filteredEvents.map((event) => (
                 <div
                   key={event.eventId}
                   className="cursor-pointer transition"
