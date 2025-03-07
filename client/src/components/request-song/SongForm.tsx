@@ -149,6 +149,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         amount: feedoptions.amount,
         djId: localStorage.getItem("djId") || "",
         email: "",
+        phone: "",
       });
 
       // Save Request to the database
@@ -204,6 +205,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         amount: 0,
         djId: localStorage.getItem("djId") || "",
         email: "",
+        phone: "",
       });
 
       if (!paymentResponse) {
@@ -266,6 +268,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         amount: 0,
         djId: localStorage.getItem("djId") || "",
         email: email,
+        phone: "",
       });
 
       if (!paymentResponse) {
