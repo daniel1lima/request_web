@@ -223,7 +223,7 @@ const EventPage = () => {
                 className={`flex items-center justify-center w-full h-[50px] bg-transparent ${isMobile ? "mb-[30px]" : ""}`}
               >
                 <Link href="/request-song">
-                  <button className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] shadow-[0px_10px_35px_rgba(111,126,201,0.25)] fill-[#5669FF] w-full px-[100px] py-[19px] rounded-[15px]">
+                  <button className="font-bold bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] shadow-[0px_10px_35px_rgba(111,126,201,0.25)] fill-[#5669FF] w-full px-[100px] py-[19px] rounded-[15px]">
                     Request a song
                   </button>
                 </Link>

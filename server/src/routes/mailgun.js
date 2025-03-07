@@ -273,13 +273,23 @@ router.post("/requestDeclined", async (req, res) => {
       where: { paymentId: paymentId },
     });
 
-    if (!payment || !payment.email) {
-      return res.status(404).json({ error: "Payment or customer email not found" });
+    let destinationEmail, customerName;
+    
+    // Check if payment exists and has email
+    if (payment && payment.email) {
+      destinationEmail = payment.email;
+      customerName = payment.email.split('@')[0]; // Fallback if name not available
+    } else {
+      // If payment doesn't exist or doesn't have email, check if request has customer info
+      if (request.customerEmail) {
+        destinationEmail = request.customerEmail;
+        customerName = request.customerName || request.customerEmail.split('@')[0];
+      } else {
+        return res.status(400).json({ error: "No customer email found for notification" });
+      }
     }
 
     const songName = request.songName;
-    const destinationEmail = payment.email;
-    const customerName = payment.email.split('@')[0]; // Fallback if name not available
     const songImage = request.songImage;
 
     // Send the declined notification email

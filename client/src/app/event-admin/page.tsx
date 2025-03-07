@@ -130,34 +130,49 @@ const FormSchema = z.object({
 
 const EventAdminPage = () => {
   const { user } = useUser();
-  const [songRequests, setSongRequests] = useState<Request[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [eventTitle, setEventTitle] = useState("");
-  const [eventImage, setEventImage] = useState("");
-  const [requestFee, setRequestFee] = useState(0);
-  const [djData, setDjData] = useState<DJ | null>(null);
-  const [isAuthorized, setIsAuthorized] = useState(false);
-
-  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>(
-    {}
-  );
-
-  const [noRequests, setNoRequests] = useState(false);
-
-  const [isMobile, setIsMobile] = useState(false); // State to track mobile status
-
   const { toast } = useToast();
   const { getToken } = useAuth();
+  
+  // Event data state
+  const [songRequests, setSongRequests] = useState<Request[]>([]);
+  const [djData, setDjData] = useState<DJ | null>(null);
+  const [noRequests, setNoRequests] = useState(false);
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  
+  // Event settings state
+  const [eventTitle, setEventTitle] = useState("");
+  const [eventImage, setEventImage] = useState("");
+  const [settings, setSettings] = useState({
+    requestFee: 0,
+    eventImage: "",
+    acceptRequests: false,
+    freeRequests: false,
+    freeEmailRequests: false,
+  });
+  const [sliderValue, setSliderValue] = useState<number[]>([99]);
+  
+  // File upload state
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+  // Form setup
+  const form = useForm<z.infer<typeof FormSchema>>({
+    resolver: zodResolver(FormSchema),
+    defaultValues: {
+      eventName: eventTitle,
+    },
+  });
+
+  // Fetch event data
   const fetchEventData = useCallback(async () => {
     const eventId = localStorage.getItem("eventId");
     if (!eventId || !user) return;
 
     try {
-      const [songRequestsData] = await Promise.all([
-        fetchRequestsByEventId(eventId),
-      ]);
-
+      const songRequestsData = await fetchRequestsByEventId(eventId);
       setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : []);
       setNoRequests(songRequestsData.length === 0);
     } catch (error) {
@@ -170,37 +185,53 @@ const EventAdminPage = () => {
     }
   }, [user, toast]);
 
-  const form = useForm<z.infer<typeof FormSchema>>({
-    resolver: zodResolver(FormSchema),
-    defaultValues: {
-      eventName: eventTitle,
-    },
-  });
-
-  const [selectedFile, setSelectedFile] = useState<File | null>(null); // State to manage the selected file
-  const [imagePreview, setImagePreview] = useState<string | null>(null); // State for image preview
-
-  const [settings, setSettings] = useState({
-    requestFee: 0,
-    eventImage: "",
-    acceptRequests: false,
-    freeRequests: false,
-    freeEmailRequests: false,
-  });
-
-  const [sliderValue, setSliderValue] = useState<number[]>([99]); // Initialize to 50 cents
-
-  // Update settings when slider changes
+  // Settings handlers
   const handleSliderChange = (value: number[]) => {
     setSliderValue(value);
-    setSettings((prev) => ({ ...prev, requestFee: value[0] })); // Update request fee
+    setSettings(prev => ({ ...prev, requestFee: value[0] }));
   };
 
-  // Update settings when file is selected
+  const handleAcceptRequestsChange = (value: boolean) => {
+    setSettings(prev => ({ ...prev, acceptRequests: value }));
+  };
+
+  const handleFreeRequestsChange = (value: boolean) => {
+    setSettings(prev => ({
+      ...prev,
+      freeRequests: value,
+      freeEmailRequests: value ? false : prev.freeEmailRequests,
+    }));
+  };
+
+  const handleFreeEmailRequestsChange = (value: boolean) => {
+    setSettings(prev => ({
+      ...prev,
+      freeEmailRequests: value,
+      freeRequests: value ? false : prev.freeRequests,
+    }));
+  };
+
+  // File handling
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
     setSelectedFile(file);
     if (file) {
+      const previewUrl = URL.createObjectURL(file);
+      setImagePreview(previewUrl);
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const file = event.dataTransfer.files[0];
+    if (file) {
+      setSelectedFile(file);
       const previewUrl = URL.createObjectURL(file);
       setImagePreview(previewUrl);
     }
@@ -212,82 +243,237 @@ const EventAdminPage = () => {
         toast({
           variant: "destructive",
           title: "Missing Event Image!",
-          description: `No file selected for Event Image`,
+          description: "No file selected for Event Image",
         });
-        return null; // Return null if no file is selected
+        return null;
       }
 
       const data = new FormData();
       data.append("file", selectedFile);
-
       const s3response = await uploadFileApi(data);
 
-      if (s3response && s3response.url) {
-        setSettings((prevSettings) => ({
-          ...prevSettings,
-          eventImage: s3response.url,
-        }));
-
-        return s3response.url; // Return the URL
+      if (s3response?.url) {
+        setSettings(prev => ({ ...prev, eventImage: s3response.url }));
+        return s3response.url;
       }
       return null;
     } catch (e) {
       toast({
         variant: "destructive",
-        title: "An error occurred while trying to upload an image!",
+        title: "Image Upload Failed",
         description: `${e}`,
       });
       return null;
     }
   };
 
-  // Handle drag events
-  const handleDragOver = (event: React.DragEvent<HTMLLabelElement>) => {
-    event.preventDefault(); // Prevent default behavior
-    event.stopPropagation(); // Stop propagation
-  };
-  const handleAcceptRequestsChange = (value: boolean) => {
-    setSettings((prev) => ({ ...prev, acceptRequests: value }));
-  };
+  // Request management functions
+  const acceptRequestFunc = async (requestId: string) => {
+    try {
+      const accesstoken = await getToken();
+      if (!accesstoken) throw new Error("Authentication token is missing.");
 
-  const handleFreeRequestsChange = (value: boolean) => {
-    setSettings((prev) => ({
-      ...prev,
-      freeRequests: value,
-      freeEmailRequests: value ? false : prev.freeEmailRequests,
-    }));
-  };
-
-  const handleFreeEmailRequestsChange = (value: boolean) => {
-    setSettings((prev) => ({
-      ...prev,
-      freeEmailRequests: value,
-      freeRequests: value ? false : prev.freeRequests,
-    }));
-  };
-
-  const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
-    event.preventDefault(); // Prevent default behavior
-    event.stopPropagation(); // Stop propagation
-    const file = event.dataTransfer.files[0]; // Get the dropped file
-    if (file) {
-      setSelectedFile(file); // Update the state with the dropped file
-      const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl); // Update the image preview state
+      await acceptRequest(requestId, accesstoken);
+      setSongRequests(prevRequests =>
+        prevRequests.map(req =>
+          req.requestId === requestId
+            ? { ...req, accepted: true, status: "accepted" }
+            : req
+        )
+      );
+    } catch (error) {
+      console.error("Error accepting request:", error);
+      toast({
+        title: "Error",
+        description: "Failed to accept request",
+        variant: "destructive",
+      });
     }
   };
 
+  const playedRequest = async (requestId: string) => {
+    setLoadingStates(prev => ({ ...prev, [requestId]: true }));
+
+    try {
+      const request = songRequests.find(req => req.requestId === requestId);
+      if (!request?.paymentId) return;
+
+      const paymentData = await fetchPaymentById(request.paymentId);
+      await capturePaymentIntent(request.paymentId, paymentData.amount);
+
+      const accesstoken = await getToken();
+      if (!accesstoken) throw new Error("Authentication token is missing.");
+
+      await markRequestAsPlayed(requestId, accesstoken);
+
+      setSongRequests(prevRequests =>
+        prevRequests.map(req =>
+          req.requestId === requestId
+            ? { ...req, played: true, status: "completed" }
+            : req
+        )
+      );
+    } catch (error) {
+      console.error("Error processing payment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to mark request as played",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [requestId]: false }));
+    }
+  };
+
+  const declineRequest = async (requestId: string) => {
+    setLoadingStates(prev => ({ ...prev, [requestId]: true }));
+
+    // Immediately update UI
+    setSongRequests(prevRequests =>
+      prevRequests.filter(req => req.requestId !== requestId)
+    );
+
+    try {
+      const request = songRequests.find(req => req.requestId === requestId);
+      if (!request?.paymentId) return;
+
+      const accesstoken = await getToken();
+      if (!accesstoken) throw new Error("Authentication token is missing.");
+
+      await declineRequestAPI(requestId, accesstoken, request.paymentId);
+      
+      toast({
+        title: "Request declined",
+        description: "The user has been notified that their request was declined.",
+      });
+    } catch (error) {
+      console.error("Error declining request:", error);
+      toast({
+        title: "Error",
+        description: "There was a problem declining this request.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingStates(prev => ({ ...prev, [requestId]: false }));
+    }
+  };
+
+  // Event management functions
+  const handleDeleteEvent = async () => {
+    try {
+      const eventId = localStorage.getItem("eventId");
+      if (!eventId) return;
+
+      const accesstoken = await getToken();
+      if (!accesstoken) throw new Error("Authentication token is missing.");
+      
+      await deleteEvent(eventId, accesstoken);
+      redirect("/");
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete event",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const onSubmit = async (data: z.infer<typeof FormSchema>) => {
+    try {
+      setEventTitle(data.eventName);
+      const eventId = localStorage.getItem("eventId");
+      if (!eventId) return;
+
+      const accesstoken = await getToken();
+      if (!accesstoken) throw new Error("Authentication token is missing.");
+
+      const updatedEventData = {
+        eventId,
+        eventName: data.eventName,
+        eventImage,
+        eventLocation: "",
+        requestFee: settings.requestFee,
+        djId: user?.id || "",
+      };
+
+      await updateEvent(eventId, updatedEventData, accesstoken);
+      toast({
+        title: "Event updated!",
+        description: `New event name: ${data.eventName}`,
+      });
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: `There was an error updating the event. ${error}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSettingsSubmit = async () => {
+    try {
+      const eventId = localStorage.getItem("eventId");
+      if (!eventId) return notFound();
+
+      let imageUrl;
+      if (selectedFile) {
+        imageUrl = await uploadFile();
+        if (imageUrl) {
+          setEventImage(imageUrl);
+        }
+      }
+      const accesstoken = await getToken();
+      if (!accesstoken) throw new Error("Authentication token is missing.");
+
+      const updatedEventData = {
+        eventImage: imageUrl || settings.eventImage,
+        requestFee: settings.requestFee,
+        acceptRequests: settings.acceptRequests,
+        acceptFreeRequests: settings.freeRequests,
+        acceptEmailRequests: settings.freeEmailRequests,
+      };
+
+      const response = await updateEvent(eventId, updatedEventData, accesstoken);
+
+      if (response?.eventId) {
+        toast({
+          title: "Settings updated!",
+          description: "Your settings have been successfully updated.",
+        });
+        
+        if (selectedFile) {
+          setSelectedFile(null);
+          setImagePreview(null);
+        }
+      } else {
+        throw new Error("Failed to update settings");
+      }
+    } catch (error) {
+      toast({
+        title: "Update failed",
+        description: "There was an error updating your settings.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Add a useEffect to update the UI when settings.eventImage changes
+  useEffect(() => {
+    if (settings.eventImage) {
+      setEventImage(settings.eventImage);
+    }
+  }, [settings.eventImage]);
+
+  // Effects
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768); // Check if the device is mobile
+      setIsMobile(window.innerWidth <= 768);
     };
 
-    handleResize(); // Initial check
-    window.addEventListener("resize", handleResize); // Add event listener
-
-    return () => {
-      window.removeEventListener("resize", handleResize); // Cleanup listener
-    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -308,7 +494,6 @@ const EventAdminPage = () => {
             : Promise.resolve(null),
         ]);
 
-        // Handle event data error if thrown by fetchEventById
         if (!eventData || eventData.error) {
           window.location.href = "/404";
           return;
@@ -322,12 +507,8 @@ const EventAdminPage = () => {
         setIsAuthorized(true);
         setEventTitle(eventData.eventName || "Event");
         setEventImage(eventData.eventImage || "");
-        setRequestFee(eventData.requestFee || 0);
-        setSongRequests(
-          Array.isArray(songRequestsData) ? songRequestsData : []
-        );
+        setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : []);
         setDjData(djData && !djData.error ? djData : null);
-
         setNoRequests(songRequestsData.length === 0);
 
         setSettings({
@@ -351,202 +532,14 @@ const EventAdminPage = () => {
   }, [user]);
 
   useEffect(() => {
-    // Only start periodic refresh if authorized and not loading
     if (!isAuthorized || loading) return;
 
-    // Set up interval to refresh data every 30 seconds
     const intervalId = setInterval(() => {
       fetchEventData();
-    }, 30000); // 30 seconds
+    }, 30000);
 
-    // Cleanup interval on component unmount or when dependencies change
     return () => clearInterval(intervalId);
   }, [isAuthorized, loading, fetchEventData]);
-
-  const acceptRequestFunc = async (requestId: string) => {
-    try {
-      const accesstoken = await getToken();
-      if (!accesstoken) {
-        throw new Error("Authentication token is missing.");
-      }
-
-      await acceptRequest(requestId, accesstoken);
-      setSongRequests((prevRequests) =>
-        prevRequests.map((req) =>
-          req.requestId === requestId
-            ? { ...req, accepted: true, status: "accepted" }
-            : req
-        )
-      );
-    } catch (error) {
-      console.error("Error accepting request:", error);
-    }
-  };
-
-  const playedRequest = async (requestId: string) => {
-    setLoadingStates((prev) => ({ ...prev, [requestId]: true }));
-
-    try {
-      const request = songRequests.find((req) => req.requestId === requestId);
-      if (!request?.paymentId) return;
-
-      const paymentData = await fetchPaymentById(request.paymentId);
-      await capturePaymentIntent(request.paymentId, paymentData.amount);
-
-      const accesstoken = await getToken();
-      if (!accesstoken) {
-        throw new Error("Authentication token is missing.");
-      }
-
-      await markRequestAsPlayed(requestId, accesstoken);
-
-      setSongRequests((prevRequests) =>
-        prevRequests.map((req) =>
-          req.requestId === requestId
-            ? { ...req, played: true, status: "completed" }
-            : req
-        )
-      );
-    } catch (error) {
-      console.error("Error processing payment:", error);
-    } finally {
-      setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
-    }
-  };
-
-  const declineRequest = async (requestId: string) => {
-    setLoadingStates((prev) => ({ ...prev, [requestId]: true }));
-
-    // Immediately update UI
-    setSongRequests((prevRequests) =>
-      prevRequests.filter((req) => req.requestId !== requestId)
-    );
-
-    try {
-      const request = songRequests.find((req) => req.requestId === requestId);
-      if (!request?.paymentId) return;
-
-      const accesstoken = await getToken();
-      if (!accesstoken) {
-        throw new Error("Authentication token is missing.");
-      }
-
-
-      // Handle API calls in the background
-      await declineRequestAPI(requestId, accesstoken, request.paymentId); // Use the imported declineRequest function
-      
-      toast({
-        title: "Request declined",
-        description: "The user has been notified that their request was declined.",
-      });
-    } catch (error) {
-      console.error("Error declining request:", error);
-      toast({
-        title: "Error",
-        description: "There was a problem declining this request.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingStates((prev) => ({ ...prev, [requestId]: false }));
-    }
-  };
-
-  async function handleDeleteEvent() {
-    const eventId = localStorage.getItem("eventId") || "";
-
-    const accesstoken = await getToken();
-    if (!accesstoken) {
-      throw new Error("Authentication token is missing.");
-    }
-    deleteEvent(eventId, accesstoken);
-
-    redirect("/");
-  }
-
-  async function onSubmit(data: z.infer<typeof FormSchema>) {
-    setEventTitle(data.eventName); // Update the event title
-
-    const eventId = localStorage.getItem("eventId"); // Retrieve the event ID
-
-    const updatedEventData = {
-      eventId: eventId, // Include the event ID
-      eventName: data.eventName,
-      eventImage: eventImage,
-      eventLocation: "", // Add the appropriate location if needed
-      requestFee: requestFee,
-      djId: user?.id || "",
-    };
-
-    // Call the updateEvent function
-    if (eventId) {
-      const accesstoken = await getToken();
-      if (!accesstoken) {
-        throw new Error("Authentication token is missing.");
-      }
-
-      try {
-        await updateEvent(eventId, updatedEventData, accesstoken);
-        toast({
-          title: "Event updated!",
-          description: `New event name: ${data.eventName}`,
-        });
-      } catch (error) {
-        toast({
-          title: "Update failed",
-          description: `There was an error updating the event. ${error}`,
-          variant: "destructive",
-        });
-      }
-    }
-  }
-
-  async function handleSettingsSubmit(): Promise<void> {
-    const eventId = localStorage.getItem("eventId");
-
-    if (!eventId) {
-      notFound();
-    }
-
-    // Get the image URL from uploadFile if a file was selected
-    const imageUrl = await uploadFile();
-
-    const updatedEventData = {
-      // Use the returned URL if available, otherwise use the current settings.eventImage
-      eventImage: imageUrl || settings.eventImage,
-      requestFee: settings.requestFee,
-      acceptRequests: settings.acceptRequests,
-      acceptFreeRequests: settings.freeRequests,
-      acceptEmailRequests: settings.freeEmailRequests,
-    };
-
-    const accesstoken = await getToken();
-    if (!accesstoken) {
-      throw new Error("Authentication token is missing.");
-    }
-
-    try {
-      const response = await updateEvent(
-        eventId,
-        updatedEventData,
-        accesstoken
-      );
-
-      if (response && response.eventId) {
-        toast({
-          title: "Settings updated!",
-          description: "Your settings have been successfully updated.",
-        });
-      } else {
-        throw new Error("Failed to update settings");
-      }
-    } catch (error) {
-      toast({
-        title: "Update failed",
-        description: "There was an error updating your settings.",
-        variant: "destructive",
-      });
-    }
-  }
 
   if (loading || !isAuthorized) return <Loader />;
 

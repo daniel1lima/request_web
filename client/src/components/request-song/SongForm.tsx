@@ -54,7 +54,7 @@ export const SongForm: React.FC<SongFormProps> = ({
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState<SpotifyTrack[]>([]);
   const [selectedTrack, setSelectedTrack] = useState<SpotifyTrack | null>(null);
-  const [debouncedSearch] = useDebounce(searchInput, 200);
+  const [debouncedSearch] = useDebounce(searchInput, 300);
   const [offset, setOffset] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
@@ -144,7 +144,18 @@ export const SongForm: React.FC<SongFormProps> = ({
     setFreeRequestLoading(true);
 
     try {
+      // Generate a unique ID with a prefix for better tracking
       const freePaymentId = `FREE_${uuidv4()}`;
+      
+      // Prepare the request body once to avoid duplication
+      const songRequestBody: RequestBody = {
+        songName: selectedTrack?.name || "",
+        songArtist: selectedTrack?.artists[0].name || "",
+        songImage: selectedTrack?.album.images[1]?.url || "/RequestLogoDark.png", // Add fallback image
+        userId: localStorage.getItem("requestapp_userId") || null,
+        eventId: localStorage.getItem("eventId") || "",
+        paymentId: freePaymentId,
+      };
 
       // Create a free payment record first
       const paymentResponse = await createPayment({
@@ -155,35 +166,24 @@ export const SongForm: React.FC<SongFormProps> = ({
       });
 
       if (!paymentResponse) {
-        // setRequestLoading(false);
         throw new Error("Failed to create payment record");
       }
 
       // Create the request with the payment ID
-      const RequestBody: RequestBody = {
-        songName: selectedTrack?.name || "",
-        songArtist: selectedTrack?.artists[0].name || "",
-        songImage: selectedTrack?.album.images[1]?.url || "",
-        userId: localStorage.getItem("requestapp_userId") || null,
-        eventId: localStorage.getItem("eventId") || "",
-        paymentId: freePaymentId,
-      };
-
-      // Fetch request to create the request
-      const requestResponse = await createRequest(RequestBody);
+      const requestResponse = await createRequest(songRequestBody);
 
       if (!requestResponse) {
-        setFreeRequestLoading(false);
         throw new Error("Failed to create request");
       }
 
-      // Redirect to success page
-      setTimeout(() => {
-        setFreeRequestLoading(false);
-        redirect(`/success`);
-      }, 2000);
+      
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error processing free request:", error);
+      // You could add user-facing error handling here
+      // For example: setRequestError("Something went wrong. Please try again.");
+    } finally {
+      // Always reset loading state, even if there's an error
+      redirect(`/success`);
     }
   };
 
@@ -309,7 +309,7 @@ export const SongForm: React.FC<SongFormProps> = ({
     searchSpotify();
   }, [debouncedSearch]);
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
     if (
       scrollHeight - scrollTop <= clientHeight * 1.5 &&
@@ -318,25 +318,21 @@ export const SongForm: React.FC<SongFormProps> = ({
     ) {
       searchSpotify(true);
     }
-  };
+  }, [hasMore, isLoading, searchSpotify]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleSearchResultClick = (track: SpotifyTrack) => {
+  const handleSearchResultClick = React.useCallback((track: SpotifyTrack) => {
     setSelectedTrack(track);
     setSearchInput(`${track.name} - ${track.artists[0].name}`);
     setSearchResults([]);
     onSongSelect?.(false);
     scrollToTop();
-    const inputElement = document.getElementById(
-      "song-input"
-    ) as HTMLInputElement;
+    const inputElement = document.getElementById("song-input") as HTMLInputElement;
     inputElement.blur();
-    if (inputElement) {
-    }
-  };
+  }, [onSongSelect, scrollToTop]);
 
   const handleSearchContainerTouch = () => {
     // Dismiss keyboard when touching search results
@@ -344,8 +340,6 @@ export const SongForm: React.FC<SongFormProps> = ({
       "song-input"
     ) as HTMLInputElement;
     inputElement.blur();
-    if (inputElement) {
-    }
   };
 
   const handleClear = () => {
@@ -358,21 +352,75 @@ export const SongForm: React.FC<SongFormProps> = ({
       "song-input"
     ) as HTMLInputElement;
     inputElement.blur();
-    if (inputElement) {
-    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      const inputElement = document.getElementById(
-        "song-input"
-      ) as HTMLInputElement;
+      const inputElement = document.getElementById("song-input") as HTMLInputElement;
       inputElement.blur();
-      if (inputElement) {
-      }
     }
   };
+
+  // Memoize the search results to prevent unnecessary re-renders
+  const memoizedSearchResults = React.useMemo(() => {
+    return searchResults.map((track) => (
+      <div
+        key={track.id}
+        onClick={() => handleSearchResultClick(track)}
+        className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 
+          cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
+      >
+        <img
+          src={track.album.images[2]?.url || "/RequestLogoDark.png"}
+          alt={track.name}
+          className="w-12 h-12 rounded-lg shadow-sm"
+        />
+        <div className="flex-1 min-w-0">
+          <div className="font-medium text-gray-900 dark:text-white truncate">
+            {track.name}
+          </div>
+          <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
+            {track.artists[0].name}
+          </div>
+        </div>
+      </div>
+    ));
+  }, [searchResults]);
+
+  // Memoize callback functions
+  const handleSearchSpotify = React.useCallback(async (isLoadingMore = false) => {
+    if (!debouncedSearch || isLoading) return;
+    
+    setIsLoading(true);
+    try {
+      const currentOffset = isLoadingMore ? offset : 0;
+      const response = await fetch(
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(
+          debouncedSearch
+        )}&type=track&limit=20&offset=${currentOffset}`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        }
+      );
+      const data = await response.json();
+
+      if (isLoadingMore) {
+        setSearchResults((prev) => [...prev, ...data.tracks.items]);
+      } else {
+        setSearchResults(data.tracks.items);
+      }
+
+      setHasMore(data.tracks.items.length === 20);
+      setOffset(currentOffset + data.tracks.items.length);
+    } catch (error) {
+      console.error("Error searching Spotify:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [debouncedSearch, isLoading, offset, accessToken]);
 
   return (
     <div>
@@ -445,28 +493,7 @@ export const SongForm: React.FC<SongFormProps> = ({
                   border dark:border-gray-700 rounded-2xl shadow-xl z-50 
                   max-h-[70vh] overflow-y-auto backdrop-blur-sm"
               >
-                {searchResults.map((track) => (
-                  <div
-                    key={track.id}
-                    onClick={() => handleSearchResultClick(track)}
-                    className="flex items-center gap-4 p-4 hover:bg-gray-50 dark:hover:bg-gray-700 
-                      cursor-pointer transition-colors duration-200 first:rounded-t-2xl last:rounded-b-2xl"
-                  >
-                    <img
-                      src={track.album.images[2]?.url}
-                      alt={track.name}
-                      className="w-12 h-12 rounded-lg shadow-sm"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-gray-900 dark:text-white truncate">
-                        {track.name}
-                      </div>
-                      <div className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                        {track.artists[0].name}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                {memoizedSearchResults}
                 {isLoading && (
                   <div className="text-center p-4 text-gray-500 dark:text-gray-400">
                     <div className="animate-pulse">Loading more songs...</div>
@@ -500,9 +527,17 @@ export const SongForm: React.FC<SongFormProps> = ({
           >
             <img
               loading="lazy"
-              src={selectedTrack.album.images[1]?.url || ""}
+              src={selectedTrack.album.images[1]?.url || "/RequestLogoDark.png"}
               className="w-28 h-28 md:w-48 md:h-48 lg:w-64 lg:h-64 rounded-lg object-cover shadow-lg"
               alt={selectedTrack.name}
+              width={256}
+              height={256}
+              fetchPriority="high"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.onerror = null; // Prevent infinite loop
+                target.src = "/RequestLogoDark.png";
+              }}
             />
             <h2 className="text-gray-800 dark:text-gray-200 text-lg md:text-xl lg:text-2xl font-medium mt-4 text-center px-4">
               {selectedTrack.name}
@@ -510,7 +545,7 @@ export const SongForm: React.FC<SongFormProps> = ({
             <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base lg:text-lg mt-1">
               {selectedTrack.artists[0].name}
             </p>
-            <div className="relative group">
+            {!freeReq && <div className="relative group">
               <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 p-[1px] rounded-full overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 mt-3">
                 <div className="px-6 py-2 rounded-full bg-gray-900/90 backdrop-blur-xl">
                   <p className="text-transparent bg-clip-text bg-gradient-to-r from-violet-200 to-fuchsia-200 text-lg md:text-xl lg:text-2xl font-medium">
@@ -518,7 +553,7 @@ export const SongForm: React.FC<SongFormProps> = ({
                   </p>
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
         )}
       </form>
@@ -600,7 +635,7 @@ export const SongForm: React.FC<SongFormProps> = ({
                       onClick={handleFreeRequest}
                       className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
       shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
-      rounded-[8px] transition-all duration-300 ease-in-out z-50"
+      rounded-[8px] transition-all duration-300 ease-in-out z-50 font-bold"
                     >
                       Request For Free!
                     </button>
