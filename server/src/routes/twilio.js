@@ -272,9 +272,9 @@ router.post("/sms-webhook", async (req, res) => {
         
         try {
           const axios = require('axios');
-          const baseUrl = process.env.BASE_URL || 'http://localhost:3000';
+          const baseUrl = process.env.BASE_URL;
           
-          const cancelResponse = await axios.get(`${baseUrl}/api/requests/cancel-request`, {
+          const cancelResponse = await axios.get(`${baseUrl}/requests/cancel-request`, {
             params: {
               requestId: item.request.requestId,
               pi: item.payment.paymentId
