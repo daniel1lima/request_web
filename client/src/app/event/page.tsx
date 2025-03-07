@@ -108,6 +108,7 @@ const EventPage = () => {
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [eventData, setEventData] = useState<Event | null>(null);
   const [djData, setDjData] = useState<DJ | null>(null);
   const [songRequests, setSongRequests] = useState<Request[]>([]);
@@ -130,45 +131,58 @@ const EventPage = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  const loadData = async () => {
+    const url = new URL(window.location.href);
+    const eventId = url.searchParams.get("eventId") || localStorage.getItem("eventId");
+
+    if (!eventId) {
+      return;
+    }
+
+    localStorage.setItem("eventId", eventId);
+
+    try {
+      const eventData = await fetchEventById(eventId);
+      if (!eventData || eventData.error) router.push("/404");
+
+      const djId = eventData.djId;
+      localStorage.setItem("djId", djId);
+      setEventData(eventData);
+
+      const djData = await fetchDjById(djId);
+      if (djData && !djData.error) {
+        setDjData(djData);
+      }
+
+      const requestsData = await fetchRequestsByEventId(eventId);
+      setSongRequests(
+        Array.isArray(requestsData)
+          ? requestsData.filter((request) => request.status === "accepted")
+          : []
+      );
+      setLoading(false);
+      setRefreshing(false);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+      setRefreshing(false);
+      if (loading) router.push("/404");
+    }
+  };
+
   useEffect(() => {
-    const loadData = async () => {
-      const url = new URL(window.location.href);
-      const eventId = url.searchParams.get("eventId");
-
-      if (!eventId) {
-        return;
-      }
-
-      localStorage.setItem("eventId", eventId);
-
-      try {
-        const eventData = await fetchEventById(eventId);
-        if (!eventData || eventData.error) router.push("/404");
-
-        const djId = eventData.djId;
-        localStorage.setItem("djId", djId);
-        setEventData(eventData);
-
-        const djData = await fetchDjById(djId);
-        if (djData && !djData.error) {
-          setDjData(djData);
-        }
-
-        const requestsData = await fetchRequestsByEventId(eventId);
-        setSongRequests(
-          Array.isArray(requestsData)
-            ? requestsData.filter((request) => request.status === "accepted")
-            : []
-        );
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching data:", error);
-        router.push("/404");
-      }
-    };
-
     loadData();
   }, [router]);
+
+  useEffect(() => {
+    if (!loading) {
+      const refreshInterval = setInterval(() => {
+        setRefreshing(true);
+        loadData();
+      }, 30000);
+
+      return () => clearInterval(refreshInterval);
+    }
+  }, [loading, router]);
 
   if (loading) {
     return <Loader />;
@@ -182,18 +196,22 @@ const EventPage = () => {
             djData={djData || { djId: "", djName: "", djImageUrl: "" }}
           />
 
+          {refreshing && (
+            <div className="absolute top-2 right-2 text-xs text-gray-400">
+              Updating...
+            </div>
+          )}
           
-            <DJProfile
-              name={djData?.djName || "DJ Zo"}
-              role="Main Event DJ"
-              image={djData?.djImageUrl || ""}
-              insta={
-                djData?.djInsta
-                  ? `https://www.instagram.com/${djData.djInsta}`
-                  : ""
-              }
-            />
-
+          <DJProfile
+            name={djData?.djName || "DJ Zo"}
+            role="Main Event DJ"
+            image={djData?.djImageUrl || ""}
+            insta={
+              djData?.djInsta
+                ? `https://www.instagram.com/${djData.djInsta}`
+                : ""
+            }
+          />
 
           <div className="flex flex-col items-center w-full px-4 pb-20 mt-[-20] overflow-y-auto flex-1">
             {djData?.djId && user?.id === djData.djId && (
