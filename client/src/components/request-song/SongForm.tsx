@@ -17,11 +17,13 @@ import {
   submitEmailToWaitlist,
   RequestBody,
   freeOrderConfirm,
+  checkPhone,
 } from "@/api/apiService";
 import { v4 as uuidv4 } from "uuid";
 import { Loader2, ChevronLeft } from "lucide-react";
 import { Button } from "../button";
 import { useRouter } from "next/navigation";
+import PhoneInput, { formatPhoneNumber } from "./PhoneInput";
 
 interface SpotifyTrack {
   id: string;
@@ -64,6 +66,43 @@ export const SongForm: React.FC<SongFormProps> = ({
   const [emailLoading, setEmailLoading] = useState(false);
   const [emailSuccess, setEmailSuccess] = useState(false);
   const [freeRequestLoading, setFreeRequestLoading] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [showPhoneInput, setShowPhoneInput] = useState(false);
+  const [phoneError, setPhoneError] = useState("");
+  const [phoneLoading, setPhoneLoading] = useState(false);
+  const [phoneSuccess, setPhoneSuccess] = useState(false);
+  const [inputMethod, setInputMethod] = useState<"email" | "phone">("email");
+  const [countryCode, setCountryCode] = useState("+1");
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+  const [selectedCountryFlag, setSelectedCountryFlag] =
+    useState<React.ReactNode>(
+      <svg className="h-4 w-4 me-2" fill="none" viewBox="0 0 20 15">
+        <rect width="19.6" height="14" y=".5" fill="#fff" rx="2" />
+        <mask
+          id="ca"
+          style={{ maskType: "luminance" }}
+          width="20"
+          height="15"
+          x="0"
+          y="0"
+          maskUnits="userSpaceOnUse"
+        >
+          <rect width="19.6" height="14" y=".5" fill="#fff" rx="2" />
+        </mask>
+        <g mask="url(#ca)">
+          <path fill="#fff" d="M0 .5h19.6v14H0z" />
+          <path fill="#FF3131" d="M13.867.5H19.6v14h-5.733zM0 .5h5.733v14H0z" />
+          <path
+            fill="#FF3131"
+            d="M8.4 4.167l-.933 1.866s-.467.934.466.934c.934 0 .467-.934.467-.934s.467.934 1.4.934c.934 0 0-1.4 0-1.4l.467-1.4L8.4 4.167z"
+          />
+          <path
+            fill="#FF3131"
+            d="M11.2 8.9L9.8 7.5l1.4-1.4-1.4-.467-.467-1.4-.933 1.4L7 5.167 7.467 7 7 7.5l1.4 1.4-.467 1.4 1.4-.467.933.934v.933h.467v-.933l.467-.867z"
+          />
+        </g>
+      </svg>
+    );
 
   const resultsContainerRef = React.useRef<HTMLDivElement>(null);
   const elements = useElements();
@@ -139,6 +178,7 @@ export const SongForm: React.FC<SongFormProps> = ({
   };
 
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/; // Regex for email validation
+  const phoneRegex = /^\d{10}$/; // Regex for 10-digit phone number validation
 
   const handleFreeRequest = async () => {
     setFreeRequestLoading(true);
@@ -146,12 +186,13 @@ export const SongForm: React.FC<SongFormProps> = ({
     try {
       // Generate a unique ID with a prefix for better tracking
       const freePaymentId = `FREE_${uuidv4()}`;
-      
+
       // Prepare the request body once to avoid duplication
       const songRequestBody: RequestBody = {
         songName: selectedTrack?.name || "",
         songArtist: selectedTrack?.artists[0].name || "",
-        songImage: selectedTrack?.album.images[1]?.url || "/RequestLogoDark.png", // Add fallback image
+        songImage:
+          selectedTrack?.album.images[1]?.url || "/RequestLogoDark.png", // Add fallback image
         userId: localStorage.getItem("requestapp_userId") || null,
         eventId: localStorage.getItem("eventId") || "",
         paymentId: freePaymentId,
@@ -175,8 +216,6 @@ export const SongForm: React.FC<SongFormProps> = ({
       if (!requestResponse) {
         throw new Error("Failed to create request");
       }
-
-      
     } catch (error) {
       console.error("Error processing free request:", error);
       // You could add user-facing error handling here
@@ -252,10 +291,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         setEmailSuccess(true);
       }
 
-
       await freeOrderConfirm(email, freePaymentId);
-
-      
 
       // Redirect to success page
       setTimeout(() => {
@@ -267,6 +303,88 @@ export const SongForm: React.FC<SongFormProps> = ({
       console.error("Error:", error);
       setEmailError("Something went wrong. Please try again.");
       setEmailLoading(false);
+    }
+  };
+
+  const handleFreePhoneRequest = async (formattedPhone?: string) => {
+    setPhoneLoading(true);
+
+    if (!phone) {
+      setPhoneError("Please enter your phone number");
+      setPhoneLoading(false);
+      return;
+    }
+
+    // Validate phone format - simple 10 digit check
+    const cleanedPhone = phone.replace(/\D/g, "");
+    if (!phoneRegex.test(cleanedPhone)) {
+      setPhoneError("Please enter a valid 10-digit phone number");
+      setPhoneLoading(false);
+      return;
+    }
+
+    // Use the formatted phone with country code if provided, otherwise use default +1
+    const phoneWithCountryCode = formattedPhone || `+1${cleanedPhone}`;
+
+    try {
+      // Check if the phone already exists in the waitlist
+      const phoneExists = await checkPhone(phoneWithCountryCode); // Reusing the email endpoint for now
+      if (phoneExists.exists) {
+        setPhoneError(
+          "This phone number has already been used for a free request"
+        );
+        setPhoneLoading(false);
+        return;
+      }
+
+      // Submit phone to waitlist using the same endpoint as email
+      await submitEmailToWaitlist({
+        email: `${phoneWithCountryCode}`, // Prefix to distinguish from emails
+        eventId: localStorage.getItem("eventId") || "",
+        songRequested: selectedTrack?.name || "",
+      });
+
+      const freePaymentId = `FREE_${uuidv4()}`;
+
+      // Create a free payment record
+      const paymentResponse = await createPayment({
+        paymentId: freePaymentId,
+        amount: 0,
+        djId: localStorage.getItem("djId") || "",
+        email: "",
+        phone: `${phoneWithCountryCode}`, // Store phone with prefix
+      });
+
+      if (!paymentResponse) {
+        setPhoneLoading(false);
+        throw new Error("Failed to create payment record");
+      }
+
+      // Create the request with the payment ID
+      const RequestBody: RequestBody = {
+        songName: selectedTrack?.name || "",
+        songArtist: selectedTrack?.artists[0].name || "",
+        songImage: selectedTrack?.album.images[1]?.url || "",
+        userId: localStorage.getItem("requestapp_userId") || null,
+        eventId: localStorage.getItem("eventId") || "",
+        paymentId: freePaymentId,
+      };
+
+      const requestResponse = await createRequest(RequestBody);
+
+      if (requestResponse) {
+        // Only send confirmation and redirect if request was successful
+        await freeOrderConfirm(`${phoneWithCountryCode}`, freePaymentId);
+        setPhoneSuccess(true);
+        setPhoneLoading(false);
+        router.push(`/success`);
+      } else {
+        throw new Error("Failed to create request");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      setPhoneError("Something went wrong. Please try again.");
+      setPhoneLoading(false);
     }
   };
 
@@ -309,30 +427,38 @@ export const SongForm: React.FC<SongFormProps> = ({
     searchSpotify();
   }, [debouncedSearch]);
 
-  const handleScroll = React.useCallback((e: React.UIEvent<HTMLDivElement>) => {
-    const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
-    if (
-      scrollHeight - scrollTop <= clientHeight * 1.5 &&
-      hasMore &&
-      !isLoading
-    ) {
-      searchSpotify(true);
-    }
-  }, [hasMore, isLoading, searchSpotify]);
+  const handleScroll = React.useCallback(
+    (e: React.UIEvent<HTMLDivElement>) => {
+      const { scrollTop, clientHeight, scrollHeight } = e.currentTarget;
+      if (
+        scrollHeight - scrollTop <= clientHeight * 1.5 &&
+        hasMore &&
+        !isLoading
+      ) {
+        searchSpotify(true);
+      }
+    },
+    [hasMore, isLoading, searchSpotify]
+  );
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleSearchResultClick = React.useCallback((track: SpotifyTrack) => {
-    setSelectedTrack(track);
-    setSearchInput(`${track.name} - ${track.artists[0].name}`);
-    setSearchResults([]);
-    onSongSelect?.(false);
-    scrollToTop();
-    const inputElement = document.getElementById("song-input") as HTMLInputElement;
-    inputElement.blur();
-  }, [onSongSelect, scrollToTop]);
+  const handleSearchResultClick = React.useCallback(
+    (track: SpotifyTrack) => {
+      setSelectedTrack(track);
+      setSearchInput(`${track.name} - ${track.artists[0].name}`);
+      setSearchResults([]);
+      onSongSelect?.(false);
+      scrollToTop();
+      const inputElement = document.getElementById(
+        "song-input"
+      ) as HTMLInputElement;
+      inputElement.blur();
+    },
+    [onSongSelect, scrollToTop]
+  );
 
   const handleSearchContainerTouch = () => {
     // Dismiss keyboard when touching search results
@@ -357,7 +483,9 @@ export const SongForm: React.FC<SongFormProps> = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      const inputElement = document.getElementById("song-input") as HTMLInputElement;
+      const inputElement = document.getElementById(
+        "song-input"
+      ) as HTMLInputElement;
       inputElement.blur();
     }
   };
@@ -389,38 +517,41 @@ export const SongForm: React.FC<SongFormProps> = ({
   }, [searchResults]);
 
   // Memoize callback functions
-  const handleSearchSpotify = React.useCallback(async (isLoadingMore = false) => {
-    if (!debouncedSearch || isLoading) return;
-    
-    setIsLoading(true);
-    try {
-      const currentOffset = isLoadingMore ? offset : 0;
-      const response = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(
-          debouncedSearch
-        )}&type=track&limit=20&offset=${currentOffset}`,
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
+  const handleSearchSpotify = React.useCallback(
+    async (isLoadingMore = false) => {
+      if (!debouncedSearch || isLoading) return;
+
+      setIsLoading(true);
+      try {
+        const currentOffset = isLoadingMore ? offset : 0;
+        const response = await fetch(
+          `https://api.spotify.com/v1/search?q=${encodeURIComponent(
+            debouncedSearch
+          )}&type=track&limit=20&offset=${currentOffset}`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        );
+        const data = await response.json();
+
+        if (isLoadingMore) {
+          setSearchResults((prev) => [...prev, ...data.tracks.items]);
+        } else {
+          setSearchResults(data.tracks.items);
         }
-      );
-      const data = await response.json();
 
-      if (isLoadingMore) {
-        setSearchResults((prev) => [...prev, ...data.tracks.items]);
-      } else {
-        setSearchResults(data.tracks.items);
+        setHasMore(data.tracks.items.length === 20);
+        setOffset(currentOffset + data.tracks.items.length);
+      } catch (error) {
+        console.error("Error searching Spotify:", error);
+      } finally {
+        setIsLoading(false);
       }
-
-      setHasMore(data.tracks.items.length === 20);
-      setOffset(currentOffset + data.tracks.items.length);
-    } catch (error) {
-      console.error("Error searching Spotify:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [debouncedSearch, isLoading, offset, accessToken]);
+    },
+    [debouncedSearch, isLoading, offset, accessToken]
+  );
 
   return (
     <div>
@@ -545,15 +676,17 @@ export const SongForm: React.FC<SongFormProps> = ({
             <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base lg:text-lg mt-1">
               {selectedTrack.artists[0].name}
             </p>
-            {!freeReq && <div className="relative group">
-              <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 p-[1px] rounded-full overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 mt-3">
-                <div className="px-6 py-2 rounded-full bg-gray-900/90 backdrop-blur-xl">
-                  <p className="text-transparent bg-clip-text bg-gradient-to-r from-violet-200 to-fuchsia-200 text-lg md:text-xl lg:text-2xl font-medium">
-                    ${(Number(feedoptions.amount) / 100).toFixed(2)}
-                  </p>
+            {!freeReq && (
+              <div className="relative group">
+                <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 p-[1px] rounded-full overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 mt-3">
+                  <div className="px-6 py-2 rounded-full bg-gray-900/90 backdrop-blur-xl">
+                    <p className="text-transparent bg-clip-text bg-gradient-to-r from-violet-200 to-fuchsia-200 text-lg md:text-xl lg:text-2xl font-medium">
+                      ${(Number(feedoptions.amount) / 100).toFixed(2)}
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>}
+            )}
           </div>
         )}
       </form>
@@ -568,7 +701,24 @@ export const SongForm: React.FC<SongFormProps> = ({
             <>
               {freeEmailReq ? (
                 <div className="mb-4">
-                  {showEmailInput ? (
+                  {!showEmailInput && !showPhoneInput ? (
+                    <div className="flex flex-col gap-2">
+                      <button
+                        onClick={() => {
+                          setShowPhoneInput(true);
+                          setInputMethod("phone");
+                          setPhone("");
+                          setPhoneError("");
+                          setPhoneSuccess(false);
+                        }}
+                        className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
+                        shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
+                        rounded-[8px] transition-all duration-300 ease-in-out"
+                      >
+                        Request with Phone
+                      </button>
+                    </div>
+                  ) : showEmailInput ? (
                     <div className="flex flex-col gap-2">
                       <input
                         type="email"
@@ -580,67 +730,88 @@ export const SongForm: React.FC<SongFormProps> = ({
                         }}
                         placeholder="Enter your e-mail"
                         className={`w-full px-4 py-2 rounded-lg bg-gray-800 text-white border 
-                    ${emailError ? "border-red-500" : "border-gray-700"} 
-                    ${emailSuccess ? "border-green-400" : "border-gray-700"} 
-                    focus:outline-none focus:border-blue-500
-                    transition-all duration-300 ease-in-out opacity-100 transform translate-y-0`}
+                        ${emailError ? "border-red-500" : "border-gray-700"} 
+                        ${emailSuccess ? "border-green-400" : "border-gray-700"} 
+                        focus:outline-none focus:border-blue-500
+                        transition-all duration-300 ease-in-out opacity-100 transform translate-y-0`}
                       />
                       {emailError && (
                         <p className="text-red-500 text-sm text-center transition-opacity duration-200">
                           {emailError}
                         </p>
                       )}
-                      <button
-                        onClick={handleFreeEmailRequest}
-                        className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
-                    shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
-                    mt-2 rounded-[8px] transition-all duration-300 ease-in-out"
-                      >
-                        {emailLoading ? (
-                          <Loader2 className="animate-spin mx-auto" />
-                        ) : (
-                          "Submit Free Request"
-                        )}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setShowEmailInput(false);
+                            setShowPhoneInput(false);
+                          }}
+                          className="bg-gray-700 w-1/4 px-[10px] py-[13px] 
+                          rounded-[8px] transition-all duration-300 ease-in-out"
+                        >
+                          Back
+                        </button>
+                        <button
+                          onClick={handleFreeEmailRequest}
+                          className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
+                          shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-3/4 px-[43px] py-[13px] 
+                          rounded-[8px] transition-all duration-300 ease-in-out"
+                        >
+                          {emailLoading ? (
+                            <Loader2 className="animate-spin mx-auto" />
+                          ) : (
+                            "Submit Free Request"
+                          )}
+                        </button>
+                      </div>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => {
-                        setShowEmailInput(true);
-                        setEmail("");
-                        setEmailError("");
-                        setEmailSuccess(false);
-                      }}
-                      className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
-                  shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
-                  rounded-[8px] transition-all duration-300 ease-in-out"
-                    >
-                      Get First Request Free!
-                    </button>
+                    showPhoneInput && (
+                      <PhoneInput
+                        phone={phone}
+                        setPhone={setPhone}
+                        phoneError={phoneError}
+                        setPhoneError={setPhoneError}
+                        setPhoneLoading={setPhoneLoading}
+                        countryCode={countryCode}
+                        setCountryCode={setCountryCode}
+                        selectedCountryFlag={selectedCountryFlag}
+                        setSelectedCountryFlag={setSelectedCountryFlag}
+                        onSubmit={handleFreePhoneRequest}
+                        onBack={() => {
+                          setShowEmailInput(false);
+                          setShowPhoneInput(false);
+                          setShowCountryDropdown(false);
+                        }}
+                        isLoading={phoneLoading}
+                      />
+                    )
                   )}
                 </div>
-              ) : freeReq && (
-                <div className="mb-4">
-                  {freeRequestLoading ? (
-                    <div
-                      className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
+              ) : (
+                freeReq && (
+                  <div className="mb-4">
+                    {freeRequestLoading ? (
+                      <div
+                        className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
       shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
       rounded-[8px] transition-all duration-300 ease-in-out z-50 
       flex items-center justify-center"
-                    >
-                      <Loader2 className="animate-spin" />
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handleFreeRequest}
-                      className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
+                      >
+                        <Loader2 className="animate-spin" />
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleFreeRequest}
+                        className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
       shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
       rounded-[8px] transition-all duration-300 ease-in-out z-50 font-bold"
-                    >
-                      Request For Free!
-                    </button>
-                  )}
-                </div>
+                      >
+                        Request For Free!
+                      </button>
+                    )}
+                  </div>
+                )
               )}
               {!freeReq && (
                 <>

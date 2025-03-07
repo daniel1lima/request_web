@@ -57,4 +57,24 @@ router.post("/check-email", async (req, res) => {
   }
 });
 
+router.post("/check-phone", async (req, res) => {
+  const { phone } = req.body;
+
+  if (!phone) {
+    return res.status(400).json({ error: "Phone number is required" });
+  }
+
+
+  try {
+    const existingEntry = await Waitlist.findOne({ where: { email: phone } });
+    if (existingEntry) {
+      return res.status(200).json({ exists: true });
+    }
+    return res.status(200).json({ exists: false });
+  } catch (error) {
+    console.error("Error checking phone number:", error);
+    return res.status(500).json({ error: "Failed to check phone number" });
+  }
+});
+
 module.exports = router;
