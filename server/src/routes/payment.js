@@ -15,7 +15,7 @@ router.get('/status', async (req, res) => {
   });
 
 router.post('/createPayment', async (req, res) => {
-  const { paymentId, amount, djId = null, email = '' } = req.body; // Extract data from request body with default djId set to null
+  const { paymentId, amount, djId = null, email = '', phone = '' } = req.body; // Extract data from request body with default djId set to null
 
   try {
     const newPayment = await Payment.create({
@@ -23,6 +23,7 @@ router.post('/createPayment', async (req, res) => {
       amount: amount,
       djId: djId,
       email: email,
+      phone: phone,
     });
 
     

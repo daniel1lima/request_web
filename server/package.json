@@ -10,7 +10,7 @@
     "@clerk/clerk-sdk-node": "^5.1.6",
     "all": "^0.0.0",
     "aws-sdk": "^2.1692.0",
-    "axios": "^1.7.9",
+    "axios": "^1.8.2",
     "clsx": "^2.1.1",
     "concurrently": "^8.2.2",
     "cookie-parser": "^1.4.6",
@@ -28,6 +28,7 @@
     "sequelize-cli": "^6.6.2",
     "stripe": "^17.6.0",
     "tailwind-merge": "^2.6.0",
+    "twilio": "^5.4.5",
     "uuid": "^11.1.0"
   },
   "devDependencies": {
