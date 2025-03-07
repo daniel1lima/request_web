@@ -431,6 +431,8 @@ const EventAdminPage = () => {
         throw new Error("Authentication token is missing.");
       }
 
+      console.log(requestId, request.paymentId)
+
 
       // Handle API calls in the background
       await declineRequestAPI(requestId, accesstoken, request.paymentId); // Use the imported declineRequest function

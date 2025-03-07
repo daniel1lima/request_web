@@ -510,7 +510,7 @@ export const SongForm: React.FC<SongFormProps> = ({
             <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base lg:text-lg mt-1">
               {selectedTrack.artists[0].name}
             </p>
-            <div className="relative group">
+            {!freeReq && <div className="relative group">
               <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 p-[1px] rounded-full overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 mt-3">
                 <div className="px-6 py-2 rounded-full bg-gray-900/90 backdrop-blur-xl">
                   <p className="text-transparent bg-clip-text bg-gradient-to-r from-violet-200 to-fuchsia-200 text-lg md:text-xl lg:text-2xl font-medium">
@@ -518,7 +518,7 @@ export const SongForm: React.FC<SongFormProps> = ({
                   </p>
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
         )}
       </form>
@@ -600,7 +600,7 @@ export const SongForm: React.FC<SongFormProps> = ({
                       onClick={handleFreeRequest}
                       className="bg-[rgba(86,105,255,1)] dark:bg-[rgba(63,56,221,1)] 
       shadow-[0_10px_35px_rgba(111,126,201,0.25)] w-full px-[43px] py-[13px] 
-      rounded-[8px] transition-all duration-300 ease-in-out z-50"
+      rounded-[8px] transition-all duration-300 ease-in-out z-50 font-bold"
                     >
                       Request For Free!
                     </button>

@@ -279,9 +279,15 @@ router.delete("/delete", ClerkExpressRequireAuth(), async (req, res) => {
       return res.status(404).json({ error: "Request not found" });
     }
 
-   await stripe.paymentIntents.cancel(
-      `${request.paymentId}`
-    );
+    // Try to cancel the payment intent, but continue even if it fails
+    try {
+      if (request.paymentId && !request.paymentId.startsWith("FREE_")) {
+        await stripe.paymentIntents.cancel(`${request.paymentId}`);
+      }
+    } catch (stripeError) {
+      console.error("Error cancelling Stripe payment intent:", stripeError);
+      // Continue with request deletion despite Stripe error
+    }
 
     const deletedRequest = {
       requestId: request.requestId,
