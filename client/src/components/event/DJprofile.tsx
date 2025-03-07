@@ -16,7 +16,7 @@ const DJProfile: React.FC<DJProfileProps> = ({ name, role, image, insta }) => {
         <img
           loading="lazy"
           srcSet={image}
-          className="aspect-[1.02] object-contain w-[45px] shrink-0 rounded-full"
+          className="aspect-[1.02] object-cover w-[45px] h-[45px] shrink-0 rounded-full overflow-hidden"
           alt={name}
         />
         <div className="flex flex-col items-stretch mb-2">
