@@ -372,19 +372,19 @@ export const SongForm: React.FC<SongFormProps> = ({
 
       const requestResponse = await createRequest(RequestBody);
 
-      if (!requestResponse) {
+      if (requestResponse) {
+        // Only send confirmation and redirect if request was successful
+        await freeOrderConfirm(`${phoneWithCountryCode}`, freePaymentId);
         setPhoneSuccess(true);
+        setPhoneLoading(false);
+        router.push(`/success`);
+      } else {
+        throw new Error("Failed to create request");
       }
-
-      await freeOrderConfirm(`${phoneWithCountryCode}`, freePaymentId);
-
     } catch (error) {
       console.error("Error:", error);
       setPhoneError("Something went wrong. Please try again.");
       setPhoneLoading(false);
-    } finally {
-      setPhoneLoading(false);
-      redirect(`/success`);
     }
   };
 
