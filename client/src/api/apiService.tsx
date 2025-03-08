@@ -11,6 +11,19 @@ export interface EventData {
   djId: string; // Use the user's Clerk user ID
 }
 
+// Request status constants
+export const REQUEST_STATUS = {
+  PENDING: 'pending',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+  CANCELLED: 'cancelled',
+  ACCEPTED: 'accepted',
+  DECLINED: 'declined',
+  PLAYED: 'played'
+} as const;
+
+export type RequestStatus = typeof REQUEST_STATUS[keyof typeof REQUEST_STATUS];
+
 export interface RequestBody {
   songName: string;
   songArtist: string;
@@ -18,6 +31,7 @@ export interface RequestBody {
   userId: string | null;
   eventId: string;
   paymentId: string;
+  status?: RequestStatus; // Make it optional with the defined type
 }
 
 // ==================== EVENT MANAGEMENT ====================
@@ -192,6 +206,23 @@ export const declineRequest = async (
   });
 
   if (!response.ok) throw new Error("Failed to decline request");
+  return response.json();
+};
+
+// Update request status
+export const updateRequestStatus = async (paymentId: string, status: string) => {
+  const response = await fetch(`/api/requests/update-status`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ paymentId, status }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(`Failed to update request status: ${errorData.error || "Unknown error"}`);
+  }
   return response.json();
 };
 

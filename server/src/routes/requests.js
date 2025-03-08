@@ -522,4 +522,53 @@ router.get("/getByPid", async (req, res) => {
   }
 });
 
+// Update request status by payment ID
+router.put("/update-status", async (req, res) => {
+  try {
+    const { paymentId, status } = req.body;
+
+    if (!paymentId || !status) {
+      return res.status(400).json({
+        error: "Missing required fields",
+        details: "paymentId and status are required"
+      });
+    }
+
+    // Find the request by payment ID
+    const request = await Request.findOne({ where: { paymentId } });
+
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    // Update the request status
+    await request.update({ status });
+
+    // Get the updated request with related data
+    const updatedRequest = await Request.findOne({
+      where: { paymentId },
+      include: [
+        { model: User, attributes: ["userName"] },
+        { model: Event, attributes: ["eventName"] },
+      ],
+    });
+
+    res.json(updatedRequest);
+
+    // Notify connected clients about the update
+    if (eventClients.has(request.eventId)) {
+      notifyEventClients(request.eventId, {
+        type: "update",
+        request: updatedRequest,
+      });
+    }
+  } catch (error) {
+    console.error("Update request status error:", error);
+    res.status(500).json({
+      error: "Failed to update request status",
+      details: error.message,
+    });
+  }
+});
+
 module.exports = router;

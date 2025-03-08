@@ -18,6 +18,8 @@ import {
   RequestBody,
   freeOrderConfirm,
   checkPhone,
+  updateRequestStatus,
+  REQUEST_STATUS,
 } from "@/api/apiService";
 import { v4 as uuidv4 } from "uuid";
 import { Loader2, ChevronLeft } from "lucide-react";
@@ -127,23 +129,14 @@ export const SongForm: React.FC<SongFormProps> = ({
 
     setIsLoading(true);
     try {
+      // 1. Get payment intent from server
       const { client_secret, id: pid } = await fetchPaymentIntentFunc(
         feedoptions.amount,
         feedoptions.currency,
         selectedTrack?.id || ""
       );
 
-      const { error } = await stripe.confirmPayment({
-        elements,
-        clientSecret: client_secret,
-        confirmParams: {
-          return_url: `${window.location.origin}/success`,
-        },
-        redirect: "if_required",
-      });
-
-      // create payment
-
+      // 2. Create payment record first
       await createPayment({
         paymentId: pid,
         amount: feedoptions.amount,
@@ -152,7 +145,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         phone: "",
       });
 
-      // Save Request to the database
+      // 3. Create request with pending status
       const RequestBody: RequestBody = {
         songName: selectedTrack?.name || "",
         songArtist: selectedTrack?.artists[0].name || "",
@@ -162,17 +155,34 @@ export const SongForm: React.FC<SongFormProps> = ({
         paymentId: pid,
       };
 
+      // Save Request to the database before payment confirmation
       await createRequest(RequestBody);
 
-      setTimeout(() => {
-        redirect(`/success`); // Navigate to the new post page
-      }, 2000);
+      // 4. Now confirm payment
+      const { error } = await stripe.confirmPayment({
+        elements,
+        clientSecret: client_secret,
+        confirmParams: {
+          return_url: `${window.location.origin}/success`,
+        },
+        redirect: "if_required",
+      });
 
       if (error) {
         console.error("Payment confirmation error:", error.message);
+
+        await updateRequestStatus(pid, REQUEST_STATUS.FAILED);
+
+        return;
       }
+
+      // 5. If we get here without redirect, payment succeeded
+      setTimeout(() => {
+        redirect(`/success`); // Navigate to the success page
+      }, 1000);
     } catch (error) {
       console.error("Error confirming payment:", error);
+      // Handle error, possibly show to user
     } finally {
       setIsLoading(false);
     }
