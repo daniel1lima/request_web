@@ -779,26 +779,26 @@ export const SongForm: React.FC<SongFormProps> = ({
                       </div>
                     </div>
                   ) : (
-                    showPhoneInput && (
-                      <PhoneInput
-                        phone={phone}
-                        setPhone={setPhone}
-                        phoneError={phoneError}
-                        setPhoneError={setPhoneError}
-                        setPhoneLoading={setPhoneLoading}
-                        countryCode={countryCode}
-                        setCountryCode={setCountryCode}
-                        selectedCountryFlag={selectedCountryFlag}
-                        setSelectedCountryFlag={setSelectedCountryFlag}
-                        onSubmit={handleFreePhoneRequest}
-                        onBack={() => {
-                          setShowEmailInput(false);
-                          setShowPhoneInput(false);
-                          setShowCountryDropdown(false);
-                        }}
-                        isLoading={phoneLoading}
-                      />
-                    )
+                    showPhoneInput && 
+                        <PhoneInput
+                          phone={phone}
+                          setPhone={setPhone}
+                          phoneError={phoneError}
+                          setPhoneError={setPhoneError}
+                          setPhoneLoading={setPhoneLoading}
+                          countryCode={countryCode}
+                          setCountryCode={setCountryCode}
+                          selectedCountryFlag={selectedCountryFlag}
+                          setSelectedCountryFlag={setSelectedCountryFlag}
+                          onSubmit={handleFreePhoneRequest}
+                          onBack={() => {
+                            setShowEmailInput(false);
+                            setShowPhoneInput(false);
+                            setShowCountryDropdown(false);
+                          }}
+                          isLoading={phoneLoading}
+                        />
+
                   )}
                 </div>
               ) : (
