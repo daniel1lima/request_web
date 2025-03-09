@@ -10,10 +10,12 @@ import "../globals.css";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/button";
 import {
-  fetchEventById,
   fetchDjById,
   fetchRequestsByEventId,
 } from "@/api/apiService";
+import Loader from "@/components/loader";
+import useEventStore from "@/store/eventStore";
+import useDjStore from "@/store/djStore";
 
 // Define interfaces for requests, events, and DJs
 // Update the Request interface to match the API response
@@ -54,29 +56,7 @@ export interface Event {
   updatedAt: string;
 }
 
-export interface DJ {
-  djId: string;
-  djName: string;
-  djInsta?: string;
-  djImageUrl: string;
-}
 
-// Loader component for loading state
-const Loader = () => (
-  <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
-    <div className="loader text-white">
-      <Image
-        src="/RequestLogoLight.png"
-        alt="DJ Request Logo"
-        width={200}
-        height={200}
-        className="invert dark:invert"
-        priority
-        style={{ objectFit: "contain" }}
-      />
-    </div>
-  </div>
-);
 
 // Event ownership disclaimer component
 const EventOwnershipDisclaimer = ({ djId }: { djId: string }) => {
@@ -107,12 +87,15 @@ const EventOwnershipDisclaimer = ({ djId }: { djId: string }) => {
 const EventPage = () => {
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [eventData, setEventData] = useState<Event | null>(null);
-  const [djData, setDjData] = useState<DJ | null>(null);
   const [songRequests, setSongRequests] = useState<Request[]>([]);
   const { user } = useUser();
+  
+  // Use the event store
+  const { currentEvent, isLoading, fetchEvent } = useEventStore();
+  
+  // Use the DJ store
+  const { currentDj, fetchDj } = useDjStore();
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -142,58 +125,99 @@ const EventPage = () => {
     localStorage.setItem("eventId", eventId);
 
     try {
-      const eventData = await fetchEventById(eventId);
-      if (!eventData || eventData.error) router.push("/404");
-
-      const djId = eventData.djId;
-      localStorage.setItem("djId", djId);
-      setEventData(eventData);
-
-      const djData = await fetchDjById(djId);
-      if (djData && !djData.error) {
-        setDjData(djData);
+      // Get the current state from the event store
+      const storeState = useEventStore.getState();
+      
+      // Only fetch event if it's not already in the store or if it's a different event
+      if (!storeState.currentEvent || storeState.currentEvent.eventId !== eventId) {
+        await fetchEvent(eventId);
+      }
+      
+      // Get the updated state after potential fetch
+      const currentEventFromStore = useEventStore.getState().currentEvent;
+      
+      
+      if (!currentEventFromStore) {
+        router.push("/404");
+        return;
       }
 
-      const requestsData = await fetchRequestsByEventId(eventId);
-      setSongRequests(
-        Array.isArray(requestsData)
-          ? requestsData.filter((request) => request.status === "accepted")
-          : []
-      );
-      setLoading(false);
+      // Get DJ data using the DJ store
+      const djId = currentEventFromStore.djId;
+      localStorage.setItem("djId", djId);
+      
+      // Get the current DJ from the store directly
+      const djStoreState = useDjStore.getState();
+      
+      // Only fetch DJ if not in store or if it's a different DJ
+      if (!djStoreState.currentDj || djStoreState.currentDj.djId !== djId) {
+        await fetchDj(djId);
+      }
+
+      // Only fetch requests if we need to refresh them
+      if (refreshing || songRequests.length === 0) {
+        const requestsData = await fetchRequestsByEventId(eventId);
+        setSongRequests(
+          Array.isArray(requestsData)
+            ? requestsData.filter((request) => request.status === "accepted")
+            : []
+        );
+      }
+      
       setRefreshing(false);
     } catch (error) {
       console.error("Error fetching data:", error);
       setRefreshing(false);
-      if (loading) router.push("/404");
+      router.push("/404");
     }
   };
 
   useEffect(() => {
     loadData();
+    // Only run when router changes, not on every render
   }, [router]);
 
+  // Only set up the refresh interval once when the component mounts
   useEffect(() => {
-    if (!loading) {
+    if (!isLoading) {
       const refreshInterval = setInterval(() => {
         setRefreshing(true);
-        loadData();
+        // Only refresh the requests, not everything
+        const refreshRequests = async () => {
+          try {
+            const eventId = localStorage.getItem("eventId");
+            if (eventId) {
+              const requestsData = await fetchRequestsByEventId(eventId);
+              setSongRequests(
+                Array.isArray(requestsData)
+                  ? requestsData.filter((request) => request.status === "accepted")
+                  : []
+              );
+            }
+            setRefreshing(false);
+          } catch (error) {
+            console.error("Error refreshing requests:", error);
+            setRefreshing(false);
+          }
+        };
+        refreshRequests();
       }, 30000);
 
       return () => clearInterval(refreshInterval);
     }
-  }, [loading, router]);
+    // Only run once when isLoading changes to false
+  }, [isLoading]);
 
-  if (loading) {
+  if (isLoading) {
     return <Loader />;
   } else
     return (
       <div className="w-screen h-screen bg-gray-900 overflow-hidden">
         <div className="bg-gray-900 flex max-w-[600px] w-full h-screen flex-col overflow-hidden items-center mx-auto gap-2">
           <EventHeader
-            title={eventData?.eventName || "Default Event Title"}
-            imageUrl={eventData?.eventImage || ""}
-            djData={djData || { djId: "", djName: "", djImageUrl: "" }}
+            title={currentEvent?.eventName || "Default Event Title"}
+            imageUrl={currentEvent?.eventImage || ""}
+            djData={currentDj || { djId: "", djName: "", djImageUrl: "" }}
           />
 
           {refreshing && (
@@ -203,19 +227,19 @@ const EventPage = () => {
           )}
           
           <DJProfile
-            name={djData?.djName || "DJ Zo"}
+            name={currentDj?.djName || "DJ Zo"}
             role="Main Event DJ"
-            image={djData?.djImageUrl || ""}
+            image={currentDj?.djImageUrl || ""}
             insta={
-              djData?.djInsta
-                ? `https://www.instagram.com/${djData.djInsta}`
+              currentDj?.djInsta
+                ? `https://www.instagram.com/${currentDj.djInsta}`
                 : ""
             }
           />
 
           <div className="flex flex-col items-center w-full px-4 pb-20 mt-[-20] overflow-y-auto flex-1">
-            {djData?.djId && user?.id === djData.djId && (
-              <EventOwnershipDisclaimer djId={djData.djId} />
+            {currentDj?.djId && user?.id === currentDj.djId && (
+              <EventOwnershipDisclaimer djId={currentDj.djId} />
             )}
             <h2 className="text-gray-200 text-lg font-medium leading-[34px] opacity-[0.84] mt-[21px]">
               Accepted Song Queue
@@ -236,7 +260,7 @@ const EventPage = () => {
                   </div>
                 ))}
             </div>
-            {eventData?.acceptRequests ? (
+            {currentEvent?.acceptRequests ? (
               <div
                 className={`flex items-center justify-center w-full h-[50px] bg-transparent ${isMobile ? "mb-[30px]" : ""}`}
               >

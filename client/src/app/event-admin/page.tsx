@@ -52,26 +52,32 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { notFound, redirect } from "next/navigation";
+import useEventStore from "@/store/eventStore";
+import useRequestStore from "@/store/requestStore";
+import useAdminStore from "@/store/adminStore";
+import useDjStore from "@/store/djStore";
 
 export interface Request {
-  requestId: string;  // Changed from number to string
+  requestId: string; // Changed from number to string
   songName: string;
   songArtist: string;
   songImage: string;
-  accepted: boolean;  // Added
+  accepted: boolean; // Added
   played: boolean;
   requestUpvotes: number;
-  userId: string | null;  // Added
-  eventId: string;  // Added
-  paymentId: string;  // Added
+  userId: string | null; // Added
+  eventId: string; // Added
+  paymentId: string; // Added
   status: string;
-  createdAt: string;  // Added
-  updatedAt: string;  // Added
-  User: null | any;  // Added
-  Event: {  // Added
+  createdAt: string; // Added
+  updatedAt: string; // Added
+  User: null | any; // Added
+  Event: {
+    // Added
     eventName: string;
   };
-  Payment: {  // Added
+  Payment: {
+    // Added
     amount: number;
   };
 }
@@ -132,49 +138,72 @@ const EventAdminPage = () => {
   const { user } = useUser();
   const { toast } = useToast();
   const { getToken } = useAuth();
-  
-  // Event data state
-  const [songRequests, setSongRequests] = useState<Request[]>([]);
-  const [djData, setDjData] = useState<DJ | null>(null);
-  const [noRequests, setNoRequests] = useState(false);
-  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [loading, setLoading] = useState(true);
+
+  // Get data and actions from stores
+  const {
+    requests: songRequests,
+    fetchRequests,
+    isLoading: requestsLoading,
+  } = useRequestStore();
+  const { currentEvent, fetchEvent } = useEventStore();
+  const {
+    djData,
+    settings,
+    sliderValue,
+    selectedFile,
+    imagePreview,
+    loadingStates,
+    isAuthorized,
+    loading,
+
+    setDjData,
+    setSettings,
+    setSliderValue,
+    setSelectedFile,
+    setImagePreview,
+    setLoadingState,
+    setIsAuthorized,
+    setLoading,
+
+    fetchDj,
+    acceptRequestFunc,
+    playedRequest,
+    declineRequest,
+    handleDeleteEvent,
+    updateEventSettings,
+    uploadFile,
+  } = useAdminStore();
+
+
+  // Get data from djStore
+  const { fetchDj: fetchDjFromStore, currentDj } = useDjStore();
+
+  // Local state
   const [isMobile, setIsMobile] = useState(false);
-  
-  // Event settings state
-  const [eventTitle, setEventTitle] = useState("");
-  const [eventImage, setEventImage] = useState("");
-  const [settings, setSettings] = useState({
-    requestFee: 0,
-    eventImage: "",
-    acceptRequests: false,
-    freeRequests: false,
-    freeEmailRequests: false,
-  });
-  const [sliderValue, setSliderValue] = useState<number[]>([99]);
-  
-  // File upload state
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [noRequests, setNoRequests] = useState(false);
 
   // Form setup
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      eventName: eventTitle,
+      eventName: settings.eventName || "",
     },
   });
 
   // Fetch event data
-  const fetchEventData = useCallback(async () => {
+  const refreshEventData = useCallback(async () => {
     const eventId = localStorage.getItem("eventId");
     if (!eventId || !user) return;
 
     try {
-      const songRequestsData = await fetchRequestsByEventId(eventId);
-      setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : []);
-      setNoRequests(songRequestsData.length === 0);
+      // Fetch requests using the store action
+      await fetchRequests(eventId);
+      
+      // Get the latest requests from the store
+      const { requests } = useRequestStore.getState();
+      
+      // Update the local state based on the store data
+      setNoRequests(requests.length === 0);
     } catch (error) {
       console.error("Error refreshing data:", error);
       toast({
@@ -183,32 +212,30 @@ const EventAdminPage = () => {
         variant: "destructive",
       });
     }
-  }, [user, toast]);
+  }, [user, toast, fetchRequests]);
 
   // Settings handlers
   const handleSliderChange = (value: number[]) => {
     setSliderValue(value);
-    setSettings(prev => ({ ...prev, requestFee: value[0] }));
+    setSettings({ requestFee: value[0] });
   };
 
   const handleAcceptRequestsChange = (value: boolean) => {
-    setSettings(prev => ({ ...prev, acceptRequests: value }));
+    setSettings({ acceptRequests: value });
   };
 
   const handleFreeRequestsChange = (value: boolean) => {
-    setSettings(prev => ({
-      ...prev,
+    setSettings({
       freeRequests: value,
-      freeEmailRequests: value ? false : prev.freeEmailRequests,
-    }));
+      freeEmailRequests: value ? false : settings.freeEmailRequests,
+    });
   };
 
   const handleFreeEmailRequestsChange = (value: boolean) => {
-    setSettings(prev => ({
-      ...prev,
+    setSettings({
       freeEmailRequests: value,
-      freeRequests: value ? false : prev.freeRequests,
-    }));
+      freeRequests: value ? false : settings.freeRequests,
+    });
   };
 
   // File handling
@@ -237,7 +264,7 @@ const EventAdminPage = () => {
     }
   };
 
-  const uploadFile = async () => {
+  const uploadFileHandler = async () => {
     try {
       if (!selectedFile) {
         toast({
@@ -248,13 +275,10 @@ const EventAdminPage = () => {
         return null;
       }
 
-      const data = new FormData();
-      data.append("file", selectedFile);
-      const s3response = await uploadFileApi(data);
-
-      if (s3response?.url) {
-        setSettings(prev => ({ ...prev, eventImage: s3response.url }));
-        return s3response.url;
+      const url = await uploadFile(selectedFile);
+      if (url) {
+        setSettings({ eventImage: url });
+        return url;
       }
       return null;
     } catch (e) {
@@ -268,19 +292,23 @@ const EventAdminPage = () => {
   };
 
   // Request management functions
-  const acceptRequestFunc = async (requestId: string) => {
+  const handleAcceptRequest = async (requestId: string) => {
     try {
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      await acceptRequest(requestId, accesstoken);
-      setSongRequests(prevRequests =>
-        prevRequests.map(req =>
+      const success = await acceptRequestFunc(requestId, accesstoken);
+      if (success) {
+        // Update local state to reflect changes immediately
+        const updatedRequests = songRequests.map((req) =>
           req.requestId === requestId
             ? { ...req, accepted: true, status: "accepted" }
             : req
-        )
-      );
+        );
+        // This is a workaround since we can't directly modify the store's state
+        // In a real implementation, the store should handle this update
+        refreshEventData();
+      }
     } catch (error) {
       console.error("Error accepting request:", error);
       toast({
@@ -291,28 +319,16 @@ const EventAdminPage = () => {
     }
   };
 
-  const playedRequest = async (requestId: string) => {
-    setLoadingStates(prev => ({ ...prev, [requestId]: true }));
-
+  const handlePlayedRequest = async (requestId: string) => {
     try {
-      const request = songRequests.find(req => req.requestId === requestId);
-      if (!request?.paymentId) return;
-
-      const paymentData = await fetchPaymentById(request.paymentId);
-      await capturePaymentIntent(request.paymentId, paymentData.amount);
-
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      await markRequestAsPlayed(requestId, accesstoken);
-
-      setSongRequests(prevRequests =>
-        prevRequests.map(req =>
-          req.requestId === requestId
-            ? { ...req, played: true, status: "completed" }
-            : req
-        )
-      );
+      const success = await playedRequest(requestId, accesstoken, songRequests);
+      if (success) {
+        // Update local state to reflect changes immediately
+        refreshEventData();
+      }
     } catch (error) {
       console.error("Error processing payment:", error);
       toast({
@@ -320,32 +336,34 @@ const EventAdminPage = () => {
         description: "Failed to mark request as played",
         variant: "destructive",
       });
-    } finally {
-      setLoadingStates(prev => ({ ...prev, [requestId]: false }));
     }
   };
 
-  const declineRequest = async (requestId: string) => {
-    setLoadingStates(prev => ({ ...prev, [requestId]: true }));
-
+  const handleDeclineRequest = async (requestId: string) => {
     // Immediately update UI
-    setSongRequests(prevRequests =>
-      prevRequests.filter(req => req.requestId !== requestId)
+    const requestToDecline = songRequests.find(
+      (req) => req.requestId === requestId
     );
+    if (!requestToDecline?.paymentId) return;
 
     try {
-      const request = songRequests.find(req => req.requestId === requestId);
-      if (!request?.paymentId) return;
-
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      await declineRequestAPI(requestId, accesstoken, request.paymentId);
-      
-      toast({
-        title: "Request declined",
-        description: "The user has been notified that their request was declined.",
-      });
+      const success = await declineRequest(
+        requestId,
+        accesstoken,
+        requestToDecline.paymentId
+      );
+      if (success) {
+        refreshEventData();
+
+        toast({
+          title: "Request declined",
+          description:
+            "The user has been notified that their request was declined.",
+        });
+      }
     } catch (error) {
       console.error("Error declining request:", error);
       toast({
@@ -353,22 +371,22 @@ const EventAdminPage = () => {
         description: "There was a problem declining this request.",
         variant: "destructive",
       });
-    } finally {
-      setLoadingStates(prev => ({ ...prev, [requestId]: false }));
     }
   };
 
   // Event management functions
-  const handleDeleteEvent = async () => {
+  const deleteEventHandler = async () => {
     try {
       const eventId = localStorage.getItem("eventId");
       if (!eventId) return;
 
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
-      
-      await deleteEvent(eventId, accesstoken);
-      redirect("/");
+
+      const success = await handleDeleteEvent(eventId, accesstoken);
+      if (success) {
+        redirect("/");
+      }
     } catch (error) {
       console.error("Error deleting event:", error);
       toast({
@@ -381,27 +399,38 @@ const EventAdminPage = () => {
 
   const onSubmit = async (data: z.infer<typeof FormSchema>) => {
     try {
-      setEventTitle(data.eventName);
       const eventId = localStorage.getItem("eventId");
       if (!eventId) return;
 
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
+      // Update settings with the new event name first
+      setSettings({ eventName: data.eventName });
+
       const updatedEventData = {
         eventId,
         eventName: data.eventName,
-        eventImage,
+        eventImage: settings.eventImage,
         eventLocation: "",
         requestFee: settings.requestFee,
         djId: user?.id || "",
       };
 
-      await updateEvent(eventId, updatedEventData, accesstoken);
-      toast({
-        title: "Event updated!",
-        description: `New event name: ${data.eventName}`,
-      });
+      const success = await updateEventSettings(
+        eventId,
+        updatedEventData,
+        accesstoken
+      );
+      if (success) {
+        // Refresh event data to ensure all components have the latest data
+        await fetchEvent(eventId);
+        
+        toast({
+          title: "Event updated!",
+          description: `New event name: ${data.eventName}`,
+        });
+      }
     } catch (error) {
       toast({
         title: "Update failed",
@@ -418,11 +447,13 @@ const EventAdminPage = () => {
 
       let imageUrl;
       if (selectedFile) {
-        imageUrl = await uploadFile();
+        imageUrl = await uploadFileHandler();
         if (imageUrl) {
-          setEventImage(imageUrl);
+          // Update settings with the new image URL
+          setSettings({ eventImage: imageUrl });
         }
       }
+      
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
@@ -434,14 +465,21 @@ const EventAdminPage = () => {
         acceptEmailRequests: settings.freeEmailRequests,
       };
 
-      const response = await updateEvent(eventId, updatedEventData, accesstoken);
-
-      if (response?.eventId) {
+      const success = await updateEventSettings(
+        eventId,
+        updatedEventData,
+        accesstoken
+      );
+      
+      if (success) {
+        // Refresh event data to ensure all components have the latest data
+        await fetchEvent(eventId);
+        
         toast({
           title: "Settings updated!",
           description: "Your settings have been successfully updated.",
         });
-        
+
         if (selectedFile) {
           setSelectedFile(null);
           setImagePreview(null);
@@ -458,14 +496,13 @@ const EventAdminPage = () => {
     }
   };
 
-  // Add a useEffect to update the UI when settings.eventImage changes
-  useEffect(() => {
-    if (settings.eventImage) {
-      setEventImage(settings.eventImage);
-    }
-  }, [settings.eventImage]);
-
   // Effects
+  // useEffect(() => {
+  //   if (settings.eventImage) {
+  //     setEventImage(settings.eventImage);
+  //   }
+  // }, [settings.eventImage]);
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -481,65 +518,135 @@ const EventAdminPage = () => {
     if (!eventId || !user) return;
 
     localStorage.setItem("eventId", eventId);
-    const djId = localStorage.getItem("djId");
     setLoading(true);
 
     const fetchInitialData = async () => {
       try {
-        const [eventData, songRequestsData, djData] = await Promise.all([
-          fetchEventById(eventId),
-          fetchRequestsByEventId(eventId),
-          localStorage.getItem("djId")
-            ? fetchDjById(djId || "")
-            : Promise.resolve(null),
-        ]);
-
-        if (!eventData || eventData.error) {
+        // First check if the event is already in the store
+        const { currentEvent } = useEventStore.getState();
+        
+        // Only fetch the event if it's not in the store or if it's a different event
+        if (!currentEvent || currentEvent.eventId !== eventId) {
+          await fetchEvent(eventId);
+          // Get the updated event from the store
+          const { currentEvent: updatedEvent } = useEventStore.getState();
+          if (!updatedEvent) {
+            window.location.href = "/404";
+            return;
+          }
+        }
+        
+        // At this point, we should have the event in the store
+        const { currentEvent: storeEvent } = useEventStore.getState();
+        if (!storeEvent) {
           window.location.href = "/404";
           return;
         }
-
-        if (user?.id !== djData?.djId) {
-          window.location.href = `/event?eventId=${eventId}`;
-          return;
-        }
-
-        setIsAuthorized(true);
-        setEventTitle(eventData.eventName || "Event");
-        setEventImage(eventData.eventImage || "");
-        setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : []);
-        setDjData(djData && !djData.error ? djData : null);
-        setNoRequests(songRequestsData.length === 0);
+        
+        console.log("Event Data:", storeEvent);
+        
+        // Set the event title and image from the store data
+        // setEventTitle(storeEvent.eventName);
+        // setEventImage(storeEvent.eventImage);
 
         setSettings({
-          requestFee: eventData.requestFee || 0,
-          eventImage: eventData.eventImage || "",
-          acceptRequests: eventData.acceptRequests || false,
-          freeRequests: eventData.acceptFreeRequests || false,
-          freeEmailRequests: eventData.acceptEmailRequests || false,
+          eventName: storeEvent.eventName,
+          eventImage: storeEvent.eventImage,
+          requestFee: storeEvent.requestFee,
+          acceptRequests: storeEvent.acceptRequests,
+          freeRequests: storeEvent.acceptFreeRequests,
+          freeEmailRequests: storeEvent.acceptEmailRequests
         });
+        
+        // Set the slider value based on the request fee
+        setSliderValue([storeEvent.requestFee]);
+        
+        // Fetch requests for this event
+        await fetchRequests(eventId);
 
-        setSliderValue([eventData.requestFee || 0]);
+        // If the event has a DJ ID, fetch the DJ data
+        if (storeEvent.djId) {
+          // Check if we already have the DJ data in the store
+          const { currentDj } = useDjStore.getState();
+          
+          // Only fetch DJ data if it's not in the store or if it's a different DJ
+          if (!currentDj || currentDj.djId !== storeEvent.djId) {
+            await fetchDjFromStore(storeEvent.djId);
+          }
+          
+          // Get the current DJ from the store
+          const { currentDj: storeDj } = useDjStore.getState();
+          
+          console.log("User ID:", user?.id);
+          console.log("DJ ID:", storeDj?.djId);
+
+          // Check if the user is the DJ for this event
+          if (storeDj && user?.id === storeDj.djId) {
+            setIsAuthorized(true);
+            setNoRequests(songRequests.length === 0);
+          } else {
+            window.location.href = `/event?eventId=${eventId}`;
+          }
+          setLoading(false);
+        } else {
+          // Fallback to localStorage if needed
+          const storedDjId = localStorage.getItem("djId");
+          if (storedDjId) {
+            // Check if we already have the DJ data in the store
+            const { currentDj } = useDjStore.getState();
+            
+            // Only fetch DJ data if it's not in the store or if it's a different DJ
+            if (!currentDj || currentDj.djId !== storedDjId) {
+              await fetchDjFromStore(storedDjId);
+            }
+            
+            // Get the current DJ from the store
+            const { currentDj: storeDj } = useDjStore.getState();
+            
+            console.log("User ID:", user?.id);
+            console.log("DJ ID:", storeDj?.djId);
+
+            if (storeDj && user?.id === storeDj.djId) {
+              setIsAuthorized(true);
+              setNoRequests(songRequests.length === 0);
+            } else {
+              window.location.href = `/event?eventId=${eventId}`;
+            }
+            setLoading(false);
+          } else {
+            // If we get here, there's no DJ ID to check against
+            console.log("No DJ ID found to check against");
+            setLoading(false);
+            window.location.href = `/event?eventId=${eventId}`;
+          }
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
-        window.location.href = "/404";
-      } finally {
         setLoading(false);
+        window.location.href = "/404";
       }
     };
 
     fetchInitialData();
-  }, [user]);
+  }, [
+    user,
+    fetchEvent,
+    fetchRequests,
+    fetchDjFromStore,
+    setLoading,
+    setIsAuthorized,
+    songRequests.length,
+  ]);
 
   useEffect(() => {
     if (!isAuthorized || loading) return;
 
     const intervalId = setInterval(() => {
-      fetchEventData();
+      refreshEventData();
     }, 30000);
 
     return () => clearInterval(intervalId);
-  }, [isAuthorized, loading, fetchEventData]);
+  }, [isAuthorized, loading, refreshEventData]);
 
   if (loading || !isAuthorized) return <Loader />;
 
@@ -695,7 +802,7 @@ const EventAdminPage = () => {
               variant={"outline"}
               className="max-w-[100px] bg-red-600 hover:bg-red-900 outline-none text-white"
               onClick={() => {
-                handleDeleteEvent();
+                deleteEventHandler();
               }}
             >
               Delete Event
@@ -725,7 +832,7 @@ const EventAdminPage = () => {
                   <FormItem>
                     <FormLabel>Event Name</FormLabel>
                     <FormControl>
-                      <Input placeholder={eventTitle} {...field} />
+                      <Input placeholder={settings.eventName || ""} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -753,7 +860,7 @@ const EventAdminPage = () => {
       <div
         className="relative bg-cover bg-center h-48"
         style={{
-          backgroundImage: `url(${eventImage})`,
+          backgroundImage: `url(${settings.eventImage || currentEvent?.eventImage})`,
         }}
       >
         {/* Dark overlay */}
@@ -776,7 +883,7 @@ const EventAdminPage = () => {
             <div>
               <div className="flex flex-row gap-5 ">
                 <h1 className="text-6xl font-bold text-white mb-2">
-                  {eventTitle}
+                  {settings.eventName}
                 </h1>
               </div>
               <div className="flex-row flex gap-4 items-center">
@@ -851,9 +958,14 @@ const EventAdminPage = () => {
               </div>
               <p className="text-4xl font-semibold text-white">
                 $
-                {(songRequests
-                  .filter((req) => req.played)
-                  .reduce((total, req) => total + (req.Payment?.amount || 0), 0) / 100).toFixed(2)}
+                {(
+                  songRequests
+                    .filter((req) => req.played)
+                    .reduce(
+                      (total, req) => total + (req.Payment?.amount || 0),
+                      0
+                    ) / 100
+                ).toFixed(2)}
               </p>
             </div>
           </div>
@@ -885,7 +997,7 @@ const EventAdminPage = () => {
                           isAdminView={true}
                         />
                         <button
-                          onClick={() => playedRequest(request.requestId)}
+                          onClick={() => handlePlayedRequest(request.requestId)}
                           className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
                           disabled={loadingStates[request.requestId]}
                         >
@@ -925,13 +1037,17 @@ const EventAdminPage = () => {
                         />
                         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
                           <button
-                            onClick={() => acceptRequestFunc(request.requestId)}
+                            onClick={() =>
+                              handleAcceptRequest(request.requestId)
+                            }
                             className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
                           >
                             <FaCheck className="w-6 h-6 text-white" />
                           </button>
                           <button
-                            onClick={() => declineRequest(request.requestId)}
+                            onClick={() =>
+                              handleDeclineRequest(request.requestId)
+                            }
                             className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
                             disabled={loadingStates[request.requestId]}
                           >
