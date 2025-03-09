@@ -30,7 +30,8 @@
     "stripe": "^17.6.0",
     "tailwind-merge": "^2.6.0",
     "twilio": "^5.4.5",
-    "uuid": "^11.1.0"
+    "uuid": "^11.1.0",
+    "ws": "^8.18.1"
   },
   "devDependencies": {
     "eslint": "^8.57.1",

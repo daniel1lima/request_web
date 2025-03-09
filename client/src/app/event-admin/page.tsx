@@ -44,6 +44,7 @@ import useRequestStore from "@/store/requestStore";
 import useAdminStore from "@/store/adminStore";
 import useDjStore from "@/store/djStore";
 import { useRouter } from "next/navigation";
+import WebSocketService from "@/services/websocketService";
 
 export interface Request {
   requestId: string; // Changed from number to string
@@ -134,6 +135,9 @@ const EventAdminPage = () => {
     fetchRequests,
     isLoading: requestsLoading,
     setRequests,
+    connectToEventSocket,
+    disconnectFromEventSocket,
+    wsConnected
   } = useRequestStore();
   const { currentEvent, fetchEvent } = useEventStore();
   const {
@@ -170,6 +174,11 @@ const EventAdminPage = () => {
   // Local state
   const [isMobile, setIsMobile] = useState(false);
   const [noRequests, setNoRequests] = useState(false);
+
+  // Add a connection indicator state
+  const [socketConnected, setSocketConnected] = useState(false);
+  
+
 
   // Form setup
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -570,7 +579,6 @@ const EventAdminPage = () => {
 
     localStorage.setItem("eventId", eventId);
     setLoading(true);
-
     const fetchInitialData = async () => {
       try {
         // First check if the event is already in the store
@@ -682,29 +690,30 @@ const EventAdminPage = () => {
     songRequests.length,
   ]);
 
-  // useEffect(() => {
-  //   if (!isAuthorized || loading) return;
+  // Add effect to connect to WebSocket
+  useEffect(() => {
+    if (!isAuthorized ) return;
+    
+    const eventId = localStorage.getItem("eventId");
+    if (!eventId) return;
+    
+    // Connect to WebSocket for real-time updates
+    connectToEventSocket(eventId);
+    setSocketConnected(true);
+    
+    // Check connection status periodically
+    const intervalId = setInterval(() => {
+      const wsService = WebSocketService.getInstance();
+      setSocketConnected(wsService.isConnected());
+    }, 5000);
+    
+    // Cleanup function
+    return () => {
+      clearInterval(intervalId);
+      disconnectFromEventSocket();
+    };
+  }, [ isAuthorized,connectToEventSocket, disconnectFromEventSocket]);
 
-  //   // Initial fetch when component mounts
-  //   refreshEventData();
-
-  //   // Set up interval for auto-refresh every 30 seconds
-  //   const intervalId = setInterval(() => {
-  //     const eventId = localStorage.getItem("eventId");
-  //     if (!eventId || !user) return;
-
-  //     // Only fetch if we're not in the middle of an operation
-  //     const isAnyRequestLoading = Object.values(loadingStates).some(state => state);
-  //     const hasDeclineInProgress = songRequests.some(req => req.status === "declining");
-
-  //     if (!isAnyRequestLoading && !hasDeclineInProgress) {
-  //       fetchRequests(eventId, true);
-  //     }
-  //   }, 30000);
-
-  //   // Clean up interval on component unmount
-  //   return () => clearInterval(intervalId);
-  // }, [isAuthorized, loading, refreshEventData, fetchRequests, user, loadingStates, songRequests]);
 
   if (loading || !isAuthorized) return <Loader />;
 
@@ -907,6 +916,16 @@ const EventAdminPage = () => {
     </div>
   );
 
+  // You can add a connection indicator in your UI
+  const ConnectionStatus = () => (
+    <div className={`px-2 py-1 rounded-full flex items-center ${socketConnected ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+      <div className={`w-2 h-2 rounded-full mr-2 ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+      <span className="text-xs font-medium">
+        {socketConnected ? 'Live' : 'Offline'}
+      </span>
+    </div>
+  );
+
   return (
     <div
       className={`bg-gray-900 dark:bg-gray-900 ${
@@ -942,10 +961,12 @@ const EventAdminPage = () => {
 
             {/* Title content */}
             <div>
-              <div className="flex flex-row gap-5 ">
+              <div className="flex flex-row gap-5 items-center">
                 <h1 className="text-6xl font-bold text-white mb-2">
                   {settings.eventName}
                 </h1>
+                {/* Add connection status indicator */}
+                <ConnectionStatus />
               </div>
               <div className="flex-row flex gap-4 items-center">
                 {SettingsDialog(

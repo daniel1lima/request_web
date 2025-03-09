@@ -13,6 +13,7 @@ import {
 } from '@/api/apiService';
 import { Request } from '@/app/event-admin/page';
 import { DJ } from '@/app/event-admin/page';
+import WebSocketService from '@/services/websocketService';
 
 interface AdminSettings {
   requestFee: number;
@@ -52,6 +53,7 @@ interface AdminState {
   isAuthorized: boolean;
   loading: boolean;
   error: string | null;
+  wsConnected: boolean;
   
   // Actions
   setDjData: (data: DJ) => void;
@@ -76,6 +78,10 @@ interface AdminState {
   handleDeleteEvent: (eventId: string, accessToken: string) => Promise<boolean>;
   updateEventSettings: (eventId: string, data: any, accessToken: string) => Promise<boolean>;
   uploadFile: (file: File) => Promise<string | null>;
+  
+  // WebSocket Actions
+  connectToEventSocket: (eventId: string) => void;
+  disconnectFromEventSocket: () => void;
 }
 
 const useAdminStore = create<AdminState>((set, get) => ({
@@ -99,6 +105,7 @@ const useAdminStore = create<AdminState>((set, get) => ({
   isAuthorized: false,
   loading: true,
   error: null,
+  wsConnected: false,
   
   // Basic actions
   setDjData: (data) => set({ djData: data }),
@@ -312,7 +319,21 @@ const useAdminStore = create<AdminState>((set, get) => ({
       });
       return null;
     }
-  }
+  },
+  
+  connectToEventSocket: (eventId: string) => {
+    const wsService = WebSocketService.getInstance();
+    wsService.connect(eventId);
+    set({ wsConnected: true });
+    
+    // Note: We don't set up handlers here because the request store will handle the messages
+    // This is just to make sure the connection is established
+  },
+  
+  disconnectFromEventSocket: () => {
+    WebSocketService.getInstance().disconnect();
+    set({ wsConnected: false });
+  },
 }));
 
 export default useAdminStore;

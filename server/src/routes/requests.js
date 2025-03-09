@@ -110,7 +110,6 @@ router.post("/create", async (req, res) => {
     res.status(201).json(fullRequest);
 
     if (eventClients.has(eventId)) {
-      //console.log(`Found ${eventClients.get(eventId).size} clients to notify for event ${eventId}`);
       notifyEventClients(eventId, { type: "create", request: fullRequest });
     }
   } catch (error) {

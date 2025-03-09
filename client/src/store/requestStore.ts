@@ -10,6 +10,7 @@ import {
   RequestStatus
 } from '../api/apiService';
 import { Request } from '../app/event/page';
+import WebSocketService from '../services/websocketService';
 
 interface RequestState {
   // State
@@ -18,6 +19,7 @@ interface RequestState {
   currentEventId: string | null;
   isLoading: boolean;
   error: string | null;
+  wsConnected: boolean;
   
   // Actions
   setRequests: (requests: Request[]) => void;
@@ -29,27 +31,33 @@ interface RequestState {
   markAsPlayed: (requestId: string, accessToken: string) => Promise<void>;
   declineRequestById: (requestId: string, accessToken: string, paymentId: string) => Promise<void>;
   clearError: () => void;
+  
+  // WebSocket actions
+  connectToEventSocket: (eventId: string) => void;
+  disconnectFromEventSocket: () => void;
+  handleWebSocketMessage: (data: any) => void;
 }
 
-const useRequestStore = create<RequestState>()((set, get) => ({
+const useRequestStore = create<RequestState>((set, get) => ({
   // Initial state
   requests: [],
   acceptedRequests: [],
   currentEventId: null,
   isLoading: false,
   error: null,
+  wsConnected: false,
   
   // Actions
-  setRequests: (requests: Request[]) => set({ requests }),
+  setRequests: (requests) => set({ requests }),
   
-  fetchRequests: async (eventId: string, forceRefresh: boolean = false): Promise<Request[]> => {
+  fetchRequests: async (eventId, forceRefresh = false) => {
     const { currentEventId, requests } = get();
     
     if (!forceRefresh && currentEventId === eventId && requests.length > 0) {
       return requests;
     }
     
-    set({ isLoading: true });
+    set({ isLoading: false });
     try {
       const requests = await fetchRequestsByEventId(eventId);
       set({ 
@@ -65,7 +73,7 @@ const useRequestStore = create<RequestState>()((set, get) => ({
     }
   },
   
-  fetchAcceptedRequests: async (eventId: string, forceRefresh: boolean = false): Promise<Request[]> => {
+  fetchAcceptedRequests: async (eventId, forceRefresh = false) => {
     const { currentEventId, requests, acceptedRequests } = get();
     
     if (!forceRefresh && currentEventId === eventId && requests.length > 0) {
@@ -91,7 +99,7 @@ const useRequestStore = create<RequestState>()((set, get) => ({
     }
   },
   
-  addRequest: async (requestBody: RequestBody) => {
+  addRequest: async (requestBody) => {
     set({ isLoading: true });
     try {
       const newRequest = await createRequest(requestBody);
@@ -111,7 +119,7 @@ const useRequestStore = create<RequestState>()((set, get) => ({
     }
   },
   
-  acceptRequestById: async (requestId: string, accessToken: string) => {
+  acceptRequestById: async (requestId, accessToken) => {
     set({ isLoading: true });
     try {
       await acceptRequest(requestId, accessToken);
@@ -140,7 +148,7 @@ const useRequestStore = create<RequestState>()((set, get) => ({
     }
   },
   
-  cancelRequestById: async (requestId: string, pi: string) => {
+  cancelRequestById: async (requestId, pi) => {
     set({ isLoading: true });
     try {
       await cancelRequest(requestId, pi);
@@ -161,7 +169,7 @@ const useRequestStore = create<RequestState>()((set, get) => ({
     }
   },
   
-  markAsPlayed: async (requestId: string, accessToken: string) => {
+  markAsPlayed: async (requestId, accessToken) => {
     set({ isLoading: true });
     try {
       await markRequestAsPlayed(requestId, accessToken);
@@ -179,7 +187,7 @@ const useRequestStore = create<RequestState>()((set, get) => ({
     }
   },
   
-  declineRequestById: async (requestId: string, accessToken: string, paymentId: string) => {
+  declineRequestById: async (requestId, accessToken, paymentId) => {
     set({ isLoading: true });
     try {
       await declineRequest(requestId, accessToken, paymentId);
@@ -198,6 +206,88 @@ const useRequestStore = create<RequestState>()((set, get) => ({
   },
   
   clearError: () => set({ error: null }),
+  
+  // WebSocket actions implementation
+  connectToEventSocket: (eventId) => {
+    let wsService = WebSocketService.getInstance();
+    
+    wsService.connect(eventId);
+    
+    // Set up message handlers
+    const createHandler = (data: any) => {
+      if (data.request && get().currentEventId === eventId) {
+        get().handleWebSocketMessage(data);
+      }
+    };
+    
+    const updateHandler = (data: any) => {
+      if (data.request && get().currentEventId === eventId) {
+        get().handleWebSocketMessage(data);
+      }
+    };
+    
+    const deleteHandler = (data: any) => {
+      if (data.request && get().currentEventId === eventId) {
+        get().handleWebSocketMessage(data);
+      }
+    };
+    
+    // Subscribe to message types
+    wsService.subscribe('create', createHandler);
+    wsService.subscribe('update', updateHandler);
+    wsService.subscribe('delete', deleteHandler);
+    
+    set({ wsConnected: true });
+  },
+  
+  disconnectFromEventSocket: () => {
+    WebSocketService.getInstance().disconnect();
+    set({ wsConnected: false });
+  },
+  
+  handleWebSocketMessage: (data) => {
+    const { type, request } = data;
+    const { requests, acceptedRequests } = get();
+    
+    switch (type) {
+      case 'create':
+        // Add the new request to the state WITHOUT setting isLoading
+        set({ 
+          requests: [...requests, request],
+          acceptedRequests: request.status === 'accepted' 
+            ? [...acceptedRequests, request] 
+            : acceptedRequests
+        });
+        break;
+        
+      case 'update':
+        // Update an existing request WITHOUT setting isLoading
+        const updatedRequests = requests.map(req => 
+          req.requestId === request.requestId ? request : req
+        );
+        
+        const updatedAcceptedRequests = request.status === 'accepted'
+          ? [...acceptedRequests.filter(r => r.requestId !== request.requestId), request]
+          : acceptedRequests.filter(r => r.requestId !== request.requestId);
+        
+        set({ 
+          requests: updatedRequests,
+          acceptedRequests: updatedAcceptedRequests
+        });
+        break;
+        
+      case 'delete':
+        // Remove the request from the state WITHOUT setting isLoading
+        set({ 
+          requests: requests.filter(req => req.requestId !== request.requestId),
+          acceptedRequests: acceptedRequests.filter(req => req.requestId !== request.requestId)
+        });
+        break;
+        
+      default:
+        console.warn('Unknown WebSocket message type:', type);
+    }
+  }
 }));
 
 export default useRequestStore;
