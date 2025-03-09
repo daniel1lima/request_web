@@ -266,11 +266,11 @@ const useAdminStore = create<AdminState>((set, get) => ({
   },
   
   updateEventSettings: async (eventId, data, accessToken) => {
-    set({ loading: true });
+    // set({ loading: true });
     try {
       const response = await updateEvent(eventId, data, accessToken);
       if (response?.eventId) {
-        set({ loading: false });
+        // set({ loading: false });
         return true;
       }
       set({ 
@@ -289,7 +289,7 @@ const useAdminStore = create<AdminState>((set, get) => ({
   },
   
   uploadFile: async (file) => {
-    set({ loading: true });
+    // set({ loading: true });
     try {
       const data = new FormData();
       data.append("file", file);

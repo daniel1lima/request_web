@@ -249,15 +249,13 @@ const Index = () => {
     useUIStore();
   const { isSignedIn } = useUser();
 
-  // Local state for file upload functionality
-  const [file, setFile] = useState<File | null>(null);
-  const [filePreview, setFilePreview] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [isUploading, setIsUploading] = useState(false);
 
   // Fetch events when component mounts
   useEffect(() => {
-    fetchEvents();
+    // Only fetch events if the events array is empty
+    if (!events || events.length === 0) {
+      fetchEvents();
+    }
 
     // Simulate images loaded after a delay (replace with actual image loading logic)
     const timer = setTimeout(() => {
@@ -265,7 +263,7 @@ const Index = () => {
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [fetchEvents, setImagesLoaded]);
+  }, [fetchEvents, events, setImagesLoaded]);
 
   const uploadFile = async () => {
     try {

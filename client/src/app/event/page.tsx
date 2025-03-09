@@ -4,18 +4,14 @@ import EventHeader from "@/components/event/EventHeader";
 import DJProfile from "@/components/event/DJprofile";
 import SongCard from "@/components/event/SongCard";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import "../globals.css";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/button";
-import {
-  fetchDjById,
-  fetchRequestsByEventId,
-} from "@/api/apiService";
 import Loader from "@/components/loader";
 import useEventStore from "@/store/eventStore";
 import useDjStore from "@/store/djStore";
+import useRequestStore from "@/store/requestStore";
 
 // Define interfaces for requests, events, and DJs
 // Update the Request interface to match the API response
@@ -88,7 +84,7 @@ const EventPage = () => {
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [songRequests, setSongRequests] = useState<Request[]>([]);
+
   const { user } = useUser();
   
   // Use the event store
@@ -96,6 +92,11 @@ const EventPage = () => {
   
   // Use the DJ store
   const { currentDj, fetchDj } = useDjStore();
+
+  const { requests, acceptedRequests, setRequests, fetchRequests } = useRequestStore();
+
+  // Add a new state variable for loading event data
+  const [isEventLoading, setIsEventLoading] = useState(true);
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -125,6 +126,9 @@ const EventPage = () => {
     localStorage.setItem("eventId", eventId);
 
     try {
+      // Set loading to true at the beginning of data fetch
+      setIsEventLoading(true);
+      
       // Get the current state from the event store
       const storeState = useEventStore.getState();
       
@@ -135,7 +139,6 @@ const EventPage = () => {
       
       // Get the updated state after potential fetch
       const currentEventFromStore = useEventStore.getState().currentEvent;
-      
       
       if (!currentEventFromStore) {
         router.push("/404");
@@ -154,20 +157,26 @@ const EventPage = () => {
         await fetchDj(djId);
       }
 
-      // Only fetch requests if we need to refresh them
-      if (refreshing || songRequests.length === 0) {
-        const requestsData = await fetchRequestsByEventId(eventId);
-        setSongRequests(
-          Array.isArray(requestsData)
-            ? requestsData.filter((request) => request.status === "accepted")
-            : []
-        );
+      // Get the request store state
+      const requestStoreState = useRequestStore.getState();
+      
+      // Check if we need to fetch requests (different event or refreshing)
+      if (refreshing || requestStoreState.currentEventId !== eventId) {
+        // Fetch accepted requests for this event
+        const acceptedRequests = await requestStoreState.fetchAcceptedRequests(eventId, refreshing);
+        setRequests(acceptedRequests);
+      } else {
+        // Use the cached accepted requests
+        setRequests(requestStoreState.acceptedRequests);
       }
       
       setRefreshing(false);
+      // Set loading to false after all data is fetched
+      setIsEventLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
       setRefreshing(false);
+      setIsEventLoading(false);
       router.push("/404");
     }
   };
@@ -187,8 +196,8 @@ const EventPage = () => {
           try {
             const eventId = localStorage.getItem("eventId");
             if (eventId) {
-              const requestsData = await fetchRequestsByEventId(eventId);
-              setSongRequests(
+              const requestsData = await fetchRequests(eventId, true);
+              setRequests(
                 Array.isArray(requestsData)
                   ? requestsData.filter((request) => request.status === "accepted")
                   : []
@@ -208,7 +217,7 @@ const EventPage = () => {
     // Only run once when isLoading changes to false
   }, [isLoading]);
 
-  if (isLoading) {
+  if (isLoading || isEventLoading) {
     return <Loader />;
   } else
     return (
@@ -245,7 +254,7 @@ const EventPage = () => {
               Accepted Song Queue
             </h2>
             <div className="gap-[13px] w-full pt-5 mb-6 overflow-y-auto flex-1 scrollbar max-h-[500px]">
-              {songRequests
+              {acceptedRequests
                 .filter((request) => !request.played)
                 .map((request) => (
                   <div className="pb-3 mr-2" key={request.requestId}>

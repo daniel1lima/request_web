@@ -7,20 +7,7 @@ import { FaCheck, FaPencilRuler, FaTimes, FaTrash } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useAuth, useUser } from "@clerk/nextjs";
-import {
-  acceptRequest,
-  capturePaymentIntent,
-  fetchDjById,
-  fetchEventById,
-  fetchPaymentById,
-  fetchRequestsByEventId,
-  markRequestAsPlayed,
-  updateEvent,
-  declineRequest as declineRequestAPI,
-  deleteEvent,
-  uploadFileApi,
-  sendDeclinedRequestEmail,
-} from "@/api/apiService";
+
 import {
   Popover,
   PopoverContent,
@@ -56,6 +43,7 @@ import useEventStore from "@/store/eventStore";
 import useRequestStore from "@/store/requestStore";
 import useAdminStore from "@/store/adminStore";
 import useDjStore from "@/store/djStore";
+import { useRouter } from "next/navigation";
 
 export interface Request {
   requestId: string; // Changed from number to string
@@ -138,12 +126,14 @@ const EventAdminPage = () => {
   const { user } = useUser();
   const { toast } = useToast();
   const { getToken } = useAuth();
+  const router = useRouter();
 
   // Get data and actions from stores
   const {
     requests: songRequests,
     fetchRequests,
     isLoading: requestsLoading,
+    setRequests,
   } = useRequestStore();
   const { currentEvent, fetchEvent } = useEventStore();
   const {
@@ -174,7 +164,6 @@ const EventAdminPage = () => {
     uploadFile,
   } = useAdminStore();
 
-
   // Get data from djStore
   const { fetchDj: fetchDjFromStore, currentDj } = useDjStore();
 
@@ -190,29 +179,7 @@ const EventAdminPage = () => {
     },
   });
 
-  // Fetch event data
-  const refreshEventData = useCallback(async () => {
-    const eventId = localStorage.getItem("eventId");
-    if (!eventId || !user) return;
-
-    try {
-      // Fetch requests using the store action
-      await fetchRequests(eventId);
-      
-      // Get the latest requests from the store
-      const { requests } = useRequestStore.getState();
-      
-      // Update the local state based on the store data
-      setNoRequests(requests.length === 0);
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-      toast({
-        title: "Refresh Failed",
-        description: "Could not update event data",
-        variant: "destructive",
-      });
-    }
-  }, [user, toast, fetchRequests]);
+  
 
   // Settings handlers
   const handleSliderChange = (value: number[]) => {
@@ -294,22 +261,42 @@ const EventAdminPage = () => {
   // Request management functions
   const handleAcceptRequest = async (requestId: string) => {
     try {
+      // Set loading state for this specific request
+      setLoadingState(requestId, true);
+
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
+      // Find the request to update
+      const requestToAccept = songRequests.find(
+        (req) => req.requestId === requestId
+      );
+
+      if (!requestToAccept) return;
+
+      // Optimistic UI update - immediately update the request status
+      const optimisticRequests = songRequests.map((req) =>
+        req.requestId === requestId
+          ? { ...req, accepted: true, status: "accepted" }
+          : req
+      );
+      setRequests(optimisticRequests);
+
+      // Now make the actual API call
       const success = await acceptRequestFunc(requestId, accesstoken);
-      if (success) {
-        // Update local state to reflect changes immediately
-        const updatedRequests = songRequests.map((req) =>
-          req.requestId === requestId
-            ? { ...req, accepted: true, status: "accepted" }
-            : req
-        );
-        // This is a workaround since we can't directly modify the store's state
-        // In a real implementation, the store should handle this update
-        refreshEventData();
+
+      // Clear loading state regardless of outcome
+      setLoadingState(requestId, false);
+
+      console.log("Success:", success);
+
+      if (!success) {
+        throw new Error("Failed to accept request");
       }
     } catch (error) {
+      // Clear loading state in case of error
+      setLoadingState(requestId, false);
+
       console.error("Error accepting request:", error);
       toast({
         title: "Error",
@@ -321,55 +308,112 @@ const EventAdminPage = () => {
 
   const handlePlayedRequest = async (requestId: string) => {
     try {
+      // Set loading state for this specific request
+      setLoadingState(requestId, true);
+
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
+      // Find the request to update
+      const requestToPlay = songRequests.find(
+        (req) => req.requestId === requestId
+      );
+      if (!requestToPlay) return;
+
+      // Optimistic UI update - immediately update the request status
+      const optimisticRequests = songRequests.map((req) =>
+        req.requestId === requestId
+          ? { ...req, played: true, status: "played" }
+          : req
+      );
+
+      // Update the request store with our optimistic data
+      setRequests(optimisticRequests);
+
+      // Now make the actual API call
       const success = await playedRequest(requestId, accesstoken, songRequests);
-      if (success) {
-        // Update local state to reflect changes immediately
-        refreshEventData();
+
+      // Clear loading state regardless of outcome
+      setLoadingState(requestId, false);
+
+      toast({
+        title: "Success",
+        description: "The request was marked as played",
+        variant: "default",
+        duration: 2000,
+      });
+
+      if (!success) {
+        throw new Error("Failed to mark request as played");
       }
     } catch (error) {
+      // Clear loading state in case of error
+      setLoadingState(requestId, false);
+
       console.error("Error processing payment:", error);
       toast({
         title: "Error",
         description: "Failed to mark request as played",
         variant: "destructive",
+        duration: 2000,
       });
     }
   };
 
   const handleDeclineRequest = async (requestId: string) => {
-    // Immediately update UI
+    // Find the request to decline
     const requestToDecline = songRequests.find(
       (req) => req.requestId === requestId
     );
     if (!requestToDecline?.paymentId) return;
 
     try {
+      // Set loading state for this specific request
+      setLoadingState(requestId, true);
+
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
+      // Optimistic UI update - immediately update the request status
+      const optimisticRequests = songRequests.map((req) =>
+        req.requestId === requestId ? { ...req, status: "" } : req
+      );
+
+      // Update the request store with our optimistic data
+      setRequests(optimisticRequests);
+
+      // Now make the actual API call
       const success = await declineRequest(
         requestId,
         accesstoken,
         requestToDecline.paymentId
       );
-      if (success) {
-        refreshEventData();
 
+      // After API call completes
+      setLoadingState(requestId, false);
+
+      if (success) {
         toast({
           title: "Request declined",
-          description:
-            "The user has been notified that their request was declined.",
+          description: "The request was declined.",
+          duration: 2000,
         });
+      } else {
+        throw new Error("Failed to decline request");
       }
+
+      // Clear loading state regardless of outcome
+      setLoadingState(requestId, false);
     } catch (error) {
+      // Clear loading state in case of error
+      setLoadingState(requestId, false);
+
       console.error("Error declining request:", error);
       toast({
         title: "Error",
         description: "There was a problem declining this request.",
         variant: "destructive",
+        duration: 2000,
       });
     }
   };
@@ -385,7 +429,9 @@ const EventAdminPage = () => {
 
       const success = await handleDeleteEvent(eventId, accesstoken);
       if (success) {
-        redirect("/");
+        // Use router.push instead of window.location.href
+        router.push("/");
+        return; // Add return to prevent further execution
       }
     } catch (error) {
       console.error("Error deleting event:", error);
@@ -393,6 +439,7 @@ const EventAdminPage = () => {
         title: "Error",
         description: "Failed to delete event",
         variant: "destructive",
+        duration: 2000,
       });
     }
   };
@@ -425,10 +472,11 @@ const EventAdminPage = () => {
       if (success) {
         // Refresh event data to ensure all components have the latest data
         await fetchEvent(eventId);
-        
+
         toast({
           title: "Event updated!",
           description: `New event name: ${data.eventName}`,
+          duration: 2000,
         });
       }
     } catch (error) {
@@ -436,6 +484,7 @@ const EventAdminPage = () => {
         title: "Update failed",
         description: `There was an error updating the event. ${error}`,
         variant: "destructive",
+        duration: 2000,
       });
     }
   };
@@ -453,7 +502,7 @@ const EventAdminPage = () => {
           setSettings({ eventImage: imageUrl });
         }
       }
-      
+
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
@@ -470,14 +519,15 @@ const EventAdminPage = () => {
         updatedEventData,
         accesstoken
       );
-      
+
       if (success) {
         // Refresh event data to ensure all components have the latest data
-        await fetchEvent(eventId);
-        
+        // await fetchEvent(eventId);
+
         toast({
           title: "Settings updated!",
           description: "Your settings have been successfully updated.",
+          duration: 2000,
         });
 
         if (selectedFile) {
@@ -492,6 +542,7 @@ const EventAdminPage = () => {
         title: "Update failed",
         description: "There was an error updating your settings.",
         variant: "destructive",
+        duration: 2000,
       });
     }
   };
@@ -524,7 +575,7 @@ const EventAdminPage = () => {
       try {
         // First check if the event is already in the store
         const { currentEvent } = useEventStore.getState();
-        
+
         // Only fetch the event if it's not in the store or if it's a different event
         if (!currentEvent || currentEvent.eventId !== eventId) {
           await fetchEvent(eventId);
@@ -535,19 +586,15 @@ const EventAdminPage = () => {
             return;
           }
         }
-        
+
         // At this point, we should have the event in the store
         const { currentEvent: storeEvent } = useEventStore.getState();
         if (!storeEvent) {
           window.location.href = "/404";
           return;
         }
-        
+
         console.log("Event Data:", storeEvent);
-        
-        // Set the event title and image from the store data
-        // setEventTitle(storeEvent.eventName);
-        // setEventImage(storeEvent.eventImage);
 
         setSettings({
           eventName: storeEvent.eventName,
@@ -555,30 +602,27 @@ const EventAdminPage = () => {
           requestFee: storeEvent.requestFee,
           acceptRequests: storeEvent.acceptRequests,
           freeRequests: storeEvent.acceptFreeRequests,
-          freeEmailRequests: storeEvent.acceptEmailRequests
+          freeEmailRequests: storeEvent.acceptEmailRequests,
         });
-        
+
         // Set the slider value based on the request fee
         setSliderValue([storeEvent.requestFee]);
-        
+
         // Fetch requests for this event
-        await fetchRequests(eventId);
+        await fetchRequests(eventId, true);
 
         // If the event has a DJ ID, fetch the DJ data
         if (storeEvent.djId) {
           // Check if we already have the DJ data in the store
           const { currentDj } = useDjStore.getState();
-          
+
           // Only fetch DJ data if it's not in the store or if it's a different DJ
           if (!currentDj || currentDj.djId !== storeEvent.djId) {
             await fetchDjFromStore(storeEvent.djId);
           }
-          
+
           // Get the current DJ from the store
           const { currentDj: storeDj } = useDjStore.getState();
-          
-          console.log("User ID:", user?.id);
-          console.log("DJ ID:", storeDj?.djId);
 
           // Check if the user is the DJ for this event
           if (storeDj && user?.id === storeDj.djId) {
@@ -594,15 +638,15 @@ const EventAdminPage = () => {
           if (storedDjId) {
             // Check if we already have the DJ data in the store
             const { currentDj } = useDjStore.getState();
-            
+
             // Only fetch DJ data if it's not in the store or if it's a different DJ
             if (!currentDj || currentDj.djId !== storedDjId) {
               await fetchDjFromStore(storedDjId);
             }
-            
+
             // Get the current DJ from the store
             const { currentDj: storeDj } = useDjStore.getState();
-            
+
             console.log("User ID:", user?.id);
             console.log("DJ ID:", storeDj?.djId);
 
@@ -638,15 +682,29 @@ const EventAdminPage = () => {
     songRequests.length,
   ]);
 
-  useEffect(() => {
-    if (!isAuthorized || loading) return;
+  // useEffect(() => {
+  //   if (!isAuthorized || loading) return;
 
-    const intervalId = setInterval(() => {
-      refreshEventData();
-    }, 30000);
+  //   // Initial fetch when component mounts
+  //   refreshEventData();
 
-    return () => clearInterval(intervalId);
-  }, [isAuthorized, loading, refreshEventData]);
+  //   // Set up interval for auto-refresh every 30 seconds
+  //   const intervalId = setInterval(() => {
+  //     const eventId = localStorage.getItem("eventId");
+  //     if (!eventId || !user) return;
+
+  //     // Only fetch if we're not in the middle of an operation
+  //     const isAnyRequestLoading = Object.values(loadingStates).some(state => state);
+  //     const hasDeclineInProgress = songRequests.some(req => req.status === "declining");
+
+  //     if (!isAnyRequestLoading && !hasDeclineInProgress) {
+  //       fetchRequests(eventId, true);
+  //     }
+  //   }, 30000);
+
+  //   // Clean up interval on component unmount
+  //   return () => clearInterval(intervalId);
+  // }, [isAuthorized, loading, refreshEventData, fetchRequests, user, loadingStates, songRequests]);
 
   if (loading || !isAuthorized) return <Loader />;
 
@@ -832,7 +890,10 @@ const EventAdminPage = () => {
                   <FormItem>
                     <FormLabel>Event Name</FormLabel>
                     <FormControl>
-                      <Input placeholder={settings.eventName || ""} {...field} />
+                      <Input
+                        placeholder={settings.eventName || ""}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -980,12 +1041,14 @@ const EventAdminPage = () => {
                 {songRequests
                   .filter(
                     (req) =>
-                      req.accepted && !req.played && req.status == "accepted"
+                      req.accepted && !req.played && req.status === "accepted"
                   )
                   .map((request) => (
                     <div
                       key={request.requestId}
-                      className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
+                      className={`bg-gray-700 rounded-lg p-4 relative group 
+                        transition-all duration-300 ease-in-out
+                        ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
                     >
                       <div className="flex items-center space-x-4 w-[300px]">
                         <SongCard
@@ -1010,6 +1073,14 @@ const EventAdminPage = () => {
                       </div>
                     </div>
                   ))}
+                {songRequests.filter(
+                  (req) =>
+                    req.accepted && !req.played && req.status === "accepted"
+                ).length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    No accepted requests waiting to be played
+                  </div>
+                )}
               </div>
             </div>
 
@@ -1020,11 +1091,13 @@ const EventAdminPage = () => {
               </h2>
               <div className="space-y-4">
                 {songRequests
-                  .filter((req) => req.status == "pending")
+                  .filter((req) => req.status === "pending")
                   .map((request) => (
                     <div
                       key={request.requestId}
-                      className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group "
+                      className={`bg-gray-700 rounded-lg p-4 relative group 
+                        transition-all duration-300 ease-in-out
+                        ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
                     >
                       <div className="flex items-center space-x-4 w-[300px]">
                         <SongCard
@@ -1041,8 +1114,13 @@ const EventAdminPage = () => {
                               handleAcceptRequest(request.requestId)
                             }
                             className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
+                            disabled={loadingStates[request.requestId]}
                           >
-                            <FaCheck className="w-6 h-6 text-white" />
+                            {loadingStates[request.requestId] ? (
+                              <Loader2 className="w-6 h-6 text-white animate-spin" />
+                            ) : (
+                              <FaCheck className="w-6 h-6 text-white" />
+                            )}
                           </button>
                           <button
                             onClick={() =>
@@ -1061,6 +1139,41 @@ const EventAdminPage = () => {
                       </div>
                     </div>
                   ))}
+                {/* Also show requests that are in the process of being declined */}
+                {songRequests
+                  .filter((req) => req.status === "declining")
+                  .map((request) => (
+                    <div
+                      key={request.requestId}
+                      className={`bg-gray-700 rounded-lg p-4 relative group 
+                        transition-all duration-300 ease-in-out
+                        ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
+                    >
+                      <div className="flex items-center space-x-4 w-[300px]">
+                        <SongCard
+                          image={request.songImage}
+                          title={request.songName}
+                          artist={request.songArtist}
+                          reactions={request.requestUpvotes}
+                          payment={request.Payment}
+                          isAdminView={true}
+                        />
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
+                          <div className="bg-gray-600 p-3 rounded-full">
+                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                {songRequests.filter(
+                  (req) =>
+                    req.status === "pending" || req.status === "declining"
+                ).length === 0 && (
+                  <div className="text-center py-8 text-gray-400">
+                    No new requests waiting for approval
+                  </div>
+                )}
               </div>
             </div>
           </div>

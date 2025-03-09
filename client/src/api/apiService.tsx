@@ -196,7 +196,7 @@ export const declineRequest = async (
   accessToken: string,
   paymentId: string
 ) => {
-  await sendDeclinedRequestEmail(requestId, paymentId);
+  // await sendDeclinedRequestEmail(requestId, paymentId);
 
   const response = await fetch(`/api/requests/delete?requestId=${requestId}`, {
     method: "DELETE",
