@@ -232,7 +232,7 @@ const useRequestStore = create<RequestState>((set, get) => ({
   
   // WebSocket actions implementation
   connectToEventSocket: (eventId) => {
-    let wsService = WebSocketService.getInstance();
+    const wsService = WebSocketService.getInstance();
     
     wsService.connect(eventId);
     

@@ -171,8 +171,6 @@ const EventPage = () => {
       // Always fetch requests when the page loads
       await fetchRequests(eventId);
 
-      // Connect to WebSocket for real-time updates
-      connectToEventSocket(eventId);
 
 
       setRefreshing(false);
@@ -189,21 +187,26 @@ const EventPage = () => {
   useEffect(() => {
     loadData();
 
-    // Cleanup function to disconnect WebSocket when component unmounts
-    return () => {
-      disconnectFromEventSocket();
-    };
   }, [router]);
 
   // Check WebSocket connection status periodically
   useEffect(() => {
+
+    if (!currentEvent?.eventId) return;
+    connectToEventSocket(currentEvent?.eventId || "");
+
+
     const intervalId = setInterval(() => {
       const wsService = WebSocketService.getInstance();
       setSocketConnected(wsService.isConnected());
     }, 5000);
 
-    return () => clearInterval(intervalId);
-  }, []);
+
+    return () => {
+      clearInterval(intervalId);
+      disconnectFromEventSocket();
+    };
+  }, [currentEvent?.eventId, connectToEventSocket, disconnectFromEventSocket]);
 
   if (isLoading || isEventLoading) {
     return <Loader />;

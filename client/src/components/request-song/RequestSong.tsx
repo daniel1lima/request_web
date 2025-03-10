@@ -7,6 +7,7 @@ import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
 import { Loader2 } from "lucide-react";
 import { fetchEventById, spotifyAuth } from "../../api/apiService";
+import useEventStore from "@/store/eventStore";
 
 
 // Initialize Stripe
@@ -33,6 +34,7 @@ export const RequestSong = () => {
   
   const [freeReq, setFreeReq] = useState(true)
   const [freeEmailReq, setFreeEmailReq] = useState(true)
+  const { currentEvent } = useEventStore()
 
   const router = useRouter()
 
@@ -69,18 +71,18 @@ export const RequestSong = () => {
   };
 
   const fetchEventData = async () => {
-    const eventId = localStorage.getItem("eventId");
-    if (!eventId) {
-      notFound();
+
+    if (!currentEvent) {
+      router.push("/404");
     }
 
     
 
     try {
-      const data = await fetchEventById(eventId);
+      const data = await fetchEventById(currentEvent?.eventId || "");
 
       if (!(data.acceptRequests)) {
-        router.push(`/event?eventId=${eventId}`)
+        router.push(`/event?eventId=${currentEvent?.eventId}`)
       }
 
       setFreeReq(data?.acceptFreeRequests || false)
