@@ -45,28 +45,29 @@ import useAdminStore from "@/store/adminStore";
 import useDjStore from "@/store/djStore";
 import { useRouter } from "next/navigation";
 import WebSocketService from "@/services/websocketService";
+import AcceptedSongsColumn from "@/components/event/AcceptedSongsColumn";
+import NewRequestsColumn from "@/components/event/NewRequestsColumn";
+import EventStats from "@/components/event/EventStats";
 
 export interface Request {
-  requestId: string; // Changed from number to string
+  requestId: string;
   songName: string;
   songArtist: string;
   songImage: string;
-  accepted: boolean; // Added
+  accepted: boolean;
   played: boolean;
   requestUpvotes: number;
-  userId: string | null; // Added
-  eventId: string; // Added
-  paymentId: string; // Added
+  userId: string | null;
+  eventId: string;
+  paymentId: string;
   status: string;
-  createdAt: string; // Added
-  updatedAt: string; // Added
-  User: null | any; // Added
+  createdAt: string;
+  updatedAt: string;
+  User: null | any;
   Event: {
-    // Added
     eventName: string;
   };
   Payment: {
-    // Added
     amount: number;
   };
 }
@@ -177,6 +178,8 @@ const EventAdminPage = () => {
 
   // Add a connection indicator state
   const [socketConnected, setSocketConnected] = useState(false);
+
+  const [mounting, setMounting] = useState(true);
   
 
 
@@ -268,6 +271,68 @@ const EventAdminPage = () => {
   };
 
   // Request management functions
+  
+  
+  const handlePlayedRequest = async (requestId: string) => {
+    try {
+      // Set loading state for this specific request
+      setLoadingState(requestId, true);
+      
+      const accesstoken = await getToken();
+      if (!accesstoken) throw new Error("Authentication token is missing.");
+      
+      // Find the request to update
+      const requestToPlay = songRequests.find(
+        (req) => req.requestId === requestId
+      );
+      if (!requestToPlay) return;
+
+      // Optimistic UI update - immediately update the request status
+      const optimisticRequests = songRequests.map((req) =>
+        req.requestId === requestId
+          ? { ...req, played: true, status: "played" }
+          : req
+      );
+
+      // Update the request store with our optimistic data
+      setRequests(optimisticRequests);
+
+      // Now make the actual API call
+      const success = await playedRequest(requestId, accesstoken, songRequests);
+
+      // Clear loading state regardless of outcome
+      setLoadingState(requestId, false);
+
+      toast({
+        title: "Success",
+        description: "The request was marked as played",
+        variant: "default",
+        duration: 2000,
+      });
+
+      if (!success) {
+        throw new Error("Failed to mark request as played");
+      }
+    } catch (error) {
+      // Clear loading state in case of error
+      setLoadingState(requestId, false);
+
+      console.error("Error processing payment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to mark request as played",
+        variant: "destructive",
+        duration: 2000,
+      });
+    }
+  };
+
+  useEffect(() => {
+    console.log("loading", loading);
+  }, [loading]);
+
+
+
   const handleAcceptRequest = async (requestId: string) => {
     try {
       // Set loading state for this specific request
@@ -315,117 +380,56 @@ const EventAdminPage = () => {
     }
   };
 
-  const handlePlayedRequest = async (requestId: string) => {
-    try {
-      // Set loading state for this specific request
-      setLoadingState(requestId, true);
+  const handleDeclineRequest = async (requestId: string) => {
 
-      const accesstoken = await getToken();
+    setLoadingState(requestId, true);
+
+    const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      // Find the request to update
-      const requestToPlay = songRequests.find(
-        (req) => req.requestId === requestId
-      );
-      if (!requestToPlay) return;
 
-      // Optimistic UI update - immediately update the request status
-      const optimisticRequests = songRequests.map((req) =>
-        req.requestId === requestId
-          ? { ...req, played: true, status: "played" }
-          : req
-      );
-
-      // Update the request store with our optimistic data
-      setRequests(optimisticRequests);
-
-      // Now make the actual API call
-      const success = await playedRequest(requestId, accesstoken, songRequests);
-
-      // Clear loading state regardless of outcome
-      setLoadingState(requestId, false);
-
-      toast({
-        title: "Success",
-        description: "The request was marked as played",
-        variant: "default",
-        duration: 2000,
-      });
-
-      if (!success) {
-        throw new Error("Failed to mark request as played");
-      }
-    } catch (error) {
-      // Clear loading state in case of error
-      setLoadingState(requestId, false);
-
-      console.error("Error processing payment:", error);
-      toast({
-        title: "Error",
-        description: "Failed to mark request as played",
-        variant: "destructive",
-        duration: 2000,
-      });
-    }
-  };
-
-  const handleDeclineRequest = async (requestId: string) => {
     // Find the request to decline
     const requestToDecline = songRequests.find(
       (req) => req.requestId === requestId
     );
+
+
     if (!requestToDecline?.paymentId) return;
 
-    try {
-      // Set loading state for this specific request
-      setLoadingState(requestId, true);
+    // Optimistic UI update - immediately remove the request from the displayed list
+    const optimisticRequests = songRequests.map((req) =>
+      req.requestId === requestId
+        ? { ...req, status: "declined" }
+        : req
+    );
 
-      const accesstoken = await getToken();
-      if (!accesstoken) throw new Error("Authentication token is missing.");
+    // Update the request store with our optimistic data
+    setRequests(optimisticRequests);
 
-      // Optimistic UI update - immediately update the request status
-      const optimisticRequests = songRequests.map((req) =>
-        req.requestId === requestId ? { ...req, status: "" } : req
-      );
+    const success = await declineRequest(
+      requestId,
+      accesstoken,
+      requestToDecline.paymentId
+    );
 
-      // Update the request store with our optimistic data
-      setRequests(optimisticRequests);
+    setLoadingState(requestId, false);
 
-      // Now make the actual API call
-      const success = await declineRequest(
-        requestId,
-        accesstoken,
-        requestToDecline.paymentId
-      );
-
-      // After API call completes
-      setLoadingState(requestId, false);
-
-      if (success) {
-        toast({
-          title: "Request declined",
-          description: "The request was declined.",
-          duration: 2000,
-        });
-      } else {
-        throw new Error("Failed to decline request");
-      }
-
-      // Clear loading state regardless of outcome
-      setLoadingState(requestId, false);
-    } catch (error) {
-      // Clear loading state in case of error
-      setLoadingState(requestId, false);
-
-      console.error("Error declining request:", error);
+    if (success) {
+      toast({
+        title: "Request declined",
+        description: "The request was declined.",
+        duration: 2000,
+      });
+    } else {
       toast({
         title: "Error",
-        description: "There was a problem declining this request.",
+        description: "Failed to decline request",
         variant: "destructive",
         duration: 2000,
       });
     }
-  };
+  }
+  
 
   // Event management functions
   const deleteEventHandler = async () => {
@@ -578,7 +582,8 @@ const EventAdminPage = () => {
     if (!eventId || !user) return;
 
     localStorage.setItem("eventId", eventId);
-    setLoading(true);
+    setMounting(true);
+    
     const fetchInitialData = async () => {
       try {
         // First check if the event is already in the store
@@ -635,11 +640,13 @@ const EventAdminPage = () => {
           // Check if the user is the DJ for this event
           if (storeDj && user?.id === storeDj.djId) {
             setIsAuthorized(true);
-            setNoRequests(songRequests.length === 0);
+            // Initial check for no requests - components will handle their own updates
+            const { requests } = useRequestStore.getState();
+            setNoRequests(requests.length === 0);
           } else {
             window.location.href = `/event?eventId=${eventId}`;
           }
-          setLoading(false);
+          setMounting(false);
         } else {
           // Fallback to localStorage if needed
           const storedDjId = localStorage.getItem("djId");
@@ -660,21 +667,23 @@ const EventAdminPage = () => {
 
             if (storeDj && user?.id === storeDj.djId) {
               setIsAuthorized(true);
-              setNoRequests(songRequests.length === 0);
+              // Initial check for no requests - components will handle their own updates
+              const { requests } = useRequestStore.getState();
+              setNoRequests(requests.length === 0);
             } else {
               window.location.href = `/event?eventId=${eventId}`;
             }
-            setLoading(false);
+            setMounting(false);
           } else {
             // If we get here, there's no DJ ID to check against
             console.log("No DJ ID found to check against");
-            setLoading(false);
+            setMounting(false);
             window.location.href = `/event?eventId=${eventId}`;
           }
         }
       } catch (error) {
         console.error("Error fetching data:", error);
-        setLoading(false);
+        setMounting(false);
         window.location.href = "/404";
       }
     };
@@ -685,9 +694,8 @@ const EventAdminPage = () => {
     fetchEvent,
     fetchRequests,
     fetchDjFromStore,
-    setLoading,
+    setMounting,
     setIsAuthorized,
-    songRequests.length,
   ]);
 
   // Add effect to connect to WebSocket
@@ -712,10 +720,10 @@ const EventAdminPage = () => {
       clearInterval(intervalId);
       disconnectFromEventSocket();
     };
-  }, [ isAuthorized,connectToEventSocket, disconnectFromEventSocket]);
+  }, [isAuthorized,connectToEventSocket, disconnectFromEventSocket]);
 
 
-  if (loading || !isAuthorized) return <Loader />;
+  if (mounting) return <Loader />;
 
   const FeeBadge = (
     <div className="relative group">
@@ -927,15 +935,7 @@ const EventAdminPage = () => {
   );
 
   return (
-    <div
-      className={`bg-gray-900 dark:bg-gray-900 ${
-        songRequests.filter((req) => req.accepted && !req.played).length ===
-          0 &&
-        songRequests.filter((req) => !req.accepted && !req.played).length === 0
-          ? "h-screen"
-          : "h-full"
-      }`}
-    >
+    <div className="bg-gray-900 dark:bg-gray-900 h-full">
       {/* Updated Header Section with increased height */}
       <div
         className="relative bg-cover bg-center h-48"
@@ -1010,193 +1010,13 @@ const EventAdminPage = () => {
         </div>
       ) : (
         <div className="max-w-7xl mx-auto p-8">
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            {/* Songs Requested Card */}
-            <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-white">
-                  Songs Requested
-                </h3>
-              </div>
-              <p className="text-4xl font-semibold text-white">
-                {songRequests.length}
-              </p>
-            </div>
-
-            {/* Songs Played Card */}
-            <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-white">Songs Played</h3>
-              </div>
-              <p className="text-4xl font-semibold text-white">
-                {songRequests.filter((req) => req.played).length}
-              </p>
-            </div>
-
-            {/* DJ Earnings Card */}
-            <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-white">DJ Earnings</h3>
-              </div>
-              <p className="text-4xl font-semibold text-white">
-                $
-                {(
-                  songRequests
-                    .filter((req) => req.played)
-                    .reduce(
-                      (total, req) => total + (req.Payment?.amount || 0),
-                      0
-                    ) / 100
-                ).toFixed(2)}
-              </p>
-            </div>
-          </div>
+          {/* Use the EventStats component */}
+          <EventStats />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-full">
-            {/* Accepted Songs Column */}
-            <div className="bg-gray-800 rounded-xl p-6 shadow-xl overflow-y-auto">
-              <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
-                Accepted Requests
-              </h2>
-              <div className="space-y-4">
-                {songRequests
-                  .filter(
-                    (req) =>
-                      req.accepted && !req.played && req.status === "accepted"
-                  )
-                  .map((request) => (
-                    <div
-                      key={request.requestId}
-                      className={`bg-gray-700 rounded-lg p-4 relative group 
-                        transition-all duration-300 ease-in-out
-                        ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
-                    >
-                      <div className="flex items-center space-x-4 w-[300px]">
-                        <SongCard
-                          image={request.songImage}
-                          title={request.songName}
-                          artist={request.songArtist}
-                          reactions={request.requestUpvotes}
-                          payment={request.Payment}
-                          isAdminView={true}
-                        />
-                        <button
-                          onClick={() => handlePlayedRequest(request.requestId)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
-                          disabled={loadingStates[request.requestId]}
-                        >
-                          {loadingStates[request.requestId] ? (
-                            <Loader2 className="w-6 h-6 text-white animate-spin" />
-                          ) : (
-                            <FaCheck className="w-6 h-6 text-white" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                {songRequests.filter(
-                  (req) =>
-                    req.accepted && !req.played && req.status === "accepted"
-                ).length === 0 && (
-                  <div className="text-center py-8 text-gray-400">
-                    No accepted requests waiting to be played
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Requested Songs Column */}
-            <div className="bg-gray-800 rounded-xl p-6 shadow-xl  overflow-y-auto">
-              <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
-                New Requests
-              </h2>
-              <div className="space-y-4">
-                {songRequests
-                  .filter((req) => req.status === "pending")
-                  .map((request) => (
-                    <div
-                      key={request.requestId}
-                      className={`bg-gray-700 rounded-lg p-4 relative group 
-                        transition-all duration-300 ease-in-out
-                        ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
-                    >
-                      <div className="flex items-center space-x-4 w-[300px]">
-                        <SongCard
-                          image={request.songImage}
-                          title={request.songName}
-                          artist={request.songArtist}
-                          reactions={request.requestUpvotes}
-                          payment={request.Payment}
-                          isAdminView={true}
-                        />
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
-                          <button
-                            onClick={() =>
-                              handleAcceptRequest(request.requestId)
-                            }
-                            className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
-                            disabled={loadingStates[request.requestId]}
-                          >
-                            {loadingStates[request.requestId] ? (
-                              <Loader2 className="w-6 h-6 text-white animate-spin" />
-                            ) : (
-                              <FaCheck className="w-6 h-6 text-white" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleDeclineRequest(request.requestId)
-                            }
-                            className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
-                            disabled={loadingStates[request.requestId]}
-                          >
-                            {loadingStates[request.requestId] ? (
-                              <Loader2 className="w-6 h-6 text-white animate-spin" />
-                            ) : (
-                              <FaTimes className="w-6 h-6 text-white" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                {/* Also show requests that are in the process of being declined */}
-                {songRequests
-                  .filter((req) => req.status === "declining")
-                  .map((request) => (
-                    <div
-                      key={request.requestId}
-                      className={`bg-gray-700 rounded-lg p-4 relative group 
-                        transition-all duration-300 ease-in-out
-                        ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
-                    >
-                      <div className="flex items-center space-x-4 w-[300px]">
-                        <SongCard
-                          image={request.songImage}
-                          title={request.songName}
-                          artist={request.songArtist}
-                          reactions={request.requestUpvotes}
-                          payment={request.Payment}
-                          isAdminView={true}
-                        />
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
-                          <div className="bg-gray-600 p-3 rounded-full">
-                            <Loader2 className="w-6 h-6 text-white animate-spin" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                {songRequests.filter(
-                  (req) =>
-                    req.status === "pending" || req.status === "declining"
-                ).length === 0 && (
-                  <div className="text-center py-8 text-gray-400">
-                    No new requests waiting for approval
-                  </div>
-                )}
-              </div>
-            </div>
+            {/* Use the components without passing props */}
+            <AcceptedSongsColumn />
+            <NewRequestsColumn />
           </div>
         </div>
       )}

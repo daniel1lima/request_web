@@ -247,17 +247,12 @@ const useRequestStore = create<RequestState>((set, get) => ({
   
   handleWebSocketMessage: (data) => {
     const { type, request } = data;
-    const { requests, acceptedRequests } = get();
+    const { requests, acceptedRequests, setRequests } = get();
     
     switch (type) {
       case 'create':
         // Add the new request to the state WITHOUT setting isLoading
-        set({ 
-          requests: [...requests, request],
-          acceptedRequests: request.status === 'accepted' 
-            ? [...acceptedRequests, request] 
-            : acceptedRequests
-        });
+        setRequests([...requests, request]);
         break;
         
       case 'update':
@@ -266,22 +261,11 @@ const useRequestStore = create<RequestState>((set, get) => ({
           req.requestId === request.requestId ? request : req
         );
         
-        const updatedAcceptedRequests = request.status === 'accepted'
-          ? [...acceptedRequests.filter(r => r.requestId !== request.requestId), request]
-          : acceptedRequests.filter(r => r.requestId !== request.requestId);
-        
-        set({ 
-          requests: updatedRequests,
-          acceptedRequests: updatedAcceptedRequests
-        });
+        setRequests(updatedRequests);
         break;
         
       case 'delete':
-        // Remove the request from the state WITHOUT setting isLoading
-        set({ 
-          requests: requests.filter(req => req.requestId !== request.requestId),
-          acceptedRequests: acceptedRequests.filter(req => req.requestId !== request.requestId)
-        });
+        setRequests(requests.filter(req => req.requestId !== request.requestId));
         break;
         
       default:
