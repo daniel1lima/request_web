@@ -36,12 +36,21 @@ class WebSocketService {
     this.isConnecting = true;
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsHost = process.env.NEXT_PUBLIC_WS_URL || 
-                 (window.location.hostname === 'localhost' 
-                  ? `${protocol}//${window.location.hostname}:3001` 
-                  : `${protocol}//${window.location.host}`);
     
-    const wsUrl = `${wsHost}/ws?eventId=${eventId}`;
+    let wsUrl;
+    if (process.env.NEXT_PUBLIC_WS_URL) {
+      // Use environment variable if provided
+      wsUrl = `${process.env.NEXT_PUBLIC_WS_URL}?eventId=${eventId}`;
+    } else if (window.location.hostname === 'localhost') {
+      // Local development
+      wsUrl = `${protocol}//${window.location.hostname}:3001?eventId=${eventId}`;
+    } else if (window.location.hostname.includes('request-app.me')) {
+      // Production environment with dedicated WebSocket subdomain
+      wsUrl = `wss://ws.request-app.me?eventId=${eventId}`;
+    } else {
+      // Fallback for other environments
+      wsUrl = `${protocol}//${window.location.host}?eventId=${eventId}`;
+    }
     
     console.log(`Connecting to WebSocket: ${wsUrl}`);
     this.socket = new WebSocket(wsUrl);

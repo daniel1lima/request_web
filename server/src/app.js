@@ -21,11 +21,12 @@ const url = require('url');
 
 const app = express();
 
-
-// Create WebSocket server
+// Create a standalone WebSocket server
 const wss = new WebSocketServer({ 
-    port: 3001,
+    port: 3001
 });
+
+console.log(`WebSocket server running on port ${WS_PORT}`);
 
 // Store clients by event ID
 global.eventClients = new Map();
@@ -129,7 +130,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
+    console.log(`HTTP server is running on port ${PORT}`);
     console.log(`
  ____  _____ ___  _   _ _____ ____ _____ 
 |  _ \| ____/ _ \| | | | ____/ ___|_   _|
