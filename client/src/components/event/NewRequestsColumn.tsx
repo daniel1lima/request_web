@@ -7,6 +7,7 @@ import useRequestStore from "@/store/requestStore";
 import useAdminStore from "@/store/adminStore";
 import { useAuth } from "@clerk/nextjs";
 import { useToast } from "@/hooks/use-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 const NewRequestsColumn = () => {
   const { requests: songRequests, setRequests } = useRequestStore();
@@ -115,90 +116,152 @@ const NewRequestsColumn = () => {
     }
   };
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { 
+      opacity: 1, 
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 300,
+        damping: 24
+      }
+    },
+    exit: { 
+      opacity: 0, 
+      y: -20, 
+      transition: { 
+        duration: 0.2 
+      } 
+    }
+  };
+
   return (
-    <div className="bg-gray-800 rounded-xl p-6 shadow-xl overflow-y-auto">
+    <div className="bg-gray-800 rounded-xl p-6 shadow-xl overflow-y-auto h-full">
       <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
         New Requests
       </h2>
-      <div className="space-y-4">
-        {songRequests
-          .filter((req) => req.status === "pending")
-          .map((request) => (
-            <div
-              key={request.requestId}
-              className={`bg-gray-700 rounded-lg p-4 relative group 
-                transition-all duration-300 ease-in-out
-                ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
-            >
-              <div className="flex items-center space-x-4 w-[300px]">
-                <SongCard
-                  image={request.songImage}
-                  title={request.songName}
-                  artist={request.songArtist}
-                  reactions={request.requestUpvotes}
-                  payment={request.Payment}
-                  isAdminView={true}
-                />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
-                  <button
-                    onClick={() => handleAcceptRequest(request.requestId)}
-                    className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
-                    disabled={loadingStates[request.requestId]}
-                  >
-                    {loadingStates[request.requestId] ? (
-                      <Loader2 className="w-6 h-6 text-white animate-spin" />
-                    ) : (
-                      <FaCheck className="w-6 h-6 text-white" />
-                    )}
-                  </button>
-                  <button
-                    onClick={() => handleDeclineRequest(request.requestId)}
-                    className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
-                    disabled={loadingStates[request.requestId]}
-                  >
-                    {loadingStates[request.requestId] ? (
-                      <Loader2 className="w-6 h-6 text-white animate-spin" />
-                    ) : (
-                      <FaTimes className="w-6 h-6 text-white" />
-                    )}
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        {/* Also show requests that are in the process of being declined */}
-        {songRequests
-          .filter((req) => req.status === "declining")
-          .map((request) => (
-            <div
-              key={request.requestId}
-              className={`bg-gray-700 rounded-lg p-4 relative group 
-                transition-all duration-300 ease-in-out
-                ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
-            >
-              <div className="flex items-center space-x-4 w-[300px]">
-                <SongCard
-                  image={request.songImage}
-                  title={request.songName}
-                  artist={request.songArtist}
-                  reactions={request.requestUpvotes}
-                  payment={request.Payment}
-                  isAdminView={true}
-                />
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
-                  <div className="bg-gray-600 p-3 rounded-full">
-                    <Loader2 className="w-6 h-6 text-white animate-spin" />
-                  </div>
-                </div>
-              </div>
-            </div>
-          ))}
-        {noNewRequests && (
-          <div className="text-center py-8 text-gray-400">
+      
+      <AnimatePresence>
+        {noNewRequests ? (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="text-center py-8 text-gray-400"
+          >
             No new requests waiting for approval
-          </div>
+          </motion.div>
+        ) : (
+          <motion.div 
+            className="space-y-4"
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+          >
+            <AnimatePresence>
+              {songRequests
+                .filter((req) => req.status === "pending")
+                .map((request) => (
+                  <motion.div
+                    key={request.requestId}
+                    className={`bg-gray-700 rounded-lg p-4 relative group 
+                      transition-all duration-300 ease-in-out
+                      ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
+                    variants={itemVariants}
+                    initial="hidden"
+                    animate="show"
+                    exit="exit"
+                    layout
+                  >
+                    <div className="flex items-center space-x-4 w-[300px]">
+                      <SongCard
+                        image={request.songImage}
+                        title={request.songName}
+                        artist={request.songArtist}
+                        reactions={request.requestUpvotes}
+                        payment={request.Payment}
+                        isAdminView={true}
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
+                        <motion.button
+                          onClick={() => handleAcceptRequest(request.requestId)}
+                          className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
+                          disabled={loadingStates[request.requestId]}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {loadingStates[request.requestId] ? (
+                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                          ) : (
+                            <FaCheck className="w-6 h-6 text-white" />
+                          )}
+                        </motion.button>
+                        <motion.button
+                          onClick={() => handleDeclineRequest(request.requestId)}
+                          className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
+                          disabled={loadingStates[request.requestId]}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.95 }}
+                        >
+                          {loadingStates[request.requestId] ? (
+                            <Loader2 className="w-6 h-6 text-white animate-spin" />
+                          ) : (
+                            <FaTimes className="w-6 h-6 text-white" />
+                          )}
+                        </motion.button>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              
+              {/* Also show requests that are in the process of being declined */}
+              {songRequests
+                .filter((req) => req.status === "declining")
+                .map((request) => (
+                  <motion.div
+                    key={request.requestId}
+                    className={`bg-gray-700 rounded-lg p-4 relative group 
+                      transition-all duration-300 ease-in-out
+                      ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
+                    variants={itemVariants}
+                    initial="hidden"
+                    animate="show"
+                    exit="exit"
+                    layout
+                  >
+                    <div className="flex items-center space-x-4 w-[300px]">
+                      <SongCard
+                        image={request.songImage}
+                        title={request.songName}
+                        artist={request.songArtist}
+                        reactions={request.requestUpvotes}
+                        payment={request.Payment}
+                        isAdminView={true}
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
+                        <div className="bg-gray-600 p-3 rounded-full">
+                          <Loader2 className="w-6 h-6 text-white animate-spin" />
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+            </AnimatePresence>
+          </motion.div>
         )}
-      </div>
+      </AnimatePresence>
     </div>
   );
 };

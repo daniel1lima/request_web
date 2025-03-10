@@ -94,6 +94,7 @@ router.post("/create", async (req, res) => {
       include: [
         { model: User, attributes: ["userName"] },
         { model: Event, attributes: ["eventName"] },
+        { model: Payment, attributes: ["amount", "email"] },
       ],
     });
 

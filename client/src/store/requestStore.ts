@@ -31,6 +31,7 @@ interface RequestState {
   markAsPlayed: (requestId: string, accessToken: string) => Promise<void>;
   declineRequestById: (requestId: string, accessToken: string, paymentId: string) => Promise<void>;
   clearError: () => void;
+  refreshRequests: () => Promise<Request[]>;
   
   // WebSocket actions
   connectToEventSocket: (eventId: string) => void;
@@ -95,6 +96,28 @@ const useRequestStore = create<RequestState>((set, get) => ({
       return acceptedRequests;
     } catch (error) {
       set({ error: error instanceof Error ? error.message : 'Failed to fetch accepted requests', isLoading: false });
+      return [];
+    }
+  },
+
+  refreshRequests: async () => {
+    const { currentEventId } = get();
+    
+    if (!currentEventId) {
+      console.warn('Cannot refresh requests: No current event ID');
+      return [];
+    }
+    
+    try {
+      const requests = await fetchRequestsByEventId(currentEventId);
+      set({ 
+        requests, 
+        acceptedRequests: requests.filter((request: Request) => request.status === 'accepted'),
+        isLoading: false 
+      });
+      return requests;
+    } catch (error) {
+      set({ error: error instanceof Error ? error.message : 'Failed to refresh requests', isLoading: false });
       return [];
     }
   },

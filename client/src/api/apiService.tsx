@@ -32,6 +32,7 @@ export interface RequestBody {
   eventId: string;
   paymentId: string;
   status?: RequestStatus; // Make it optional with the defined type
+  payment?: { amount: number } | null;
 }
 
 // ==================== EVENT MANAGEMENT ====================

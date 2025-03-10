@@ -1013,10 +1013,15 @@ const EventAdminPage = () => {
           {/* Use the EventStats component */}
           <EventStats />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-full">
-            {/* Use the components without passing props */}
-            <AcceptedSongsColumn />
-            <NewRequestsColumn />
+          <div className="flex flex-col md:flex-row gap-8 max-h-full">
+            {/* Accepted songs column - can have different width than new requests */}
+            <div className="w-[50%]">
+              <AcceptedSongsColumn />
+            </div>
+            {/* New requests column - can have different width than accepted songs */}
+            <div className="w-[50%]">
+              <NewRequestsColumn />
+            </div>
           </div>
         </div>
       )}
