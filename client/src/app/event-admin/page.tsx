@@ -7,20 +7,7 @@ import { FaCheck, FaPencilRuler, FaTimes, FaTrash } from "react-icons/fa";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useAuth, useUser } from "@clerk/nextjs";
-import {
-  acceptRequest,
-  capturePaymentIntent,
-  fetchDjById,
-  fetchEventById,
-  fetchPaymentById,
-  fetchRequestsByEventId,
-  markRequestAsPlayed,
-  updateEvent,
-  declineRequest as declineRequestAPI,
-  deleteEvent,
-  uploadFileApi,
-  sendDeclinedRequestEmail,
-} from "@/api/apiService";
+
 import {
   Popover,
   PopoverContent,
@@ -52,26 +39,35 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { notFound, redirect } from "next/navigation";
+import useEventStore from "@/store/eventStore";
+import useRequestStore from "@/store/requestStore";
+import useAdminStore from "@/store/adminStore";
+import useDjStore from "@/store/djStore";
+import { useRouter } from "next/navigation";
+import WebSocketService from "@/services/websocketService";
+import AcceptedSongsColumn from "@/components/event/AcceptedSongsColumn";
+import NewRequestsColumn from "@/components/event/NewRequestsColumn";
+import EventStats from "@/components/event/EventStats";
 
 export interface Request {
-  requestId: string;  // Changed from number to string
+  requestId: string;
   songName: string;
   songArtist: string;
   songImage: string;
-  accepted: boolean;  // Added
+  accepted: boolean;
   played: boolean;
   requestUpvotes: number;
-  userId: string | null;  // Added
-  eventId: string;  // Added
-  paymentId: string;  // Added
+  userId: string | null;
+  eventId: string;
+  paymentId: string;
   status: string;
-  createdAt: string;  // Added
-  updatedAt: string;  // Added
-  User: null | any;  // Added
-  Event: {  // Added
+  createdAt: string;
+  updatedAt: string;
+  User: null | any;
+  Event: {
     eventName: string;
   };
-  Payment: {  // Added
+  Payment: {
     amount: number;
   };
 }
@@ -132,83 +128,93 @@ const EventAdminPage = () => {
   const { user } = useUser();
   const { toast } = useToast();
   const { getToken } = useAuth();
-  
-  // Event data state
-  const [songRequests, setSongRequests] = useState<Request[]>([]);
-  const [djData, setDjData] = useState<DJ | null>(null);
-  const [noRequests, setNoRequests] = useState(false);
-  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
-  const [isAuthorized, setIsAuthorized] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  // Get data and actions from stores
+  const {
+    requests: songRequests,
+    fetchRequests,
+    isLoading: requestsLoading,
+    setRequests,
+    connectToEventSocket,
+    disconnectFromEventSocket,
+    wsConnected
+  } = useRequestStore();
+  const { currentEvent, fetchEvent } = useEventStore();
+  const {
+    djData,
+    settings,
+    sliderValue,
+    selectedFile,
+    imagePreview,
+    loadingStates,
+    isAuthorized,
+    loading,
+
+    setDjData,
+    setSettings,
+    setSliderValue,
+    setSelectedFile,
+    setImagePreview,
+    setLoadingState,
+    setIsAuthorized,
+    setLoading,
+
+    fetchDj,
+    acceptRequestFunc,
+    playedRequest,
+    declineRequest,
+    handleDeleteEvent,
+    updateEventSettings,
+    uploadFile,
+  } = useAdminStore();
+
+  // Get data from djStore
+  const { fetchDj: fetchDjFromStore, currentDj } = useDjStore();
+
+  // Local state
   const [isMobile, setIsMobile] = useState(false);
+  const [noRequests, setNoRequests] = useState(false);
+
+  // Add a connection indicator state
+  const [socketConnected, setSocketConnected] = useState(false);
+
+  const [mounting, setMounting] = useState(true);
   
-  // Event settings state
-  const [eventTitle, setEventTitle] = useState("");
-  const [eventImage, setEventImage] = useState("");
-  const [settings, setSettings] = useState({
-    requestFee: 0,
-    eventImage: "",
-    acceptRequests: false,
-    freeRequests: false,
-    freeEmailRequests: false,
-  });
-  const [sliderValue, setSliderValue] = useState<number[]>([99]);
-  
-  // File upload state
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
 
   // Form setup
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      eventName: eventTitle,
+      eventName: settings.eventName || "",
     },
   });
 
-  // Fetch event data
-  const fetchEventData = useCallback(async () => {
-    const eventId = localStorage.getItem("eventId");
-    if (!eventId || !user) return;
-
-    try {
-      const songRequestsData = await fetchRequestsByEventId(eventId);
-      setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : []);
-      setNoRequests(songRequestsData.length === 0);
-    } catch (error) {
-      console.error("Error refreshing data:", error);
-      toast({
-        title: "Refresh Failed",
-        description: "Could not update event data",
-        variant: "destructive",
-      });
-    }
-  }, [user, toast]);
+  
 
   // Settings handlers
   const handleSliderChange = (value: number[]) => {
     setSliderValue(value);
-    setSettings(prev => ({ ...prev, requestFee: value[0] }));
+    setSettings({ requestFee: value[0] });
   };
 
   const handleAcceptRequestsChange = (value: boolean) => {
-    setSettings(prev => ({ ...prev, acceptRequests: value }));
+    setSettings({ acceptRequests: value });
   };
 
   const handleFreeRequestsChange = (value: boolean) => {
-    setSettings(prev => ({
-      ...prev,
+    setSettings({
       freeRequests: value,
-      freeEmailRequests: value ? false : prev.freeEmailRequests,
-    }));
+      freeEmailRequests: value ? false : settings.freeEmailRequests,
+    });
   };
 
   const handleFreeEmailRequestsChange = (value: boolean) => {
-    setSettings(prev => ({
-      ...prev,
+    setSettings({
       freeEmailRequests: value,
-      freeRequests: value ? false : prev.freeRequests,
-    }));
+      freeRequests: value ? false : settings.freeRequests,
+    });
   };
 
   // File handling
@@ -237,7 +243,7 @@ const EventAdminPage = () => {
     }
   };
 
-  const uploadFile = async () => {
+  const uploadFileHandler = async () => {
     try {
       if (!selectedFile) {
         toast({
@@ -248,13 +254,10 @@ const EventAdminPage = () => {
         return null;
       }
 
-      const data = new FormData();
-      data.append("file", selectedFile);
-      const s3response = await uploadFileApi(data);
-
-      if (s3response?.url) {
-        setSettings(prev => ({ ...prev, eventImage: s3response.url }));
-        return s3response.url;
+      const url = await uploadFile(selectedFile);
+      if (url) {
+        setSettings({ eventImage: url });
+        return url;
       }
       return null;
     } catch (e) {
@@ -268,20 +271,106 @@ const EventAdminPage = () => {
   };
 
   // Request management functions
-  const acceptRequestFunc = async (requestId: string) => {
+  
+  
+  const handlePlayedRequest = async (requestId: string) => {
     try {
+      // Set loading state for this specific request
+      setLoadingState(requestId, true);
+      
+      const accesstoken = await getToken();
+      if (!accesstoken) throw new Error("Authentication token is missing.");
+      
+      // Find the request to update
+      const requestToPlay = songRequests.find(
+        (req) => req.requestId === requestId
+      );
+      if (!requestToPlay) return;
+
+      // Optimistic UI update - immediately update the request status
+      const optimisticRequests = songRequests.map((req) =>
+        req.requestId === requestId
+          ? { ...req, played: true, status: "played" }
+          : req
+      );
+
+      // Update the request store with our optimistic data
+      setRequests(optimisticRequests);
+
+      // Now make the actual API call
+      const success = await playedRequest(requestId, accesstoken, songRequests);
+
+      // Clear loading state regardless of outcome
+      setLoadingState(requestId, false);
+
+      toast({
+        title: "Success",
+        description: "The request was marked as played",
+        variant: "default",
+        duration: 2000,
+      });
+
+      if (!success) {
+        throw new Error("Failed to mark request as played");
+      }
+    } catch (error) {
+      // Clear loading state in case of error
+      setLoadingState(requestId, false);
+
+      console.error("Error processing payment:", error);
+      toast({
+        title: "Error",
+        description: "Failed to mark request as played",
+        variant: "destructive",
+        duration: 2000,
+      });
+    }
+  };
+
+  useEffect(() => {
+    console.log("loading", loading);
+  }, [loading]);
+
+
+
+  const handleAcceptRequest = async (requestId: string) => {
+    try {
+      // Set loading state for this specific request
+      setLoadingState(requestId, true);
+
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      await acceptRequest(requestId, accesstoken);
-      setSongRequests(prevRequests =>
-        prevRequests.map(req =>
-          req.requestId === requestId
-            ? { ...req, accepted: true, status: "accepted" }
-            : req
-        )
+      // Find the request to update
+      const requestToAccept = songRequests.find(
+        (req) => req.requestId === requestId
       );
+
+      if (!requestToAccept) return;
+
+      // Optimistic UI update - immediately update the request status
+      const optimisticRequests = songRequests.map((req) =>
+        req.requestId === requestId
+          ? { ...req, accepted: true, status: "accepted" }
+          : req
+      );
+      setRequests(optimisticRequests);
+
+      // Now make the actual API call
+      const success = await acceptRequestFunc(requestId, accesstoken);
+
+      // Clear loading state regardless of outcome
+      setLoadingState(requestId, false);
+
+      console.log("Success:", success);
+
+      if (!success) {
+        throw new Error("Failed to accept request");
+      }
     } catch (error) {
+      // Clear loading state in case of error
+      setLoadingState(requestId, false);
+
       console.error("Error accepting request:", error);
       toast({
         title: "Error",
@@ -291,122 +380,124 @@ const EventAdminPage = () => {
     }
   };
 
-  const playedRequest = async (requestId: string) => {
-    setLoadingStates(prev => ({ ...prev, [requestId]: true }));
+  const handleDeclineRequest = async (requestId: string) => {
 
-    try {
-      const request = songRequests.find(req => req.requestId === requestId);
-      if (!request?.paymentId) return;
+    setLoadingState(requestId, true);
 
-      const paymentData = await fetchPaymentById(request.paymentId);
-      await capturePaymentIntent(request.paymentId, paymentData.amount);
-
-      const accesstoken = await getToken();
+    const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      await markRequestAsPlayed(requestId, accesstoken);
 
-      setSongRequests(prevRequests =>
-        prevRequests.map(req =>
-          req.requestId === requestId
-            ? { ...req, played: true, status: "completed" }
-            : req
-        )
-      );
-    } catch (error) {
-      console.error("Error processing payment:", error);
-      toast({
-        title: "Error",
-        description: "Failed to mark request as played",
-        variant: "destructive",
-      });
-    } finally {
-      setLoadingStates(prev => ({ ...prev, [requestId]: false }));
-    }
-  };
-
-  const declineRequest = async (requestId: string) => {
-    setLoadingStates(prev => ({ ...prev, [requestId]: true }));
-
-    // Immediately update UI
-    setSongRequests(prevRequests =>
-      prevRequests.filter(req => req.requestId !== requestId)
+    // Find the request to decline
+    const requestToDecline = songRequests.find(
+      (req) => req.requestId === requestId
     );
 
-    try {
-      const request = songRequests.find(req => req.requestId === requestId);
-      if (!request?.paymentId) return;
 
-      const accesstoken = await getToken();
-      if (!accesstoken) throw new Error("Authentication token is missing.");
+    if (!requestToDecline?.paymentId) return;
 
-      await declineRequestAPI(requestId, accesstoken, request.paymentId);
-      
+    // Optimistic UI update - immediately remove the request from the displayed list
+    const optimisticRequests = songRequests.map((req) =>
+      req.requestId === requestId
+        ? { ...req, status: "declined" }
+        : req
+    );
+
+    // Update the request store with our optimistic data
+    setRequests(optimisticRequests);
+
+    const success = await declineRequest(
+      requestId,
+      accesstoken,
+      requestToDecline.paymentId
+    );
+
+    setLoadingState(requestId, false);
+
+    if (success) {
       toast({
         title: "Request declined",
-        description: "The user has been notified that their request was declined.",
+        description: "The request was declined.",
+        duration: 2000,
       });
-    } catch (error) {
-      console.error("Error declining request:", error);
+    } else {
       toast({
         title: "Error",
-        description: "There was a problem declining this request.",
+        description: "Failed to decline request",
         variant: "destructive",
+        duration: 2000,
       });
-    } finally {
-      setLoadingStates(prev => ({ ...prev, [requestId]: false }));
     }
-  };
+  }
+  
 
   // Event management functions
-  const handleDeleteEvent = async () => {
+  const deleteEventHandler = async () => {
     try {
       const eventId = localStorage.getItem("eventId");
       if (!eventId) return;
 
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
-      
-      await deleteEvent(eventId, accesstoken);
-      redirect("/");
+
+      const success = await handleDeleteEvent(eventId, accesstoken);
+      if (success) {
+        // Use router.push instead of window.location.href
+        router.push("/");
+        return; // Add return to prevent further execution
+      }
     } catch (error) {
       console.error("Error deleting event:", error);
       toast({
         title: "Error",
         description: "Failed to delete event",
         variant: "destructive",
+        duration: 2000,
       });
     }
   };
 
   const onSubmit = async (data: z.infer<typeof FormSchema>) => {
     try {
-      setEventTitle(data.eventName);
       const eventId = localStorage.getItem("eventId");
       if (!eventId) return;
 
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
+      // Update settings with the new event name first
+      setSettings({ eventName: data.eventName });
+
       const updatedEventData = {
         eventId,
         eventName: data.eventName,
-        eventImage,
+        eventImage: settings.eventImage,
         eventLocation: "",
         requestFee: settings.requestFee,
         djId: user?.id || "",
       };
 
-      await updateEvent(eventId, updatedEventData, accesstoken);
-      toast({
-        title: "Event updated!",
-        description: `New event name: ${data.eventName}`,
-      });
+      const success = await updateEventSettings(
+        eventId,
+        updatedEventData,
+        accesstoken
+      );
+      if (success) {
+        // Refresh event data to ensure all components have the latest data
+        await fetchEvent(eventId);
+
+        toast({
+          title: "Event updated!",
+          description: `New event name: ${data.eventName}`,
+          duration: 2000,
+        });
+      }
     } catch (error) {
       toast({
         title: "Update failed",
         description: `There was an error updating the event. ${error}`,
         variant: "destructive",
+        duration: 2000,
       });
     }
   };
@@ -418,11 +509,13 @@ const EventAdminPage = () => {
 
       let imageUrl;
       if (selectedFile) {
-        imageUrl = await uploadFile();
+        imageUrl = await uploadFileHandler();
         if (imageUrl) {
-          setEventImage(imageUrl);
+          // Update settings with the new image URL
+          setSettings({ eventImage: imageUrl });
         }
       }
+
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
@@ -434,14 +527,22 @@ const EventAdminPage = () => {
         acceptEmailRequests: settings.freeEmailRequests,
       };
 
-      const response = await updateEvent(eventId, updatedEventData, accesstoken);
+      const success = await updateEventSettings(
+        eventId,
+        updatedEventData,
+        accesstoken
+      );
 
-      if (response?.eventId) {
+      if (success) {
+        // Refresh event data to ensure all components have the latest data
+        // await fetchEvent(eventId);
+
         toast({
           title: "Settings updated!",
           description: "Your settings have been successfully updated.",
+          duration: 2000,
         });
-        
+
         if (selectedFile) {
           setSelectedFile(null);
           setImagePreview(null);
@@ -454,18 +555,18 @@ const EventAdminPage = () => {
         title: "Update failed",
         description: "There was an error updating your settings.",
         variant: "destructive",
+        duration: 2000,
       });
     }
   };
 
-  // Add a useEffect to update the UI when settings.eventImage changes
-  useEffect(() => {
-    if (settings.eventImage) {
-      setEventImage(settings.eventImage);
-    }
-  }, [settings.eventImage]);
-
   // Effects
+  // useEffect(() => {
+  //   if (settings.eventImage) {
+  //     setEventImage(settings.eventImage);
+  //   }
+  // }, [settings.eventImage]);
+
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -481,67 +582,148 @@ const EventAdminPage = () => {
     if (!eventId || !user) return;
 
     localStorage.setItem("eventId", eventId);
-    const djId = localStorage.getItem("djId");
-    setLoading(true);
-
+    setMounting(true);
+    
     const fetchInitialData = async () => {
       try {
-        const [eventData, songRequestsData, djData] = await Promise.all([
-          fetchEventById(eventId),
-          fetchRequestsByEventId(eventId),
-          localStorage.getItem("djId")
-            ? fetchDjById(djId || "")
-            : Promise.resolve(null),
-        ]);
+        // First check if the event is already in the store
+        const { currentEvent } = useEventStore.getState();
 
-        if (!eventData || eventData.error) {
+        // Only fetch the event if it's not in the store or if it's a different event
+        if (!currentEvent || currentEvent.eventId !== eventId) {
+          await fetchEvent(eventId);
+          // Get the updated event from the store
+          const { currentEvent: updatedEvent } = useEventStore.getState();
+          if (!updatedEvent) {
+            window.location.href = "/404";
+            return;
+          }
+        }
+
+        // At this point, we should have the event in the store
+        const { currentEvent: storeEvent } = useEventStore.getState();
+        if (!storeEvent) {
           window.location.href = "/404";
           return;
         }
 
-        if (user?.id !== djData?.djId) {
-          window.location.href = `/event?eventId=${eventId}`;
-          return;
-        }
-
-        setIsAuthorized(true);
-        setEventTitle(eventData.eventName || "Event");
-        setEventImage(eventData.eventImage || "");
-        setSongRequests(Array.isArray(songRequestsData) ? songRequestsData : []);
-        setDjData(djData && !djData.error ? djData : null);
-        setNoRequests(songRequestsData.length === 0);
+        console.log("Event Data:", storeEvent);
 
         setSettings({
-          requestFee: eventData.requestFee || 0,
-          eventImage: eventData.eventImage || "",
-          acceptRequests: eventData.acceptRequests || false,
-          freeRequests: eventData.acceptFreeRequests || false,
-          freeEmailRequests: eventData.acceptEmailRequests || false,
+          eventName: storeEvent.eventName,
+          eventImage: storeEvent.eventImage,
+          requestFee: storeEvent.requestFee,
+          acceptRequests: storeEvent.acceptRequests,
+          freeRequests: storeEvent.acceptFreeRequests,
+          freeEmailRequests: storeEvent.acceptEmailRequests,
         });
 
-        setSliderValue([eventData.requestFee || 0]);
+        // Set the slider value based on the request fee
+        setSliderValue([storeEvent.requestFee]);
+
+        // Fetch requests for this event
+        await fetchRequests(eventId, true);
+
+        // If the event has a DJ ID, fetch the DJ data
+        if (storeEvent.djId) {
+          // Check if we already have the DJ data in the store
+          const { currentDj } = useDjStore.getState();
+
+          // Only fetch DJ data if it's not in the store or if it's a different DJ
+          if (!currentDj || currentDj.djId !== storeEvent.djId) {
+            await fetchDjFromStore(storeEvent.djId);
+          }
+
+          // Get the current DJ from the store
+          const { currentDj: storeDj } = useDjStore.getState();
+
+          // Check if the user is the DJ for this event
+          if (storeDj && user?.id === storeDj.djId) {
+            setIsAuthorized(true);
+            // Initial check for no requests - components will handle their own updates
+            const { requests } = useRequestStore.getState();
+            setNoRequests(requests.length === 0);
+          } else {
+            window.location.href = `/event?eventId=${eventId}`;
+          }
+          setMounting(false);
+        } else {
+          // Fallback to localStorage if needed
+          const storedDjId = localStorage.getItem("djId");
+          if (storedDjId) {
+            // Check if we already have the DJ data in the store
+            const { currentDj } = useDjStore.getState();
+
+            // Only fetch DJ data if it's not in the store or if it's a different DJ
+            if (!currentDj || currentDj.djId !== storedDjId) {
+              await fetchDjFromStore(storedDjId);
+            }
+
+            // Get the current DJ from the store
+            const { currentDj: storeDj } = useDjStore.getState();
+
+            console.log("User ID:", user?.id);
+            console.log("DJ ID:", storeDj?.djId);
+
+            if (storeDj && user?.id === storeDj.djId) {
+              setIsAuthorized(true);
+              // Initial check for no requests - components will handle their own updates
+              const { requests } = useRequestStore.getState();
+              setNoRequests(requests.length === 0);
+            } else {
+              window.location.href = `/event?eventId=${eventId}`;
+            }
+            setMounting(false);
+          } else {
+            // If we get here, there's no DJ ID to check against
+            console.log("No DJ ID found to check against");
+            setMounting(false);
+            window.location.href = `/event?eventId=${eventId}`;
+          }
+        }
       } catch (error) {
         console.error("Error fetching data:", error);
+        setMounting(false);
         window.location.href = "/404";
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchInitialData();
-  }, [user]);
+  }, [
+    user,
+    fetchEvent,
+    fetchRequests,
+    fetchDjFromStore,
+    setMounting,
+    setIsAuthorized,
+  ]);
 
+  // Add effect to connect to WebSocket
   useEffect(() => {
-    if (!isAuthorized || loading) return;
-
+    if (!isAuthorized ) return;
+    
+    const eventId = localStorage.getItem("eventId");
+    if (!eventId) return;
+    
+    // Connect to WebSocket for real-time updates
+    connectToEventSocket(eventId);
+    setSocketConnected(true);
+    
+    // Check connection status periodically
     const intervalId = setInterval(() => {
-      fetchEventData();
-    }, 30000);
+      const wsService = WebSocketService.getInstance();
+      setSocketConnected(wsService.isConnected());
+    }, 5000);
+    
+    // Cleanup function
+    return () => {
+      clearInterval(intervalId);
+      disconnectFromEventSocket();
+    };
+  }, [isAuthorized,connectToEventSocket, disconnectFromEventSocket]);
 
-    return () => clearInterval(intervalId);
-  }, [isAuthorized, loading, fetchEventData]);
 
-  if (loading || !isAuthorized) return <Loader />;
+  if (mounting) return <Loader />;
 
   const FeeBadge = (
     <div className="relative group">
@@ -695,7 +877,7 @@ const EventAdminPage = () => {
               variant={"outline"}
               className="max-w-[100px] bg-red-600 hover:bg-red-900 outline-none text-white"
               onClick={() => {
-                handleDeleteEvent();
+                deleteEventHandler();
               }}
             >
               Delete Event
@@ -725,7 +907,10 @@ const EventAdminPage = () => {
                   <FormItem>
                     <FormLabel>Event Name</FormLabel>
                     <FormControl>
-                      <Input placeholder={eventTitle} {...field} />
+                      <Input
+                        placeholder={settings.eventName || ""}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -739,21 +924,23 @@ const EventAdminPage = () => {
     </div>
   );
 
+  // You can add a connection indicator in your UI
+  const ConnectionStatus = () => (
+    <div className={`px-2 py-1 rounded-full flex items-center ${socketConnected ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+      <div className={`w-2 h-2 rounded-full mr-2 ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+      <span className="text-xs font-medium">
+        {socketConnected ? 'Live' : 'Offline'}
+      </span>
+    </div>
+  );
+
   return (
-    <div
-      className={`bg-gray-900 dark:bg-gray-900 ${
-        songRequests.filter((req) => req.accepted && !req.played).length ===
-          0 &&
-        songRequests.filter((req) => !req.accepted && !req.played).length === 0
-          ? "h-screen"
-          : "h-full"
-      }`}
-    >
+    <div className="bg-gray-900 dark:bg-gray-900 h-full">
       {/* Updated Header Section with increased height */}
       <div
         className="relative bg-cover bg-center h-48"
         style={{
-          backgroundImage: `url(${eventImage})`,
+          backgroundImage: `url(${settings.eventImage || currentEvent?.eventImage})`,
         }}
       >
         {/* Dark overlay */}
@@ -774,10 +961,12 @@ const EventAdminPage = () => {
 
             {/* Title content */}
             <div>
-              <div className="flex flex-row gap-5 ">
+              <div className="flex flex-row gap-5 items-center">
                 <h1 className="text-6xl font-bold text-white mb-2">
-                  {eventTitle}
+                  {settings.eventName}
                 </h1>
+                {/* Add connection status indicator */}
+                <ConnectionStatus />
               </div>
               <div className="flex-row flex gap-4 items-center">
                 {SettingsDialog(
@@ -821,131 +1010,17 @@ const EventAdminPage = () => {
         </div>
       ) : (
         <div className="max-w-7xl mx-auto p-8">
-          <div className="grid grid-cols-3 gap-4 mb-8">
-            {/* Songs Requested Card */}
-            <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-white">
-                  Songs Requested
-                </h3>
-              </div>
-              <p className="text-4xl font-semibold text-white">
-                {songRequests.length}
-              </p>
-            </div>
+          {/* Use the EventStats component */}
+          <EventStats />
 
-            {/* Songs Played Card */}
-            <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-white">Songs Played</h3>
-              </div>
-              <p className="text-4xl font-semibold text-white">
-                {songRequests.filter((req) => req.played).length}
-              </p>
+          <div className="flex flex-col md:flex-row gap-8 max-h-full">
+            {/* Accepted songs column - can have different width than new requests */}
+            <div className="w-[50%]">
+              <AcceptedSongsColumn />
             </div>
-
-            {/* DJ Earnings Card */}
-            <div className="bg-gray-800 rounded-lg p-4 shadow-lg flex items-center justify-between">
-              <div>
-                <h3 className="text-xl font-bold text-white">DJ Earnings</h3>
-              </div>
-              <p className="text-4xl font-semibold text-white">
-                $
-                {(songRequests
-                  .filter((req) => req.played)
-                  .reduce((total, req) => total + (req.Payment?.amount || 0), 0) / 100).toFixed(2)}
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-full">
-            {/* Accepted Songs Column */}
-            <div className="bg-gray-800 rounded-xl p-6 shadow-xl overflow-y-auto">
-              <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
-                Accepted Requests
-              </h2>
-              <div className="space-y-4">
-                {songRequests
-                  .filter(
-                    (req) =>
-                      req.accepted && !req.played && req.status == "accepted"
-                  )
-                  .map((request) => (
-                    <div
-                      key={request.requestId}
-                      className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group"
-                    >
-                      <div className="flex items-center space-x-4 w-[300px]">
-                        <SongCard
-                          image={request.songImage}
-                          title={request.songName}
-                          artist={request.songArtist}
-                          reactions={request.requestUpvotes}
-                          payment={request.Payment}
-                          isAdminView={true}
-                        />
-                        <button
-                          onClick={() => playedRequest(request.requestId)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
-                          disabled={loadingStates[request.requestId]}
-                        >
-                          {loadingStates[request.requestId] ? (
-                            <Loader2 className="w-6 h-6 text-white animate-spin" />
-                          ) : (
-                            <FaCheck className="w-6 h-6 text-white" />
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-            {/* Requested Songs Column */}
-            <div className="bg-gray-800 rounded-xl p-6 shadow-xl  overflow-y-auto">
-              <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
-                New Requests
-              </h2>
-              <div className="space-y-4">
-                {songRequests
-                  .filter((req) => req.status == "pending")
-                  .map((request) => (
-                    <div
-                      key={request.requestId}
-                      className="bg-gray-700 rounded-lg p-4 transition-all hover:shadow-lg relative group "
-                    >
-                      <div className="flex items-center space-x-4 w-[300px]">
-                        <SongCard
-                          image={request.songImage}
-                          title={request.songName}
-                          artist={request.songArtist}
-                          reactions={request.requestUpvotes}
-                          payment={request.Payment}
-                          isAdminView={true}
-                        />
-                        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex space-x-3">
-                          <button
-                            onClick={() => acceptRequestFunc(request.requestId)}
-                            className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
-                          >
-                            <FaCheck className="w-6 h-6 text-white" />
-                          </button>
-                          <button
-                            onClick={() => declineRequest(request.requestId)}
-                            className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
-                            disabled={loadingStates[request.requestId]}
-                          >
-                            {loadingStates[request.requestId] ? (
-                              <Loader2 className="w-6 h-6 text-white animate-spin" />
-                            ) : (
-                              <FaTimes className="w-6 h-6 text-white" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-              </div>
+            {/* New requests column - can have different width than accepted songs */}
+            <div className="w-[50%]">
+              <NewRequestsColumn />
             </div>
           </div>
         </div>

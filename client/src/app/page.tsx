@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { notFound, redirect, useRouter } from "next/navigation";
 import "./globals.css";
@@ -30,8 +30,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { fetchAllEvents, createEvent, uploadFileApi } from "@/api/apiService";
-import { useToast } from "@/hooks/use-toast";
+import { toast, useToast } from "@/hooks/use-toast";
+import useEventStore from "../store/eventStore";
+import useUIStore from "../store/uiStore";
+import {uploadFileApi } from "../api/apiService";
+import Loader from "@/components/loader";
 
 export interface Event {
   eventId: string;
@@ -43,23 +46,10 @@ export interface Event {
   djId: string;
   createdAt: string;
   updatedAt: string;
+  acceptRequests: boolean;
+  acceptFreeRequests: boolean;
+  acceptEmailRequests: boolean;
 }
-
-const Loader = () => (
-  <div className="fixed inset-0 flex items-center justify-center bg-gray-900 z-50">
-    <div className="loader text-white">
-      <Image
-        src="/RequestLogoLight.png"
-        alt="DJ Request Logo"
-        width={200}
-        height={200}
-        className="invert dark:invert"
-        priority
-        style={{ objectFit: "contain" }}
-      />
-    </div>
-  </div>
-);
 
 const createFuseInstance = (events: Event[]) => {
   return new Fuse(events, {
@@ -163,7 +153,7 @@ const AllEventsView = ({
         new Date(b.eventDateTime).getTime()
     ) || [];
 
-  const filteredEvents = useMemo(() => {
+  const filteredEvents = React.useMemo(() => {
     if (!searchQuery) return sortedEvents;
     const fuse = createFuseInstance(sortedEvents);
     return fuse.search(searchQuery).map((result) => result.item);
@@ -200,9 +190,10 @@ const AllEventsView = ({
 
 const UserView = () => {
   const { isSignedIn } = useUser();
+  const { setCurrentView } = useUIStore();
 
   useEffect(() => {
-    if (isSignedIn) redirect("/");
+    if (isSignedIn) setCurrentView("explore");
   }, [isSignedIn]);
 
   return (
@@ -233,31 +224,46 @@ const UserView = () => {
 };
 
 const Index = () => {
-  const router = useRouter();
-  const [loading, setLoading] = useState(true);
-  const [fadeOut, setFadeOut] = useState(false);
-  const [allEvents, setAllEvents] = useState<Event[] | null>(null);
-  const [imagesLoaded, setImagesLoaded] = useState(false);
-  const [currentView, setCurrentView] = useState<"explore" | "events" | "user">(
-    "explore"
-  );
-  const [searchQuery, setSearchQuery] = useState("");
-  const { isSignedIn, user } = useUser();
-  const [eventName, setEventName] = useState("");
-  const [eventImage, setEventImage] = useState("");
-  const [eventLocation, setEventLocation] = useState("");
-  const [requestFee, setRequestFee] = useState(0);
-  const [eventNameError, setEventNameError] = useState(false);
-  const [eventImageError, setEventImageError] = useState(false);
-  const [eventDateError, setEventDateError] = useState(false);
-  const [eventLocationError, setEventLocationError] = useState(false);
-  const [requestFeeError, setRequestFeeError] = useState(false);
+  const { user } = useUser();
+
+  const [imagesLoaded, setImagesLoaded] = React.useState(false);
+  const [eventName, setEventName] = React.useState("");
+  const [eventImage, setEventImage] = React.useState("");
+  const [eventLocation, setEventLocation] = React.useState("");
+  const [requestFee, setRequestFee] = React.useState(0);
+  const [eventNameError, setEventNameError] = React.useState(false);
+  const [eventImageError, setEventImageError] = React.useState(false);
+  const [eventDateError, setEventDateError] = React.useState(false);
+  const [eventLocationError, setEventLocationError] = React.useState(false);
+  const [requestFeeError, setRequestFeeError] = React.useState(false);
   const [date, setDate] = React.useState<Date>();
   const { getToken } = useAuth();
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [imagePreview, setImagePreview] = React.useState<string | null>(null);
 
   const { toast } = useToast();
+
+  // Get state and actions from stores
+  const { events, isLoading, error, fetchEvents, addEvent } = useEventStore();
+  const { currentView, searchQuery, setCurrentView, setSearchQuery } =
+    useUIStore();
+  const { isSignedIn } = useUser();
+
+
+  // Fetch events when component mounts
+  useEffect(() => {
+    // Only fetch events if the events array is empty
+    if (!events || events.length === 0) {
+      fetchEvents();
+    }
+
+    // Simulate images loaded after a delay (replace with actual image loading logic)
+    const timer = setTimeout(() => {
+      setImagesLoaded(true);
+    }, 2000);
+
+    return () => clearTimeout(timer);
+  }, [fetchEvents, events, setImagesLoaded]);
 
   const uploadFile = async () => {
     try {
@@ -281,8 +287,7 @@ const Index = () => {
         setEventImage(s3response.url); // Set the event image URL once uploaded
       }
 
-      return s3response.url
-
+      return s3response.url;
     } catch (e) {
       console.error(e);
       toast({
@@ -293,32 +298,12 @@ const Index = () => {
     }
   };
 
-  useEffect(() => {
+  React.useEffect(() => {
     const logoImage = new window.Image();
     logoImage.src = "/RequestLogoDark.png";
     document.ontouchmove = (event) => event.preventDefault();
     logoImage.onload = () => setImagesLoaded(true);
   }, []);
-
-  useEffect(() => {
-    const loadEvents = async () => {
-      try {
-        const data = await fetchAllEvents();
-        if (!data || data.error) {
-          console.error("Error fetching event data:", data?.error || "No data");
-          notFound();
-        }
-        localStorage.setItem("allEvents", JSON.stringify(data));
-        setAllEvents(data);
-        setFadeOut(true);
-        setTimeout(() => setLoading(false), 200);
-      } catch (error) {
-        console.error("Error fetching event details:", error);
-        notFound();
-      }
-    };
-    loadEvents();
-  }, [router]);
 
   const handleSubmit = async () => {
     try {
@@ -344,34 +329,26 @@ const Index = () => {
         djId: user?.id || "",
       };
 
-
-      setLoading(true);
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      const response = await createEvent(eventData, accesstoken);
-      
-      if (response) {
-        // Reset form after successful creation
-        setEventName("");
-        setEventImage("");
-        setEventLocation("");
-        setRequestFee(0);
-        setDate(undefined);
+      await addEvent(eventData, accesstoken);
 
-        setTimeout(() => {
-          setLoading(false);
-          setFadeOut(true);
-        }, 1000);
-      } else {
-        console.error("Failed to create event:", response);
-        toast({
-          variant: "destructive",
-          title: "Event Creation Failed!",
-          description: "Please try again.",
-        });
-        return; // Early return to stop further submission
-      }
+      // Reset form after successful creation
+      setEventName("");
+      setEventImage("");
+      setEventLocation("");
+      setRequestFee(0);
+      setDate(undefined);
+      setImagePreview(null);
+      setSelectedFile(null);
+
+      toast({
+        title: "Event Created Successfully!",
+        description: "Your event has been created successfully.",
+      });
+
+        setCurrentView("explore");
     } catch (error) {
       console.error("Error in handleSubmit:", error);
       toast({
@@ -379,8 +356,6 @@ const Index = () => {
         title: "Event Creation Failed!",
         description: `Error: ${error}`,
       });
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -403,11 +378,11 @@ const Index = () => {
     event.preventDefault();
   };
 
-  if (loading || !imagesLoaded) {
+  // Debug logs to help identify issues
+
+  if (isLoading || !imagesLoaded) {
     return (
-      <div
-        className={`transition-opacity duration-300 ${fadeOut ? "opacity-0" : "opacity-100"}`}
-      >
+      <div className={``}>
         <Loader />
       </div>
     );
@@ -600,7 +575,6 @@ const Index = () => {
                 </Button>
               </DialogClose>
             </DialogFooter>
-            {loading && <div className="loader">Loading...</div>}
           </DialogContent>
         </Dialog>
       )}
@@ -654,16 +628,34 @@ const Index = () => {
         </div>
       )}
       <div className="absolute inset-0 pt-32 pb-16">
-        {currentView === "explore" ? (
-          <ExploreView
-            allEvents={allEvents}
-            searchQuery={searchQuery}
-            setCurrentView={setCurrentView}
-          />
-        ) : currentView === "user" ? (
-          <UserView />
+        {isLoading ? (
+          <Loader />
+        ) : error ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-red-500">
+              Error loading events: {error}
+              <button
+                onClick={() => fetchEvents()}
+                className="ml-2 text-blue-500 underline"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
         ) : (
-          <AllEventsView allEvents={allEvents} searchQuery={searchQuery} />
+          <>
+            {currentView === "explore" ? (
+              <ExploreView
+                allEvents={events}
+                searchQuery={searchQuery}
+                setCurrentView={setCurrentView}
+              />
+            ) : currentView === "user" ? (
+              <UserView />
+            ) : (
+              <AllEventsView allEvents={events} searchQuery={searchQuery} />
+            )}
+          </>
         )}
       </div>
       <nav className="fixed bottom-0 w-full bg-gray-900 border-t border-gray-800 py-2 flex justify-around items-center">

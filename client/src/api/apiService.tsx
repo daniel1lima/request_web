@@ -32,6 +32,7 @@ export interface RequestBody {
   eventId: string;
   paymentId: string;
   status?: RequestStatus; // Make it optional with the defined type
+  payment?: { amount: number } | null;
 }
 
 // ==================== EVENT MANAGEMENT ====================
@@ -196,10 +197,10 @@ export const declineRequest = async (
   accessToken: string,
   paymentId: string
 ) => {
-  await sendDeclinedRequestEmail(requestId, paymentId);
+  // await sendDeclinedRequestEmail(requestId, paymentId);
 
-  const response = await fetch(`/api/requests/delete?requestId=${requestId}`, {
-    method: "DELETE",
+  const response = await fetch(`/api/requests/declined?requestId=${requestId}`, {
+    method: "PUT",
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
