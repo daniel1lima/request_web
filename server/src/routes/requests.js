@@ -433,4 +433,49 @@ router.put("/update-status", async (req, res) => {
   }
 });
 
+// Mark request as declined
+router.put("/declined", ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    const { requestId } = req.query;
+
+    if (!requestId) {
+      return res.status(400).json({
+        error: "Missing request ID",
+        details: "requestId query parameter is required",
+      });
+    }
+
+    const request = await Request.findOne({ where: { requestId } });
+
+    if (!request) {
+      return res.status(404).json({ error: "Request not found" });
+    }
+
+    await request.update({ accepted: false, status: "declined" });
+
+    const fullRequest = await Request.findOne({
+      where: { requestId },
+      include: [
+        { model: User, attributes: ["userName"] },
+        { model: Event, attributes: ["eventName"] },
+      ],
+    });
+
+    res.json(fullRequest);
+
+    if (eventClients.has(request.eventId)) {
+      notifyEventClients(request.eventId, {
+        type: "update",
+        request: fullRequest,
+      });
+    }
+  } catch (error) {
+    console.error("Decline request error:", error);
+    res.status(500).json({
+      error: "Failed to decline request",
+      details: error.message,
+    });
+  }
+});
+
 module.exports = router;

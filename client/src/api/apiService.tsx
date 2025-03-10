@@ -199,8 +199,8 @@ export const declineRequest = async (
 ) => {
   // await sendDeclinedRequestEmail(requestId, paymentId);
 
-  const response = await fetch(`/api/requests/delete?requestId=${requestId}`, {
-    method: "DELETE",
+  const response = await fetch(`/api/requests/declined?requestId=${requestId}`, {
+    method: "PUT",
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
