@@ -26,7 +26,6 @@ const wss = new WebSocketServer({
     port: 3001
 });
 
-console.log(`WebSocket server running on port ${WS_PORT}`);
 
 // Store clients by event ID
 global.eventClients = new Map();
