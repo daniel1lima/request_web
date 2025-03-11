@@ -32,6 +32,10 @@ global.eventClients = new Map();
 
 // WebSocket connection handler
 wss.on('connection', (ws, req) => {
+    console.log('New WebSocket connection attempt from:', req.headers.origin);
+    console.log('Connection URL:', req.url);
+    console.log('Headers:', JSON.stringify(req.headers));
+    
     // Parse the URL to get the eventId query parameter
     const parsedUrl = url.parse(req.url || '', true);
     const eventId = parsedUrl.query.eventId;
@@ -127,9 +131,16 @@ app.use((err, req, res, next) => {
     res.status(401).json({ error: 'Unauthenticated!' });
 });
 
+// Add this near the top of your file
+wss.on('headers', (headers, request) => {
+    console.log('WebSocket headers being sent:', headers);
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`HTTP server is running on port ${PORT}`);
+    console.log(`HTTP and WebSocket server running on port ${PORT}`);
+    console.log(`WebSocket server URL: ws://localhost:${PORT}`);
+    console.log(`In production this would be: wss://api.request-app.me`);
     console.log(`
  ____  _____ ___  _   _ _____ ____ _____ 
 |  _ \| ____/ _ \| | | | ____/ ___|_   _|

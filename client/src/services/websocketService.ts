@@ -43,10 +43,10 @@ class WebSocketService {
       wsUrl = `${process.env.NEXT_PUBLIC_WS_URL}?eventId=${eventId}`;
     } else if (window.location.hostname === 'localhost') {
       // Local development
-      wsUrl = `${protocol}//${window.location.hostname}:3001?eventId=${eventId}`;
+      wsUrl = `${protocol}//${window.location.hostname}:65534?eventId=${eventId}`;
     } else if (window.location.hostname.includes('request-app.me')) {
       // Production environment with dedicated WebSocket subdomain
-      wsUrl = `wss://ws.request-app.me?eventId=${eventId}`;
+      wsUrl = `wss://api.request-app.me?eventId=${eventId}`;
     } else {
       // Fallback for other environments
       wsUrl = `${protocol}//${window.location.host}?eventId=${eventId}`;
