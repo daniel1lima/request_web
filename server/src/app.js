@@ -16,16 +16,18 @@ const twilioRoutes = require('./routes/twilio');
 const bodyParser = require('body-parser');
 const http = require('http');
 
-const {WebSocketServer} = require('ws')
+const {WebSocketServer, WebSocket} = require('ws')
 const url = require('url');
 
 const app = express();
 
-// Create a standalone WebSocket server
-const wss = new WebSocketServer({ 
-    port: 3001
-});
+// Create HTTP server from Express app
+const server = http.createServer(app);
 
+// Create WebSocket server attached to the HTTP server
+const wss = new WebSocketServer({ 
+    server // Attach to the same server instead of using a separate port
+});
 
 // Store clients by event ID
 global.eventClients = new Map();
@@ -137,7 +139,9 @@ wss.on('headers', (headers, request) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+
+// Use the HTTP server to listen instead of the Express app
+server.listen(PORT, () => {
     console.log(`HTTP and WebSocket server running on port ${PORT}`);
     console.log(`WebSocket server URL: ws://localhost:${PORT}`);
     console.log(`In production this would be: wss://api.request-app.me`);
