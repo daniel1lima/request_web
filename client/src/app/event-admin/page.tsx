@@ -142,7 +142,6 @@ const EventAdminPage = () => {
   } = useRequestStore();
   const { currentEvent, fetchEvent } = useEventStore();
   const {
-    djData,
     settings,
     sliderValue,
     selectedFile,
@@ -151,7 +150,6 @@ const EventAdminPage = () => {
     isAuthorized,
     loading,
 
-    setDjData,
     setSettings,
     setSliderValue,
     setSelectedFile,
@@ -160,7 +158,6 @@ const EventAdminPage = () => {
     setIsAuthorized,
     setLoading,
 
-    fetchDj,
     acceptRequestFunc,
     playedRequest,
     declineRequest,
@@ -983,14 +980,14 @@ const EventAdminPage = () => {
             {/* DJ Profile moved to header with transparent grey card, aligned to the absolute right */}
             <div className="absolute right-20 bg-opacity-90 rounded-lg flex items-center justify-center pr-8 bg-black/40 backdrop-blur-sm  px-4 py-2 transform-origin-right">
               <DJProfile
-                name={djData?.djName || "DJ Zo"}
+                name={currentDj?.djName || "DJ Zo"}
                 role="Main Event DJ"
-                image={djData?.djImageUrl || ""}
+                image={currentDj?.djImageUrl || ""}
                 insta={
-                  djData?.djInsta
+                  currentDj?.djInsta
                     ? isMobile
-                      ? `https://www.instagram.com/${djData.djInsta}`
-                      : `https://www.instagram.com/${djData.djInsta}`
+                      ? `https://www.instagram.com/${currentDj.djInsta}`
+                      : `https://www.instagram.com/${currentDj.djInsta}`
                     : ""
                 }
               />
