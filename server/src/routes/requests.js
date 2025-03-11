@@ -324,10 +324,27 @@ router.get("/cancel-request", async (req, res) => {
     // Update the request status to 'cancelled' instead of destroying it
     await request.update({ status: "cancelled" });
 
+    // Get the full request with related data for notification
+    const fullRequest = await Request.findOne({
+      where: { requestId },
+      include: [
+        { model: User, attributes: ["userName"] },
+        { model: Event, attributes: ["eventName"] },
+      ],
+    });
+
     res.json({
       message: "Request cancelled successfully",
       request: deletedRequest,
     });
+
+    // Notify connected clients about the cancellation
+    if (eventClients.has(request.eventId)) {
+      notifyEventClients(request.eventId, {
+        type: "update",
+        request: fullRequest,
+      });
+    }
   } catch (error) {
     console.error("Cancel request error:", error);
     res.status(500).json({
