@@ -53,7 +53,6 @@ import {
   getEventDJs,
   setEventActiveDJ,
   removeDJFromEvent,
-  deleteDJ,
 } from "@/api/apiService";
 import { motion } from "framer-motion";
 import { AnimatePresence } from "framer-motion";
