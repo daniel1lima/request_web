@@ -8,7 +8,7 @@ import {
   EventData
 } from '../api/apiService';
 
-interface Event {
+export interface Event {
   eventId: string;
   eventName: string;
   eventImage: string;

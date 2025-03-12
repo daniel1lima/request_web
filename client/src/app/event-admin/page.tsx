@@ -703,7 +703,7 @@ const EventAdminPage = () => {
       if (currentEvent) {
         const djIdToUse = currentEvent.currentDjId || currentEvent.djId;
         if (djIdToUse) {
-          const foundDj = data.find(dj => dj.djId === djIdToUse);
+          const foundDj = data.find((dj: DJ) => dj.djId === djIdToUse);
           if (foundDj) {
             setActiveDj(foundDj);
             setActiveDjId(foundDj.djId);
