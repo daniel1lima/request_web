@@ -149,6 +149,7 @@ router.put("/accept", ClerkExpressRequireAuth(), async (req, res) => {
       include: [
         { model: User, attributes: ["userName"] },
         { model: Event, attributes: ["eventName"] },
+        { model: Payment, attributes: ["amount", "email"] },
       ],
     });
 
