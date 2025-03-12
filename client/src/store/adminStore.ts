@@ -24,21 +24,6 @@ interface AdminSettings {
   freeEmailRequests: boolean;
 }
 
-interface Event {
-  eventId: string;
-  eventName: string;
-  eventImage: string;
-  eventDateTime: string;
-  eventLocation: string;
-  requestFee: number;
-  djId: string;
-  acceptRequests?: boolean;
-  acceptFreeRequests?: boolean;
-  acceptEmailRequests?: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
 interface AdminState {
   // State
   djData: DJ | null;

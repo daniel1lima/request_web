@@ -7,12 +7,28 @@ import {
   deleteEvent,
   EventData
 } from '../api/apiService';
-import { Event } from '../app/page';
+
+interface Event {
+  eventId: string;
+  eventName: string;
+  eventImage: string;
+  eventDateTime: string;
+  eventLocation: string;
+  requestFee: number;
+  djId: string;
+  currentDjId?: string;
+  acceptRequests?: boolean;
+  acceptFreeRequests?: boolean;
+  acceptEmailRequests?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
 
 interface EventState {
   // State
   events: Event[];
   currentEvent: Event | null;
+  currentDjId: string | null;
   isLoading: boolean;
   imagesLoaded: boolean;
   error: string | null;
@@ -31,6 +47,7 @@ const useEventStore = create<EventState>((set) => ({
   // Initial state
   events: [],
   currentEvent: null,
+  currentDjId: null,
   isLoading: true, // Start with loading true
   imagesLoaded: false,
   error: null,

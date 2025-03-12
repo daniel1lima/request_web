@@ -73,7 +73,13 @@ export const createEvent = async (
       `Failed to create event: ${errorData.error || "Unknown error"}`
     );
   }
-  return response.json();
+  
+  const createdEvent = await response.json();
+  
+  // After creating the event, add the DJ to the event
+  await addDJToEvent(createdEvent.eventId, eventData.djId, accessToken);
+  
+  return createdEvent;
 };
 
 // Update an event
@@ -116,6 +122,135 @@ export const fetchDjById = async (djId: string) => {
     next: { revalidate: 60 },
   });
   if (!response.ok) throw new Error("Failed to fetch DJ");
+  return response.json();
+};
+
+// Fetch all DJs
+export const fetchAllDJs = async (accessToken: string) => {
+  const response = await fetch(`/api/djs`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to fetch DJs");
+  return response.json();
+};
+
+// Create a new DJ
+export const createDJ = async (
+  djData: {
+    djId: string;
+    djName: string;
+    djEmail: string;
+    djInsta?: string;
+    djPhone?: string;
+    djImageUrl?: string;
+  },
+  accessToken: string
+) => {
+  const response = await fetch(`/api/djs/create`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(djData),
+  });
+  if (!response.ok) throw new Error("Failed to create DJ");
+  return response.json();
+};
+
+// Update DJ information
+export const updateDJ = async (
+  djId: string,
+  djData: Partial<{
+    djName: string;
+    djEmail: string;
+    djInsta: string;
+    djPhone: string;
+    djImageUrl: string;
+  }>,
+  accessToken: string
+) => {
+  const response = await fetch(`/api/djs/update?djId=${djId}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(djData),
+  });
+  if (!response.ok) throw new Error("Failed to update DJ");
+  return response.json();
+};
+
+// ==================== EVENT-DJ MANAGEMENT ====================
+
+// Set the active DJ for an event
+export const setEventActiveDJ = async (
+  eventId: string,
+  djId: string,
+  accessToken: string
+) => {
+  const response = await fetch(`/api/events/${eventId}/active-dj`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ djId }),
+  });
+  if (!response.ok) throw new Error("Failed to set active DJ");
+  return response.json();
+};
+
+// Add a DJ to an event (many-to-many relationship)
+export const addDJToEvent = async (
+  eventId: string,
+  djId: string,
+  accessToken: string
+) => {
+  const response = await fetch(`/api/events/${eventId}/add-dj`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ djId }),
+  });
+  if (!response.ok) throw new Error("Failed to add DJ to event");
+  return response.json();
+};
+
+// Get all DJs for an event
+export const getEventDJs = async (eventId: string, accessToken: string) => {
+  const response = await fetch(`/api/events/${eventId}/djs`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to fetch event DJs");
+  return response.json();
+};
+
+// Remove a DJ from an event
+export const removeDJFromEvent = async (
+  eventId: string,
+  djId: string,
+  accessToken: string
+) => {
+  const response = await fetch(`/api/events/${eventId}/djs/${djId}?checkForDelete=true`, {
+    method: "DELETE",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+  if (!response.ok) throw new Error("Failed to remove DJ from event");
   return response.json();
 };
 
@@ -411,3 +546,5 @@ export const submitEmailToWaitlist = async (emailData: {
   if (!response.ok) throw new Error("Failed to submit email to waitlist");
   return response.json();
 };
+
+

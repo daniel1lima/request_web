@@ -42,19 +42,20 @@ export interface Request {
   };
 }
 
-export interface Event {
-  eventId: string;
-  eventName: string;
-  eventImage: string;
-  eventDateTime: string;
-  eventLocation: string;
-  acceptRequests: string;
-  acceptFreeRequests: string;
-  requestFee: number;
-  djId: string;
-  createdAt: string;
-  updatedAt: string;
-}
+// export interface Event {
+//   eventId: string;
+//   eventName: string;
+//   eventImage: string;
+//   eventDateTime: string;
+//   eventLocation: string;
+//   acceptRequests: string;
+//   acceptFreeRequests: string;
+//   requestFee: number;
+//   djId: string;
+//   currentDjId?: string;
+//   createdAt: string;
+//   updatedAt: string;
+// }
 
 // Event ownership disclaimer component
 const EventOwnershipDisclaimer = ({ djId }: { djId: string }) => {
@@ -94,7 +95,7 @@ const EventPage = () => {
   const { currentEvent, isLoading, fetchEvent } = useEventStore();
 
   // Use the DJ store
-  const { currentDj, fetchDj } = useDjStore();
+  const { currentDj, activeDj, fetchDj, fetchActiveDj } = useDjStore();
 
   const {
     fetchRequests,
@@ -104,6 +105,8 @@ const EventPage = () => {
 
   // Add a new state variable for loading event data
   const [isEventLoading, setIsEventLoading] = useState(true);
+
+  // Add state for event DJs and active DJ
 
   useEffect(() => {
     document.body.style.overflow = "hidden";
@@ -168,10 +171,28 @@ const EventPage = () => {
         await fetchDj(djId);
       }
 
+      // Check if there's an active DJ (currentDjId)
+      if (currentEventFromStore.currentDjId) {
+        // If the active DJ is different from the main DJ, fetch that DJ's data
+        if (currentEventFromStore.currentDjId !== djId) {
+          await fetchActiveDj(currentEventFromStore.currentDjId);
+        } else {
+          // If the active DJ is the same as the main DJ, use the main DJ data
+          const { currentDj } = useDjStore.getState();
+          if (currentDj) {
+            useDjStore.getState().setActiveDj(currentDj);
+          }
+        }
+      } else {
+        // If no active DJ is set, use the main DJ
+        const { currentDj } = useDjStore.getState();
+        if (currentDj) {
+          useDjStore.getState().setActiveDj(currentDj);
+        }
+      }
+
       // Always fetch requests when the page loads
       await fetchRequests(eventId);
-
-
 
       setRefreshing(false);
       // Set loading to false after all data is fetched
@@ -217,17 +238,19 @@ const EventPage = () => {
           <EventHeader
             title={currentEvent?.eventName || "Default Event Title"}
             imageUrl={currentEvent?.eventImage || ""}
-            djData={currentDj || { djId: "", djName: "", djImageUrl: "" }}
+            djData={activeDj || currentDj || { djId: "", djName: "", djImageUrl: "" }}
           />
 
           <DJProfile
-            name={currentDj?.djName || "DJ Zo"}
-            role="Main Event DJ"
-            image={currentDj?.djImageUrl || ""}
+            name={activeDj?.djName || currentDj?.djName || "DJ Zo"}
+            role="Currently Playing"
+            image={activeDj?.djImageUrl || "/RequestLogoDark.png"}
             insta={
-              currentDj?.djInsta
-                ? `https://www.instagram.com/${currentDj.djInsta}`
-                : ""
+              activeDj?.djInsta
+                ? `https://www.instagram.com/${activeDj.djInsta}`
+                : currentDj?.djInsta
+                  ? `https://www.instagram.com/${currentDj.djInsta}`
+                  : ""
             }
           />
           

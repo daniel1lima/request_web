@@ -13,6 +13,7 @@ const Event = sequelize.define('Event', {
   eventLocation: { type: DataTypes.STRING, allowNull: false },
   requestFee: { type: DataTypes.FLOAT, allowNull: false },
   djId: { type: DataTypes.STRING, allowNull: false }, 
+  currentDjId: { type: DataTypes.STRING, allowNull: true }, // Add this field for the active DJ
   acceptRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: true }, 
   acceptFreeRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: false }, 
   acceptEmailRequests: { type: DataTypes.BOOLEAN, allowNull: true, defaultValue: false }, 
