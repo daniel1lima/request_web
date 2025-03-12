@@ -237,18 +237,22 @@ const Index = () => {
 
   // Fetch events when component mounts
   useEffect(() => {
-    // Only fetch events if the events array is empty
-    if (!events || events.length === 0) {
-      fetchEvents();
-    }
+    // Track if we've already attempted to fetch events
+    const controller = new AbortController();
+    
+    // Only fetch events once on initial mount
+    fetchEvents();
 
     // Simulate images loaded after a delay (replace with actual image loading logic)
     const timer = setTimeout(() => {
       setImagesLoaded(true);
     }, 2000);
 
-    return () => clearTimeout(timer);
-  }, [fetchEvents, events, setImagesLoaded]);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [fetchEvents]);
 
   const uploadFile = async () => {
     try {
