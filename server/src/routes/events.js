@@ -73,7 +73,7 @@ router.get('/getById', async (req, res) => {
             where: { eventId },
             include: [{ 
                 model: DJ,
-                attributes: ['djName', 'djEmail', 'djPhone', 'djInsta']
+                attributes: ['djName', 'djEmail', 'djPhone', 'djInsta', 'djImageUrl', 'djId']
             }]
         });
 

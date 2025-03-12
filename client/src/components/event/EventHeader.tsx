@@ -4,14 +4,12 @@ import React from "react";
 import { Button } from "../button";
 import { ChevronLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import DJProfile from "./DJprofile";
 import DJ from "../../app/event/page";
 
 interface EventHeaderProps {
   time?: string;
   title?: string;
   imageUrl: string;
-  djData: DJ;
 }
 
 export interface DJ {
@@ -29,7 +27,6 @@ const isValidImageUrl = (url: string) => {
 const EventHeader: React.FC<EventHeaderProps> = ({
   title = "Event Details",
   imageUrl = "",
-  djData,
 }) => {
   const fallbackImageUrl = "/fallback.webp";
   const router = useRouter();
