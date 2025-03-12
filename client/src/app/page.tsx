@@ -75,7 +75,7 @@ const ExploreView = ({
             See All
           </button>
         </div>
-        <div className="mt-4 p-4 pb-4 bg-white bg-opacity-5 rounded-lg shadow-md h-48 overflow-hidden whitespace-nowrap ">
+        <div className="mt-4 p-4 pb-4 bg-white bg-opacity-5 rounded-lg shadow-md h-48 overflow-x-auto overflow-y-hidden whitespace-nowrap ">
           <div className="flex gap-4">
             {filteredEvents.length > 0 ? (
               filteredEvents.map((event) => (

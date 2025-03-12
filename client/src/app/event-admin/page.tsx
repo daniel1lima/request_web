@@ -979,7 +979,15 @@ const EventAdminPage = () => {
             {/* Title content */}
             <div>
               <div className="flex flex-row gap-5 items-center">
-                <h1 className="text-6xl font-bold text-white mb-2">
+                <h1
+                  className={`font-bold text-white mb-2  ${
+                    settings.eventName?.length > 20
+                      ? "text-3xl"
+                      : settings.eventName?.length > 10 
+                        ? "text-6xl"
+                        : "text-7xl"
+                  }`}
+                >
                   {settings.eventName}
                 </h1>
                 {/* Add connection status indicator */}
