@@ -935,7 +935,7 @@ const EventAdminPage = () => {
         <label className="text-lg font-medium text-center mb-4">Fee</label>
       </div>
 
-      <div className="flex flex-col mb-4 gap-5 items-center">
+      <div className="flex flex-col  gap-2 items-center">
         <Slider
           value={sliderValue}
           min={99}
@@ -958,7 +958,7 @@ const EventAdminPage = () => {
             {!selectedFile && (
               <label
                 htmlFor="dropzone-file"
-                className="flex flex-col items-center justify-center w-full h-64 border-2 border-gray-300  rounded-lg cursor-pointer bg-gray-50  dark:bg-gray-700 hover:bg-gray-300 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600"
+                className="flex flex-col items-center justify-center w-full h-25 border-2 border-gray-300  rounded-lg cursor-pointer bg-gray-50  dark:bg-gray-700 hover:bg-gray-300 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600"
                 onDragOver={handleDragOver} // Add drag over event
                 onDrop={handleDrop} // Add drop event
               >
@@ -1460,7 +1460,7 @@ function SettingsDialog(
           Settings
         </Button>
       </DialogTrigger>
-      <DialogContent className=" w-[500px] z-50">
+      <DialogContent className=" w-[500px] h-[90%] z-50">
         <DialogHeader>
           <DialogTitle className="text-center text-3xl">
             Event Settings
