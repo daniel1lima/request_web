@@ -31,7 +31,6 @@ router.get('/getById', async (req, res) => {
         const dj = await DJ.findByPk(djId, {
             include: [
                 { model: Event },
-                { model: Payment }
             ]
         });
         
@@ -51,7 +50,7 @@ router.get('/getById', async (req, res) => {
 // Create new DJ
 router.post('/create', ClerkExpressRequireAuth(), async (req, res) => {
     try {
-        const { djId, djName, djEmail, djPhone, djInsta } = req.body;
+        const { djId, djName, djEmail, djPhone, djInsta, djImageUrl = "" } = req.body;
 
         // Validate required fields
         if (!djName || !djEmail) {
@@ -65,7 +64,8 @@ router.post('/create', ClerkExpressRequireAuth(), async (req, res) => {
             djName,
             djEmail,
             djPhone,
-            djInsta
+            djInsta,
+            djImageUrl
         });
 
         res.status(201).json(newDJ);

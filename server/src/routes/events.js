@@ -237,4 +237,185 @@ router.get('/getUpcoming', async (req, res) => {
     }
 });
 
+
+
+// DJ MANAGEMENT
+
+// Add a DJ to an event (many-to-many relationship)
+router.put('/:eventId/add-dj', ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { djId } = req.body;
+    
+    if (!eventId || !djId) {
+      return res.status(400).json({ 
+        error: 'Missing required parameters',
+        details: 'eventId and djId are required'
+      });
+    }
+    
+    // Find the event and DJ
+    const event = await Event.findByPk(eventId);
+    const dj = await DJ.findByPk(djId);
+    
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    if (!dj) {
+      return res.status(404).json({ error: 'DJ not found' });
+    }
+    
+    // Add the DJ to the event (assuming you have a EventDJs join table)
+    await event.addDJ(dj);
+    
+    res.json({ message: 'DJ added to event successfully' });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to add DJ to event',
+      details: error.message 
+    });
+  }
+});
+
+// Get all DJs for an event
+router.get('/:eventId/djs', async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    
+    if (!eventId) {
+      return res.status(400).json({ 
+        error: 'Missing event ID',
+        details: 'eventId parameter is required'
+      });
+    }
+    
+    // Find the event with its associated DJs
+    const event = await Event.findByPk(eventId, {
+      include: [{ 
+        model: DJ,
+        through: { attributes: [] } // This excludes the join table attributes
+      }]
+    });
+    
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    // Return the DJs associated with the event
+    res.json(event.DJs || []);
+  } catch (error) {
+    console.error('Error fetching event DJs:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch event DJs',
+      details: error.message 
+    });
+  }
+});
+
+// Remove a DJ from an event
+router.delete('/:eventId/djs/:djId', ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    const { eventId, djId } = req.params;
+    const { checkForDelete } = req.query;
+    
+    if (!eventId || !djId) {
+      return res.status(400).json({ 
+        error: 'Missing required parameters',
+        details: 'eventId and djId are required'
+      });
+    }
+    
+    // Find the event and DJ
+    const event = await Event.findByPk(eventId);
+    const dj = await DJ.findByPk(djId);
+    
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    if (!dj) {
+      return res.status(404).json({ error: 'DJ not found' });
+    }
+    
+    // Check if this is the main DJ
+    if (event.djId === djId) {
+      return res.status(400).json({ 
+        error: 'Cannot remove main DJ',
+        details: 'The main DJ cannot be removed from the event'
+      });
+    }
+    
+    // Remove the DJ from the event
+    await event.removeDJ(dj);
+
+    if (checkForDelete) {
+      await DJ.destroy({ where: { djId } });
+    }
+    
+    res.json({ message: 'DJ removed from event successfully' });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to remove DJ from event',
+      details: error.message 
+    });
+  }
+});
+
+// Set the active DJ for an event
+router.put('/:eventId/active-dj', ClerkExpressRequireAuth(), async (req, res) => {
+  try {
+    const { eventId } = req.params;
+    const { djId } = req.body;
+    
+    if (!eventId || !djId) {
+      return res.status(400).json({ 
+        error: 'Missing required parameters',
+        details: 'eventId and djId are required'
+      });
+    }
+    
+    // Find the event
+    const event = await Event.findByPk(eventId);
+    
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found' });
+    }
+    
+    // Find the DJ
+    const dj = await DJ.findByPk(djId);
+    
+    if (!dj) {
+      return res.status(404).json({ error: 'DJ not found' });
+    }
+    
+    // Check if the DJ is associated with this event
+    const isDJAssociated = await event.hasDJ(dj);
+    
+    if (!isDJAssociated && event.djId !== djId) {
+      return res.status(400).json({ 
+        error: 'DJ not associated with event',
+        details: 'The DJ must be associated with the event to be set as active'
+      });
+    }
+    
+    // Update the event with the new active DJ
+    await event.update({ currentDjId: djId });
+    
+    res.json({ 
+      message: 'Active DJ updated successfully',
+      event: {
+        eventId: event.eventId,
+        currentDjId: event.currentDjId
+      }
+    });
+  } catch (error) {
+    console.error('Error setting active DJ:', error);
+    res.status(500).json({ 
+      error: 'Failed to set active DJ',
+      details: error.message 
+    });
+  }
+});
+
 module.exports = router;

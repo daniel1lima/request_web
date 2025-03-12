@@ -1,10 +1,10 @@
 "use client";
 import type React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import DJProfile from "@/components/event/DJprofile";
-import SongCard from "@/components/event/SongCard";
+
 import { FaCheck, FaPencilRuler, FaTimes, FaTrash } from "react-icons/fa";
-import { Loader2 } from "lucide-react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { useAuth, useUser } from "@clerk/nextjs";
 
@@ -42,12 +42,20 @@ import { notFound, redirect } from "next/navigation";
 import useEventStore from "@/store/eventStore";
 import useRequestStore from "@/store/requestStore";
 import useAdminStore from "@/store/adminStore";
-import useDjStore from "@/store/djStore";
 import { useRouter } from "next/navigation";
 import WebSocketService from "@/services/websocketService";
 import AcceptedSongsColumn from "@/components/event/AcceptedSongsColumn";
 import NewRequestsColumn from "@/components/event/NewRequestsColumn";
 import EventStats from "@/components/event/EventStats";
+import {
+  createDJ,
+  addDJToEvent,
+  getEventDJs,
+  setEventActiveDJ,
+  removeDJFromEvent,
+} from "@/api/apiService";
+import { motion } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 
 export interface Request {
   requestId: string;
@@ -124,6 +132,12 @@ const FormSchema = z.object({
   }),
 });
 
+// Add this schema definition near your other schemas
+const DJFormSchema = z.object({
+  djName: z.string().min(1, { message: "DJ name is required" }),
+  djInsta: z.string().optional(),
+});
+
 const EventAdminPage = () => {
   const { user } = useUser();
   const { toast } = useToast();
@@ -138,7 +152,7 @@ const EventAdminPage = () => {
     setRequests,
     connectToEventSocket,
     disconnectFromEventSocket,
-    wsConnected
+    wsConnected,
   } = useRequestStore();
   const { currentEvent, fetchEvent } = useEventStore();
   const {
@@ -166,9 +180,6 @@ const EventAdminPage = () => {
     uploadFile,
   } = useAdminStore();
 
-  // Get data from djStore
-  const { fetchDj: fetchDjFromStore, currentDj } = useDjStore();
-
   // Local state
   const [isMobile, setIsMobile] = useState(false);
   const [noRequests, setNoRequests] = useState(false);
@@ -176,9 +187,29 @@ const EventAdminPage = () => {
   // Add a connection indicator state
   const [socketConnected, setSocketConnected] = useState(false);
 
-  const [mounting, setMounting] = useState(true);
-  
+  // Add state for available DJs
+  const [availableDJs, setAvailableDJs] = useState<DJ[]>([]);
+  // const [isChangingDJ, setIsChangingDJ] = useState(false);
 
+  const [mounting, setMounting] = useState(true);
+
+  // Add these state variables near the top with your other state declarations
+  const [isCreatingDJ, setIsCreatingDJ] = useState(false);
+  // const [newDjName, setNewDjName] = useState("");
+  // const [newDjInsta, setNewDjInsta] = useState("");
+
+  // Add a state to track all DJs associated with this event
+  const [eventDJs, setEventDJs] = useState<DJ[]>([]);
+
+  // Add a new state to track the currently active DJ ID
+  const [activeDjId, setActiveDjId] = useState<string | null>(null);
+
+  // Add state for DJ image file
+  const [djImageFile, setDjImageFile] = useState<File | null>(null);
+  const [djImagePreview, setDjImagePreview] = useState<string | null>(null);
+
+  // Add a local state for active DJ
+  const [activeDj, setActiveDj] = useState<DJ | null>(null);
 
   // Form setup
   const form = useForm<z.infer<typeof FormSchema>>({
@@ -188,7 +219,14 @@ const EventAdminPage = () => {
     },
   });
 
-  
+  // Inside your component, add this form setup
+  const djForm = useForm<z.infer<typeof DJFormSchema>>({
+    resolver: zodResolver(DJFormSchema),
+    defaultValues: {
+      djName: "",
+      djInsta: "",
+    },
+  });
 
   // Settings handlers
   const handleSliderChange = (value: number[]) => {
@@ -268,16 +306,15 @@ const EventAdminPage = () => {
   };
 
   // Request management functions
-  
-  
+
   const handlePlayedRequest = async (requestId: string) => {
     try {
       // Set loading state for this specific request
       setLoadingState(requestId, true);
-      
+
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
-      
+
       // Find the request to update
       const requestToPlay = songRequests.find(
         (req) => req.requestId === requestId
@@ -328,8 +365,6 @@ const EventAdminPage = () => {
     console.log("loading", loading);
   }, [loading]);
 
-
-
   const handleAcceptRequest = async (requestId: string) => {
     try {
       // Set loading state for this specific request
@@ -378,26 +413,21 @@ const EventAdminPage = () => {
   };
 
   const handleDeclineRequest = async (requestId: string) => {
-
     setLoadingState(requestId, true);
 
     const accesstoken = await getToken();
-      if (!accesstoken) throw new Error("Authentication token is missing.");
-
+    if (!accesstoken) throw new Error("Authentication token is missing.");
 
     // Find the request to decline
     const requestToDecline = songRequests.find(
       (req) => req.requestId === requestId
     );
 
-
     if (!requestToDecline?.paymentId) return;
 
     // Optimistic UI update - immediately remove the request from the displayed list
     const optimisticRequests = songRequests.map((req) =>
-      req.requestId === requestId
-        ? { ...req, status: "declined" }
-        : req
+      req.requestId === requestId ? { ...req, status: "declined" } : req
     );
 
     // Update the request store with our optimistic data
@@ -425,8 +455,7 @@ const EventAdminPage = () => {
         duration: 2000,
       });
     }
-  }
-  
+  };
 
   // Event management functions
   const deleteEventHandler = async () => {
@@ -580,32 +609,18 @@ const EventAdminPage = () => {
 
     localStorage.setItem("eventId", eventId);
     setMounting(true);
-    
+
     const fetchInitialData = async () => {
       try {
-        // First check if the event is already in the store
-        const { currentEvent } = useEventStore.getState();
-
-        // Only fetch the event if it's not in the store or if it's a different event
-        if (!currentEvent || currentEvent.eventId !== eventId) {
-          await fetchEvent(eventId);
-          // Get the updated event from the store
-          const { currentEvent: updatedEvent } = useEventStore.getState();
-          if (!updatedEvent) {
-            window.location.href = "/404";
-            return;
-          }
-        }
-
-        // At this point, we should have the event in the store
+        // Fetch event data
+        await fetchEvent(eventId);
         const { currentEvent: storeEvent } = useEventStore.getState();
         if (!storeEvent) {
           window.location.href = "/404";
           return;
         }
 
-        console.log("Event Data:", storeEvent);
-
+        // Set up settings
         setSettings({
           eventName: storeEvent.eventName,
           eventImage: storeEvent.eventImage,
@@ -614,70 +629,26 @@ const EventAdminPage = () => {
           freeRequests: storeEvent.acceptFreeRequests,
           freeEmailRequests: storeEvent.acceptEmailRequests,
         });
-
-        // Set the slider value based on the request fee
         setSliderValue([storeEvent.requestFee]);
 
         // Fetch requests for this event
         await fetchRequests(eventId, true);
 
-        // If the event has a DJ ID, fetch the DJ data
-        if (storeEvent.djId) {
-          // Check if we already have the DJ data in the store
-          const { currentDj } = useDjStore.getState();
+        // Fetch all DJs for this event - this will include the main DJ
+        await fetchEventDJs();
 
-          // Only fetch DJ data if it's not in the store or if it's a different DJ
-          if (!currentDj || currentDj.djId !== storeEvent.djId) {
-            await fetchDjFromStore(storeEvent.djId);
-          }
-
-          // Get the current DJ from the store
-          const { currentDj: storeDj } = useDjStore.getState();
-
-          // Check if the user is the DJ for this event
-          if (storeDj && user?.id === storeDj.djId) {
-            setIsAuthorized(true);
-            // Initial check for no requests - components will handle their own updates
-            const { requests } = useRequestStore.getState();
-            setNoRequests(requests.length === 0);
-          } else {
-            window.location.href = `/event?eventId=${eventId}`;
-          }
-          setMounting(false);
+        // Check if the user is authorized to view this page (they should be the DJ)
+        if (user?.id === storeEvent.djId) {
+          setIsAuthorized(true);
+          // Initial check for no requests
+          const { requests } = useRequestStore.getState();
+          setNoRequests(requests.length === 0);
         } else {
-          // Fallback to localStorage if needed
-          const storedDjId = localStorage.getItem("djId");
-          if (storedDjId) {
-            // Check if we already have the DJ data in the store
-            const { currentDj } = useDjStore.getState();
-
-            // Only fetch DJ data if it's not in the store or if it's a different DJ
-            if (!currentDj || currentDj.djId !== storedDjId) {
-              await fetchDjFromStore(storedDjId);
-            }
-
-            // Get the current DJ from the store
-            const { currentDj: storeDj } = useDjStore.getState();
-
-            console.log("User ID:", user?.id);
-            console.log("DJ ID:", storeDj?.djId);
-
-            if (storeDj && user?.id === storeDj.djId) {
-              setIsAuthorized(true);
-              // Initial check for no requests - components will handle their own updates
-              const { requests } = useRequestStore.getState();
-              setNoRequests(requests.length === 0);
-            } else {
-              window.location.href = `/event?eventId=${eventId}`;
-            }
-            setMounting(false);
-          } else {
-            // If we get here, there's no DJ ID to check against
-            console.log("No DJ ID found to check against");
-            setMounting(false);
-            window.location.href = `/event?eventId=${eventId}`;
-          }
+          // If not authorized, redirect to the event page
+          window.location.href = `/event?eventId=${eventId}`;
         }
+        
+        setMounting(false);
       } catch (error) {
         console.error("Error fetching data:", error);
         setMounting(false);
@@ -686,39 +657,263 @@ const EventAdminPage = () => {
     };
 
     fetchInitialData();
-  }, [
-    user,
-    fetchEvent,
-    fetchRequests,
-    fetchDjFromStore,
-    setMounting,
-    setIsAuthorized,
-  ]);
+  }, [user, fetchEvent, fetchRequests, setMounting, setIsAuthorized]);
 
   // Add effect to connect to WebSocket
   useEffect(() => {
-    if (!isAuthorized ) return;
-    
+    if (!isAuthorized) return;
+
     const eventId = localStorage.getItem("eventId");
     if (!eventId) return;
-    
+
     // Connect to WebSocket for real-time updates
     connectToEventSocket(eventId);
     setSocketConnected(true);
-    
+
     // Check connection status periodically
     const intervalId = setInterval(() => {
       const wsService = WebSocketService.getInstance();
       setSocketConnected(wsService.isConnected());
     }, 5000);
-    
+
     // Cleanup function
     return () => {
       clearInterval(intervalId);
       disconnectFromEventSocket();
     };
-  }, [isAuthorized,connectToEventSocket, disconnectFromEventSocket]);
+  }, [isAuthorized, connectToEventSocket, disconnectFromEventSocket]);
 
+  // Function to fetch DJs for this event
+  const fetchEventDJs = async () => {
+    try {
+      const eventId = localStorage.getItem("eventId");
+      if (!eventId) return;
+
+      const accesstoken = await getToken();
+      if (!accesstoken) throw new Error("Authentication token is missing.");
+
+      setLoadingState("fetchingDJs", true);
+
+      // Use the existing API function from apiService
+      const data = await getEventDJs(eventId, accesstoken);
+      setEventDJs(data);
+      
+      // If we have a currentEvent with currentDjId, find and set the active DJ
+      const { currentEvent } = useEventStore.getState();
+      if (currentEvent) {
+        const djIdToUse = currentEvent.currentDjId || currentEvent.djId;
+        if (djIdToUse) {
+          const foundDj = data.find((dj: DJ) => dj.djId === djIdToUse);
+          if (foundDj) {
+            setActiveDj(foundDj);
+            setActiveDjId(foundDj.djId);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching event DJs:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch DJs for this event",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingState("fetchingDJs", false);
+    }
+  };
+
+  // Add a handler for DJ image file selection
+  const handleDjImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    setDjImageFile(file);
+    if (file) {
+      const previewUrl = URL.createObjectURL(file);
+      setDjImagePreview(previewUrl);
+    }
+  };
+
+  // Update the handleCreateDJ function to include image upload
+  const handleCreateDJ = async (values: z.infer<typeof DJFormSchema>) => {
+    try {
+      setLoadingState("creatingDJ", true);
+
+      const accesstoken = await getToken();
+      if (!accesstoken) throw new Error("Authentication token is missing.");
+
+      const eventId = localStorage.getItem("eventId");
+      if (!eventId) return;
+
+      // Generate a unique ID for the new DJ
+      const newDjId = `dj_${Date.now()}`;
+
+      // Upload the DJ image if one was selected
+      let djImageUrl = "";
+      if (djImageFile) {
+        try {
+          const uploadResult = await uploadFile(djImageFile);
+          djImageUrl = uploadResult || ""; // Ensure we always have a string
+        } catch (error) {
+          console.error("Error uploading DJ image:", error);
+          toast({
+            title: "Image Upload Failed",
+            description:
+              "Failed to upload DJ image, but will continue creating DJ",
+            variant: "destructive",
+          });
+        }
+      }
+
+      // Use the existing API function from apiService
+      await createDJ(
+        {
+          djId: newDjId,
+          djName: values.djName,
+          djEmail:
+            user?.primaryEmailAddress?.emailAddress || "",
+          djInsta: values.djInsta || "",
+          djImageUrl, // Add the image URL directly without the property name
+        },
+        accesstoken
+      );
+
+      // Add the DJ to the event using the existing API function
+      await addDJToEvent(eventId, newDjId, accesstoken);
+
+      // Reset form and state
+      djForm.reset();
+      setDjImageFile(null);
+      setDjImagePreview(null);
+      setIsCreatingDJ(false);
+
+      // Refresh the DJ list
+      await fetchEventDJs();
+
+      toast({
+        title: "DJ Created",
+        description: `${values.djName} has been added to the event`,
+        duration: 2000,
+      });
+    } catch (error) {
+      console.error("Error creating DJ:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create DJ",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingState("creatingDJ", false);
+    }
+  };
+
+  // Add this to your useEffect that initializes loading states or wherever appropriate
+  useEffect(() => {
+    // Make sure creatingDJ is included in loadingStates
+    if (!("creatingDJ" in loadingStates)) {
+      setLoadingState("creatingDJ", false);
+    }
+  }, [loadingStates, setLoadingState]);
+
+  // Add effect to set the initial active DJ when the component mounts
+  
+
+  // Add effect to fetch event DJs when the component mounts
+  useEffect(() => {
+    if (isAuthorized) {
+      fetchEventDJs();
+    }
+  }, [isAuthorized]);
+
+  // Update the setActiveDj function to use the store
+  const handleSetActiveDj = async (djId: string) => {
+    try {
+      const eventId = localStorage.getItem("eventId");
+      if (!eventId) return;
+
+      const accesstoken = await getToken();
+      if (!accesstoken) throw new Error("Authentication token is missing.");
+
+      setLoadingState("changingDJ", true);
+      
+      // Call the API to set the active DJ
+      await setEventActiveDJ(eventId, djId, accesstoken);
+      
+      // Find the DJ in the eventDJs array
+      const selectedDj = eventDJs.find(dj => dj.djId === djId);
+      
+      // Update the local state with the selected DJ
+      if (selectedDj) {
+        setActiveDj(selectedDj);
+        setActiveDjId(djId);
+      }
+      
+      toast({
+        title: "DJ Updated",
+        description: "The active DJ has been updated",
+        duration: 2000,
+      });
+      
+      // Refresh event data to get the updated event info
+      await fetchEvent(eventId);
+    } catch (error) {
+      console.error("Error setting active DJ:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update the active DJ",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingState("changingDJ", false);
+    }
+  };
+
+  // Update the handleDeleteDj function
+  const handleDeleteDj = async (djId: string) => {
+    try {
+      if (djId === activeDjId) {
+        toast({
+          title: "Cannot Delete Active DJ",
+          description: "Please select another DJ as active before deleting this one.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      if (djId === currentEvent?.djId) {
+        toast({
+          title: "Cannot Delete Main DJ",
+          description: "The main DJ for this event cannot be removed.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const eventId = localStorage.getItem("eventId");
+      if (!eventId) return;
+
+      const accesstoken = await getToken();
+      if (!accesstoken) throw new Error("Authentication token is missing.");
+
+      setLoadingState("deletingDJ", true);
+
+      // First, remove the DJ from the event using the existing endpoint
+      await removeDJFromEvent(eventId, djId, accesstoken);
+
+      // Update local state
+      setEventDJs(prev => prev.filter(dj => dj.djId !== djId));
+
+      // Refresh event data
+      await fetchEventDJs();
+    } catch (error) {
+      console.error("Error removing DJ:", error);
+      toast({
+        title: "Error",
+        description: "Failed to remove the DJ",
+        variant: "destructive",
+      });
+    } finally {
+      setLoadingState("deletingDJ", false);
+    }
+  };
 
   if (mounting) return <Loader />;
 
@@ -923,10 +1118,14 @@ const EventAdminPage = () => {
 
   // You can add a connection indicator in your UI
   const ConnectionStatus = () => (
-    <div className={`px-2 py-1 rounded-full flex items-center ${socketConnected ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
-      <div className={`w-2 h-2 rounded-full mr-2 ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+    <div
+      className={`px-2 py-1 rounded-full flex items-center ${socketConnected ? "bg-green-500/20" : "bg-red-500/20"}`}
+    >
+      <div
+        className={`w-2 h-2 rounded-full mr-2 ${socketConnected ? "bg-green-500" : "bg-red-500"}`}
+      ></div>
       <span className="text-xs font-medium">
-        {socketConnected ? 'Live' : 'Offline'}
+        {socketConnected ? "Live" : "Offline"}
       </span>
     </div>
   );
@@ -978,19 +1177,239 @@ const EventAdminPage = () => {
             </div>
 
             {/* DJ Profile moved to header with transparent grey card, aligned to the absolute right */}
-            <div className="absolute right-20 bg-opacity-90 rounded-lg flex items-center justify-center pr-8 bg-black/40 backdrop-blur-sm  px-4 py-2 transform-origin-right">
-              <DJProfile
-                name={currentDj?.djName || "DJ Zo"}
-                role="Main Event DJ"
-                image={currentDj?.djImageUrl || ""}
-                insta={
-                  currentDj?.djInsta
-                    ? isMobile
-                      ? `https://www.instagram.com/${currentDj.djInsta}`
-                      : `https://www.instagram.com/${currentDj.djInsta}`
-                    : ""
-                }
-              />
+            <div className="absolute right-20 bg-opacity-90 rounded-lg flex items-center justify-center  bg-black/40 backdrop-blur-sm px-4 py-2 transform-origin-right">
+              <div className="cursor-pointer hover:opacity-80 transition-opacity">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <div className="flex items-center gap-3">
+                      <DJProfile
+                        name={activeDj?.djName || "DJ Zo"}
+                        role="Currently Playing"
+                        image={
+                          activeDj?.djImageUrl || "/RequestLogoDark.png"
+                        }
+                        insta={
+                          activeDj?.djInsta
+                            ? isMobile
+                              ? `https://www.instagram.com/${activeDj.djInsta}`
+                              : `https://www.instagram.com/${activeDj.djInsta}`
+                            : ""
+                        }
+                      />
+                      <ChevronDown className="text-white h-5 w-5" />
+                    </div>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[300px] max-w-[300px] max-h-[400px] overflow-y-auto bg-black/50 border-black/40"
+                    align="center"
+                    sideOffset={10}
+                  >
+                    <div className="p-4">
+                      {isCreatingDJ ? (
+                        <AnimatePresence mode="wait">
+                          <motion.div
+                            className="mb-4 p-3 bg-gray-800/50 rounded-md"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            transition={{ duration: 0.1 }}
+                          >
+                            <h4 className="text-white text-sm mb-2">
+                              Add New DJ
+                            </h4>
+                            <Form {...djForm}>
+                              <form
+                                onSubmit={djForm.handleSubmit(handleCreateDJ)}
+                                className="space-y-3"
+                              >
+                                <FormField
+                                  control={djForm.control}
+                                  name="djName"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="DJ Name"
+                                          className="bg-gray-700 border-gray-600"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <FormField
+                                  control={djForm.control}
+                                  name="djInsta"
+                                  render={({ field }) => (
+                                    <FormItem>
+                                      <FormControl>
+                                        <Input
+                                          placeholder="Instagram Handle (optional)"
+                                          className="bg-gray-700 border-gray-600"
+                                          {...field}
+                                        />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+
+                                {/* DJ Image Upload */}
+                                <div className="space-y-2">
+                                  <label className="text-sm text-gray-300">
+                                    DJ Image (optional)
+                                  </label>
+                                  <div className="flex items-center space-x-3">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="bg-gray-700 border-gray-600 text-white hover:bg-gray-600"
+                                      onClick={() =>
+                                        document
+                                          .getElementById("dj-image-upload")
+                                          ?.click()
+                                      }
+                                    >
+                                      Select Image
+                                    </Button>
+                                    <input
+                                      id="dj-image-upload"
+                                      type="file"
+                                      className="hidden"
+                                      accept="image/png, image/jpeg, image/gif, image/svg+xml"
+                                      onChange={handleDjImageChange}
+                                    />
+                                  </div>
+
+                                  {/* Image Preview */}
+                                  {djImagePreview && (
+                                    <div className="mt-2">
+                                      <img
+                                        loading="lazy"
+                                        srcSet={djImagePreview}
+                                        className="aspect-[1.02] object-cover w-[45px] h-[45px] shrink-0 rounded-full overflow-hidden"
+                                        alt={djImagePreview}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="submit"
+                                    disabled={loadingStates.creatingDJ}
+                                    className="bg-[rgba(86,105,255,1)] hover:bg-[rgba(86,105,255,0.8)] text-white flex-1"
+                                  >
+                                    {loadingStates.creatingDJ ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      "Create"
+                                    )}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    onClick={() => {
+                                      setIsCreatingDJ(false);
+                                      setDjImageFile(null);
+                                      setDjImagePreview(null);
+                                      djForm.reset();
+                                    }}
+                                    variant="outline"
+                                    className="flex-1"
+                                  >
+                                    Cancel
+                                  </Button>
+                                </div>
+                              </form>
+                            </Form>
+                          </motion.div>
+                        </AnimatePresence>
+                      ) : loadingStates.fetchingDJs ? (
+                        <div className="flex justify-center py-4">
+                          <Loader2 className="h-6 w-6 animate-spin text-white" />
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          {eventDJs.length > 0 ? (
+                            // Filter out the currently active DJ from the list
+                            eventDJs
+                              .filter((dj) => dj.djId !== activeDjId)
+                              .map((dj) => (
+                                <div
+                                  key={dj.djId}
+                                  className="flex items-center gap-3 p-2 mb-2 rounded-md cursor-pointer transition-colors hover:bg-gray-800/50"
+                                >
+                                  {/* Simple DJ display component */}
+                                  <div 
+                                    className="flex items-center gap-3 w-full"
+                                    onClick={() => handleSetActiveDj(dj.djId)}
+                                  >
+                                    <div className="relative h-12 w-12 rounded-full overflow-hidden flex-shrink-0">
+                                      <img
+                                        loading="lazy"
+                                        srcSet={dj.djImageUrl || "/RequestLogoDark.png"}
+                                        className="aspect-[1.02] object-cover w-[45px] h-[45px] shrink-0 rounded-full overflow-hidden"
+                                        alt={dj.djName}
+                                      />
+                                    </div>
+                                    <div className="flex-1">
+                                      <p className="text-white font-medium">
+                                        {dj.djName}
+                                      </p>
+                                      {dj.djId === currentEvent?.djId && (
+                                        <p className="text-slate-500 font-light text-xs">
+                                          Main DJ
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  {/* Delete DJ button */}
+                                  <div
+                                    onClick={(e) => {
+                                      handleDeleteDj(dj.djId);
+                                    }}
+                                    className="h-6 w-8 flex items-center justify-center rounded-full bg-red-500/20 hover:bg-red-500/50 transition-colors cursor-pointer"
+                                  >
+                                    <FaTimes className="text-red-500 text-xs" />
+                                  </div>
+                                </div>
+                              ))
+
+                              
+                          ) : (
+                            <p className="text-center text-gray-400 py-2">
+                              No DJs added to this event yet
+                            </p>
+                          )}
+
+                          {/* Show a message if all DJs are filtered out */}
+                          {eventDJs.length > 0 &&
+                            eventDJs.filter((dj) => dj.djId !== activeDjId)
+                              .length === 0 && (
+                              <p className="text-center text-gray-400 py-2">
+                                No other DJs available
+                              </p>
+                            )}
+                            
+                          {/* Add Create DJ button - using div instead of Button */}
+                          {!isCreatingDJ && (
+                            <div className="flex justify-center mt-3 pt-2 border-t border-gray-700">
+                              <div
+                                onClick={() => setIsCreatingDJ(true)}
+                                className="bg-[#1a1c31] hover:bg-[rgba(86,105,255,0.8)] h-8 w-8 p-0 rounded-full flex items-center justify-center cursor-pointer transition-colors"
+                              >
+                                <FaTimes className="text-white transform rotate-45" />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </div>
             </div>
           </div>
         </div>

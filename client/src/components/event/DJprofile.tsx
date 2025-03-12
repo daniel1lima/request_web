@@ -6,12 +6,13 @@ interface DJProfileProps {
   name: string;
   role: string;
   image: string;
-  insta: string
+  insta: string;
+  disableInsta?: boolean;
 }
 
-const DJProfile: React.FC<DJProfileProps> = ({ name, role, image, insta }) => {
+const DJProfile: React.FC<DJProfileProps> = ({ name, role, image, insta, disableInsta = false }) => {
   return (
-    <div className="flex w-full max-w-[331px]  gap-5 font-light items-center justify-center pt-2">
+    <div className="flex w-full max-w-[300px]  gap-5 font-light items-center justify-center pt-2">
       <div className="flex items-stretch gap-[20px]">
         <img
           loading="lazy"
@@ -27,11 +28,13 @@ const DJProfile: React.FC<DJProfileProps> = ({ name, role, image, insta }) => {
             {role}
           </div>
         </div>
-        <div className="flex flex-row gap-3">
-        <Button variant={"default"} className="bg-[rgba(86,105,255,1)] hover:bg-[rgba(86,105,255,1)] shadow-[0px_8px_20px_rgba(74,210,228,0.082)] text-xs text-white whitespace-nowrap hover:outline text-center my-auto px-3 py-[7px] rounded-[7px]" onClick={() => {window.open(insta, 'instagram.com')}}>
-          <FaInstagram />
-        </Button>
-      </div>
+        {insta && !disableInsta && (
+          <div className="flex flex-row gap-3">
+            <Button variant={"default"} className="bg-[rgba(86,105,255,1)] hover:bg-[rgba(86,105,255,1)] shadow-[0px_8px_20px_rgba(74,210,228,0.082)] text-xs text-white whitespace-nowrap hover:outline text-center my-auto px-3 py-[7px] rounded-[7px]" onClick={() => {window.open(insta, 'instagram.com')}}>
+              <FaInstagram />
+            </Button>
+          </div>
+        )}
       </div>
 
     </div>

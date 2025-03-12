@@ -31,25 +31,10 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast, useToast } from "@/hooks/use-toast";
-import useEventStore from "../store/eventStore";
+import useEventStore, { Event } from "../store/eventStore";
 import useUIStore from "../store/uiStore";
 import {uploadFileApi } from "../api/apiService";
 import Loader from "@/components/loader";
-
-export interface Event {
-  eventId: string;
-  eventName: string;
-  eventImage: string;
-  eventDateTime: string;
-  eventLocation: string;
-  requestFee: number;
-  djId: string;
-  createdAt: string;
-  updatedAt: string;
-  acceptRequests: boolean;
-  acceptFreeRequests: boolean;
-  acceptEmailRequests: boolean;
-}
 
 const createFuseInstance = (events: Event[]) => {
   return new Fuse(events, {

@@ -4,13 +4,22 @@ const Event = require('./Event');
 const Request = require('./Request');
 const Payment = require('./Payment');
 
-// DJ-Event (One-to-Many)
-DJ.hasMany(Event, { 
-    foreignKey: 'djId',
-    onDelete: 'CASCADE',
-    onUpdate: 'CASCADE'
+// Define the many-to-many relationship between Event and DJ with explicit foreign keys
+Event.belongsToMany(DJ, { 
+  through: 'EventDJs',
+  foreignKey: 'eventId',  // This is the name of the column in EventDJs that references Event
+  otherKey: 'djId'        // This is the name of the column in EventDJs that references DJ
 });
-Event.belongsTo(DJ, { foreignKey: 'djId' });
+
+DJ.belongsToMany(Event, { 
+  through: 'EventDJs',
+  foreignKey: 'djId',     // This is the name of the column in EventDJs that references DJ
+  otherKey: 'eventId'     // This is the name of the column in EventDJs that references Event
+});
+
+// One-to-many relationship for the main DJ
+Event.belongsTo(DJ, { foreignKey: 'djId', as: 'MainDJ' });
+DJ.hasMany(Event, { foreignKey: 'djId', as: 'OwnedEvents' });
 
 // DJ-Payment (One-to-Many)
 DJ.hasMany(Payment, { 
