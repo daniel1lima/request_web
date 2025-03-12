@@ -42,20 +42,6 @@ export interface Request {
   };
 }
 
-// export interface Event {
-//   eventId: string;
-//   eventName: string;
-//   eventImage: string;
-//   eventDateTime: string;
-//   eventLocation: string;
-//   acceptRequests: string;
-//   acceptFreeRequests: string;
-//   requestFee: number;
-//   djId: string;
-//   currentDjId?: string;
-//   createdAt: string;
-//   updatedAt: string;
-// }
 
 // Event ownership disclaimer component
 const EventOwnershipDisclaimer = ({ djId }: { djId: string }) => {
@@ -88,15 +74,9 @@ const EventPage = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [socketConnected, setSocketConnected] = useState(false);
-
   const { user } = useUser();
-
   // Use the event store
   const { currentEvent, isLoading, fetchEvent } = useEventStore();
-
-  // Use the DJ store
-  const { currentDj, activeDj, fetchDj, fetchActiveDj } = useDjStore();
-
   const {
     fetchRequests,
     connectToEventSocket,
@@ -154,44 +134,17 @@ const EventPage = () => {
       // Get the updated state after potential fetch
       const currentEventFromStore = useEventStore.getState().currentEvent;
 
+      
+
       if (!currentEventFromStore) {
         router.push("/404");
         return;
       }
 
-      // Get DJ data using the DJ store
+      // Store the DJ ID from the event data
       const djId = currentEventFromStore.djId;
       localStorage.setItem("djId", djId);
 
-      // Get the current DJ from the store directly
-      const djStoreState = useDjStore.getState();
-
-      // Only fetch DJ if not in store or if it's a different DJ
-      if (!djStoreState.currentDj || djStoreState.currentDj.djId !== djId) {
-        await fetchDj(djId);
-      }
-
-      // Check if there's an active DJ (currentDjId)
-      if (currentEventFromStore.currentDjId) {
-        // If the active DJ is different from the main DJ, fetch that DJ's data
-        if (currentEventFromStore.currentDjId !== djId) {
-          await fetchActiveDj(currentEventFromStore.currentDjId);
-        } else {
-          // If the active DJ is the same as the main DJ, use the main DJ data
-          const { currentDj } = useDjStore.getState();
-          if (currentDj) {
-            useDjStore.getState().setActiveDj(currentDj);
-          }
-        }
-      } else {
-        // If no active DJ is set, use the main DJ
-        const { currentDj } = useDjStore.getState();
-        if (currentDj) {
-          useDjStore.getState().setActiveDj(currentDj);
-        }
-      }
-
-      // Always fetch requests when the page loads
       await fetchRequests(eventId);
 
       setRefreshing(false);
@@ -238,25 +191,34 @@ const EventPage = () => {
           <EventHeader
             title={currentEvent?.eventName || "Default Event Title"}
             imageUrl={currentEvent?.eventImage || ""}
-            djData={activeDj || currentDj || { djId: "", djName: "", djImageUrl: "" }}
           />
 
           <DJProfile
-            name={activeDj?.djName || currentDj?.djName || "DJ Zo"}
+            name={
+              currentEvent?.currentDjId 
+                ? currentEvent?.DJs.find(dj => dj.djId === currentEvent.currentDjId)?.djName || ""
+                : currentEvent?.DJs[0]?.djName || ""
+            }
             role="Currently Playing"
-            image={activeDj?.djImageUrl || "/RequestLogoDark.png"}
+            image={
+              currentEvent?.currentDjId
+                ? currentEvent?.DJs.find(dj => dj.djId === currentEvent.currentDjId)?.djImageUrl || "/RequestLogoDark.png"
+                : currentEvent?.DJs[0]?.djImageUrl || "/RequestLogoDark.png"
+            }
             insta={
-              activeDj?.djInsta
-                ? `https://www.instagram.com/${activeDj.djInsta}`
-                : currentDj?.djInsta
-                  ? `https://www.instagram.com/${currentDj.djInsta}`
+              currentEvent?.currentDjId
+                ? currentEvent?.DJs.find(dj => dj.djId === currentEvent.currentDjId)?.djInsta
+                  ? `https://www.instagram.com/${currentEvent.DJs.find(dj => dj.djId === currentEvent.currentDjId)?.djInsta}`
+                  : ""
+                : currentEvent?.DJs[0]?.djInsta
+                  ? `https://www.instagram.com/${currentEvent?.DJs[0].djInsta}`
                   : ""
             }
           />
           
           <div className="flex flex-col items-center w-full px-4 pb-20 mt-[-20] overflow-y-auto flex-1">
-            {currentDj?.djId && user?.id === currentDj.djId && (
-              <EventOwnershipDisclaimer djId={currentDj.djId} />
+            {currentEvent?.djId && user?.id === currentEvent?.djId && (
+              <EventOwnershipDisclaimer djId={currentEvent?.djId} />
             )}
             
             {/* Use the imported AcceptedSongQueue component */}

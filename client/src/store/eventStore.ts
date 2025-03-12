@@ -22,6 +22,12 @@ export interface Event {
   acceptEmailRequests?: boolean;
   createdAt: string;
   updatedAt: string;
+  DJs: {
+    djId: string;
+    djName: string;
+    djImageUrl: string;
+    djInsta?: string;
+  }[];
 }
 
 interface EventState {

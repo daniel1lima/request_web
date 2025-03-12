@@ -87,26 +87,6 @@ export interface DJ {
   djPhone: string;
   djInsta: string;
   djImageUrl: string;
-  createdAt: string;
-  updatedAt: string;
-  Events: Array<{
-    eventId: string;
-    eventName: string;
-    eventImage: string;
-    eventDateTime: string;
-    eventLocation: string;
-    requestFee: number;
-    djId: string;
-    createdAt: string;
-    updatedAt: string;
-  }>;
-  Payments: Array<{
-    paymentId: string;
-    amount: number;
-    paymentDate: string;
-    status: string;
-    djId: string;
-  }>;
 }
 
 const Loader = () => (
@@ -114,16 +94,6 @@ const Loader = () => (
     <Loader2 className="w-6 h-6 text-white animate-spin" />
   </div>
 );
-
-const validateResponseNoReturn = (response: any) => {
-  if ("ok" in response && !response.ok) {
-    throw new Error("Network response was not ok");
-  }
-  if ("success" in response && !response.success) {
-    throw new Error("Request failed");
-  }
-  return;
-};
 
 // Define the schema for the form
 const FormSchema = z.object({
@@ -186,10 +156,6 @@ const EventAdminPage = () => {
 
   // Add a connection indicator state
   const [socketConnected, setSocketConnected] = useState(false);
-
-  // Add state for available DJs
-  const [availableDJs, setAvailableDJs] = useState<DJ[]>([]);
-  // const [isChangingDJ, setIsChangingDJ] = useState(false);
 
   const [mounting, setMounting] = useState(true);
 
@@ -307,155 +273,10 @@ const EventAdminPage = () => {
 
   // Request management functions
 
-  const handlePlayedRequest = async (requestId: string) => {
-    try {
-      // Set loading state for this specific request
-      setLoadingState(requestId, true);
-
-      const accesstoken = await getToken();
-      if (!accesstoken) throw new Error("Authentication token is missing.");
-
-      // Find the request to update
-      const requestToPlay = songRequests.find(
-        (req) => req.requestId === requestId
-      );
-      if (!requestToPlay) return;
-
-      // Optimistic UI update - immediately update the request status
-      const optimisticRequests = songRequests.map((req) =>
-        req.requestId === requestId
-          ? { ...req, played: true, status: "played" }
-          : req
-      );
-
-      // Update the request store with our optimistic data
-      setRequests(optimisticRequests);
-
-      // Now make the actual API call
-      const success = await playedRequest(requestId, accesstoken, songRequests);
-
-      // Clear loading state regardless of outcome
-      setLoadingState(requestId, false);
-
-      toast({
-        title: "Success",
-        description: "The request was marked as played",
-        variant: "default",
-        duration: 2000,
-      });
-
-      if (!success) {
-        throw new Error("Failed to mark request as played");
-      }
-    } catch (error) {
-      // Clear loading state in case of error
-      setLoadingState(requestId, false);
-
-      console.error("Error processing payment:", error);
-      toast({
-        title: "Error",
-        description: "Failed to mark request as played",
-        variant: "destructive",
-        duration: 2000,
-      });
-    }
-  };
 
   useEffect(() => {
     console.log("loading", loading);
   }, [loading]);
-
-  const handleAcceptRequest = async (requestId: string) => {
-    try {
-      // Set loading state for this specific request
-      setLoadingState(requestId, true);
-
-      const accesstoken = await getToken();
-      if (!accesstoken) throw new Error("Authentication token is missing.");
-
-      // Find the request to update
-      const requestToAccept = songRequests.find(
-        (req) => req.requestId === requestId
-      );
-
-      if (!requestToAccept) return;
-
-      // Optimistic UI update - immediately update the request status
-      const optimisticRequests = songRequests.map((req) =>
-        req.requestId === requestId
-          ? { ...req, accepted: true, status: "accepted" }
-          : req
-      );
-      setRequests(optimisticRequests);
-
-      // Now make the actual API call
-      const success = await acceptRequestFunc(requestId, accesstoken);
-
-      // Clear loading state regardless of outcome
-      setLoadingState(requestId, false);
-
-      console.log("Success:", success);
-
-      if (!success) {
-        throw new Error("Failed to accept request");
-      }
-    } catch (error) {
-      // Clear loading state in case of error
-      setLoadingState(requestId, false);
-
-      console.error("Error accepting request:", error);
-      toast({
-        title: "Error",
-        description: "Failed to accept request",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeclineRequest = async (requestId: string) => {
-    setLoadingState(requestId, true);
-
-    const accesstoken = await getToken();
-    if (!accesstoken) throw new Error("Authentication token is missing.");
-
-    // Find the request to decline
-    const requestToDecline = songRequests.find(
-      (req) => req.requestId === requestId
-    );
-
-    if (!requestToDecline?.paymentId) return;
-
-    // Optimistic UI update - immediately remove the request from the displayed list
-    const optimisticRequests = songRequests.map((req) =>
-      req.requestId === requestId ? { ...req, status: "declined" } : req
-    );
-
-    // Update the request store with our optimistic data
-    setRequests(optimisticRequests);
-
-    const success = await declineRequest(
-      requestId,
-      accesstoken,
-      requestToDecline.paymentId
-    );
-
-    setLoadingState(requestId, false);
-
-    if (success) {
-      toast({
-        title: "Request declined",
-        description: "The request was declined.",
-        duration: 2000,
-      });
-    } else {
-      toast({
-        title: "Error",
-        description: "Failed to decline request",
-        variant: "destructive",
-        duration: 2000,
-      });
-    }
-  };
 
   // Event management functions
   const deleteEventHandler = async () => {
@@ -647,7 +468,7 @@ const EventAdminPage = () => {
           // If not authorized, redirect to the event page
           window.location.href = `/event?eventId=${eventId}`;
         }
-        
+
         setMounting(false);
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -695,17 +516,18 @@ const EventAdminPage = () => {
       setLoadingState("fetchingDJs", true);
 
       // Use the existing API function from apiService
-      const data = await getEventDJs(eventId, accesstoken);
-      setEventDJs(data);
-      
+      const data = useEventStore.getState().currentEvent?.DJs;
+      if (!data) return;
+      setEventDJs(data as DJ[]);
+
       // If we have a currentEvent with currentDjId, find and set the active DJ
       const { currentEvent } = useEventStore.getState();
       if (currentEvent) {
         const djIdToUse = currentEvent.currentDjId || currentEvent.djId;
         if (djIdToUse) {
-          const foundDj = data.find((dj: DJ) => dj.djId === djIdToUse);
+          const foundDj = data.find((dj) => dj.djId === djIdToUse);
           if (foundDj) {
-            setActiveDj(foundDj);
+            setActiveDj(foundDj as DJ);
             setActiveDjId(foundDj.djId);
           }
         }
@@ -768,8 +590,7 @@ const EventAdminPage = () => {
         {
           djId: newDjId,
           djName: values.djName,
-          djEmail:
-            user?.primaryEmailAddress?.emailAddress || "",
+          djEmail: user?.primaryEmailAddress?.emailAddress || "",
           djInsta: values.djInsta || "",
           djImageUrl, // Add the image URL directly without the property name
         },
@@ -814,7 +635,6 @@ const EventAdminPage = () => {
   }, [loadingStates, setLoadingState]);
 
   // Add effect to set the initial active DJ when the component mounts
-  
 
   // Add effect to fetch event DJs when the component mounts
   useEffect(() => {
@@ -833,25 +653,25 @@ const EventAdminPage = () => {
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
       setLoadingState("changingDJ", true);
-      
+
       // Call the API to set the active DJ
       await setEventActiveDJ(eventId, djId, accesstoken);
-      
+
       // Find the DJ in the eventDJs array
-      const selectedDj = eventDJs.find(dj => dj.djId === djId);
-      
+      const selectedDj = eventDJs.find((dj) => dj.djId === djId);
+
       // Update the local state with the selected DJ
       if (selectedDj) {
         setActiveDj(selectedDj);
         setActiveDjId(djId);
       }
-      
+
       toast({
         title: "DJ Updated",
         description: "The active DJ has been updated",
         duration: 2000,
       });
-      
+
       // Refresh event data to get the updated event info
       await fetchEvent(eventId);
     } catch (error) {
@@ -872,7 +692,8 @@ const EventAdminPage = () => {
       if (djId === activeDjId) {
         toast({
           title: "Cannot Delete Active DJ",
-          description: "Please select another DJ as active before deleting this one.",
+          description:
+            "Please select another DJ as active before deleting this one.",
           variant: "destructive",
         });
         return;
@@ -899,7 +720,7 @@ const EventAdminPage = () => {
       await removeDJFromEvent(eventId, djId, accesstoken);
 
       // Update local state
-      setEventDJs(prev => prev.filter(dj => dj.djId !== djId));
+      setEventDJs((prev) => prev.filter((dj) => dj.djId !== djId));
 
       // Refresh event data
       await fetchEventDJs();
@@ -1185,9 +1006,7 @@ const EventAdminPage = () => {
                       <DJProfile
                         name={activeDj?.djName || "DJ Zo"}
                         role="Currently Playing"
-                        image={
-                          activeDj?.djImageUrl || "/RequestLogoDark.png"
-                        }
+                        image={activeDj?.djImageUrl || "/RequestLogoDark.png"}
                         insta={
                           activeDj?.djInsta
                             ? isMobile
@@ -1341,14 +1160,17 @@ const EventAdminPage = () => {
                                   className="flex items-center gap-3 p-2 mb-2 rounded-md cursor-pointer transition-colors hover:bg-gray-800/50"
                                 >
                                   {/* Simple DJ display component */}
-                                  <div 
+                                  <div
                                     className="flex items-center gap-3 w-full"
                                     onClick={() => handleSetActiveDj(dj.djId)}
                                   >
                                     <div className="relative h-12 w-12 rounded-full overflow-hidden flex-shrink-0">
                                       <img
                                         loading="lazy"
-                                        srcSet={dj.djImageUrl || "/RequestLogoDark.png"}
+                                        srcSet={
+                                          dj.djImageUrl ||
+                                          "/RequestLogoDark.png"
+                                        }
                                         className="aspect-[1.02] object-cover w-[45px] h-[45px] shrink-0 rounded-full overflow-hidden"
                                         alt={dj.djName}
                                       />
@@ -1364,7 +1186,7 @@ const EventAdminPage = () => {
                                       )}
                                     </div>
                                   </div>
-                                  
+
                                   {/* Delete DJ button */}
                                   <div
                                     onClick={(e) => {
@@ -1376,8 +1198,6 @@ const EventAdminPage = () => {
                                   </div>
                                 </div>
                               ))
-
-                              
                           ) : (
                             <p className="text-center text-gray-400 py-2">
                               No DJs added to this event yet
@@ -1392,7 +1212,7 @@ const EventAdminPage = () => {
                                 No other DJs available
                               </p>
                             )}
-                            
+
                           {/* Add Create DJ button - using div instead of Button */}
                           {!isCreatingDJ && (
                             <div className="flex justify-center mt-3 pt-2 border-t border-gray-700">
