@@ -31,7 +31,13 @@ async function sendConfirmationSMS(customerName, songName, phoneNumber, orderId,
     const formattedPhone = formatPhoneNumber(phoneNumber);
     
     const message = await client.messages.create({
-      body: `Hi ${customerName}! Your request for "${songName}" has been confirmed.\n\nOrder ID: ${orderId}\n\nReply with "1" to cancel your request.\n\nQuestions? Contact damorosolima@gmail.com`,
+      body: `Hi ${customerName}! 🎶 Your request for "${songName}" has been confirmed.\n\n` +
+            `Order ID: ${orderId}\n\n` +
+            `🔹 Your song will only appear in the queue *once the DJ accepts* your request.\n\n` +
+            `🔹 To cancel, reply with "1" or check your confirmation message.\n\n` +
+            `🔹 You will *not* be charged until your request is played, *if this is a paid request, don't worry if not.*.\n\n` +
+            `📌 By submitting a request, you agree to our Terms of Service & Refund Policy.\n\n` +
+            `Questions? Contact help.request.van@gmail.com`,
       messagingServiceSid: messagingServiceSid,
       to: formattedPhone
     });
@@ -49,7 +55,10 @@ async function sendDeclinedRequestSMS(customerName, songName, phoneNumber, order
     const formattedPhone = formatPhoneNumber(phoneNumber);
     
     const message = await client.messages.create({
-      body: `Hi ${customerName}! We regret to inform you that your request for "${songName}" has been declined.\n\nOrder ID: ${orderId}\n\nThe payment authorization will be released from your account within 5-7 business days.\n\nQuestions? Contact damorosolima@gmail.com`,
+      body: `Hi ${customerName}, we regret to inform you that your request for "${songName}" has been declined.\n\n` +
+            `Order ID: ${orderId}\n\n` +
+            `💳 The payment authorization will be released from your account within *5-7 business days*.\n\n` +
+            `Questions? Contact help.request.van@gmail.com`,
       messagingServiceSid: messagingServiceSid,
       to: formattedPhone
     });
