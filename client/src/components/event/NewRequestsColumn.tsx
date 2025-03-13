@@ -238,12 +238,7 @@ const NewRequestsColumn = () => {
         </h2>
         
         {/* WebSocket connection indicator */}
-        <div className={`px-2 py-1 rounded-full flex items-center ${socketConnected ? "bg-green-500/20" : "bg-red-500/20"}`}>
-          <div className={`w-2 h-2 rounded-full mr-2 ${socketConnected ? "bg-green-500" : "bg-red-500"}`}></div>
-          <span className="text-xs font-medium text-white">
-            {socketConnected ? "Live" : "Offline"}
-          </span>
-        </div>
+        
       </div>
       
       <AnimatePresence>
