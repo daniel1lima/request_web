@@ -2,9 +2,9 @@
 
 {
   "development": {
-    "username": "daniel",
-    "password": "daniel123",
-    "database": "request_database",
+    "username": "postgres",
+    "password": "password",
+    "database": "request_app",
     "host": "127.0.0.1",
     "dialect": "postgres"
   }
