@@ -28,6 +28,7 @@ export class AdminStore {
   private _currentEvent: Event | null = null;
   private _eventTitle: string = "";
   private _eventImage: string = "";
+  private _eventId: string = "";
   private _settings: AdminSettings = {
     eventName: "",
     requestFee: 0,
@@ -51,6 +52,7 @@ export class AdminStore {
   get currentEvent() { return this._currentEvent; }
   get eventTitle() { return this._eventTitle; }
   get eventImage() { return this._eventImage; }
+  get eventId() { return this._eventId; }
   get settings() { return this._settings; }
   get sliderValue() { return this._sliderValue; }
   get selectedFile() { return this._selectedFile; }
@@ -80,6 +82,7 @@ export class AdminStore {
     currentEvent: Event | null;
     eventTitle: string;
     eventImage: string;
+    eventId: string;
     settings: AdminSettings;
     sliderValue: number[];
     selectedFile: File | null;
@@ -94,6 +97,7 @@ export class AdminStore {
     if (newState.currentEvent !== undefined) this._currentEvent = newState.currentEvent;
     if (newState.eventTitle !== undefined) this._eventTitle = newState.eventTitle;
     if (newState.eventImage !== undefined) this._eventImage = newState.eventImage;
+    if (newState.eventId !== undefined) this._eventId = newState.eventId;
     if (newState.settings !== undefined) this._settings = newState.settings;
     if (newState.sliderValue !== undefined) this._sliderValue = newState.sliderValue;
     if (newState.selectedFile !== undefined) this._selectedFile = newState.selectedFile;
@@ -154,6 +158,11 @@ export class AdminStore {
   
   clearError(): void {
     this.setState({ error: null });
+  }
+  
+  // Add a setter for eventId
+  setEventId(id: string): void {
+    this.setState({ eventId: id });
   }
   
   // API Actions
