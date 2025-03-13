@@ -249,7 +249,7 @@ const EventAdminPage = () => {
   // Event management functions
   const deleteEventHandler = async () => {
     try {
-      const eventId = localStorage.getItem("eventId");
+      const eventId = adminStore.eventId;
       if (!eventId) return;
 
       const accesstoken = await getToken();
@@ -274,7 +274,7 @@ const EventAdminPage = () => {
 
   const onSubmit = async (data: z.infer<typeof FormSchema>) => {
     try {
-      const eventId = localStorage.getItem("eventId");
+      const eventId = adminStore.eventId;
       if (!eventId) return;
 
       const accesstoken = await getToken();
@@ -319,8 +319,6 @@ const EventAdminPage = () => {
 
   const handleSettingsSubmit = async () => {
     try {
-      const eventId = localStorage.getItem("eventId");
-      if (!eventId) return notFound();
 
       let imageUrl;
       if (adminStore.selectedFile) {
@@ -343,7 +341,7 @@ const EventAdminPage = () => {
       };
 
       const success = await adminStore.updateEventSettings(
-        eventId,
+        adminStore.eventId,
         updatedEventData,
         accesstoken
       );
@@ -390,7 +388,8 @@ const EventAdminPage = () => {
     const eventId = new URL(window.location.href).searchParams.get("eventId");
     if (!eventId || !user) return;
 
-    localStorage.setItem("eventId", eventId);
+    // Set eventId in the store instead of localStorage
+    adminStore.setEventId(eventId);
     setMounting(true);
 
     const fetchInitialData = async () => {
@@ -446,7 +445,7 @@ const EventAdminPage = () => {
   useEffect(() => {
     if (!adminStore.isAuthorized) return;
 
-    const eventId = localStorage.getItem("eventId");
+    const eventId = adminStore.eventId;
     if (!eventId) return;
 
     // Connect to WebSocket for real-time updates
@@ -469,7 +468,7 @@ const EventAdminPage = () => {
   // Function to fetch DJs for this event
   const fetchEventDJs = async () => {
     try {
-      const eventId = localStorage.getItem("eventId");
+      const eventId = adminStore.eventId;
       if (!eventId) return;
 
       const accesstoken = await getToken();
@@ -523,7 +522,7 @@ const EventAdminPage = () => {
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      const eventId = localStorage.getItem("eventId");
+      const eventId = adminStore.eventId;
       if (!eventId) return;
 
       // Generate a unique ID for the new DJ
@@ -605,7 +604,7 @@ const EventAdminPage = () => {
   // Update the setActiveDj function to use the store
   const handleSetActiveDj = async (djId: string) => {
     try {
-      const eventId = localStorage.getItem("eventId");
+      const eventId = adminStore.eventId;
       if (!eventId) return;
 
       const accesstoken = await getToken();
@@ -667,7 +666,7 @@ const EventAdminPage = () => {
         return;
       }
 
-      const eventId = localStorage.getItem("eventId");
+      const eventId = adminStore.eventId;
       if (!eventId) return;
 
       const accesstoken = await getToken();
