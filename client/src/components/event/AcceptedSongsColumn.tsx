@@ -3,56 +3,56 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { FaCheck } from "react-icons/fa";
 import SongCard from "@/components/event/SongCard";
-import useRequestStore from "@/store/requestStore";
-import useAdminStore from "@/store/adminStore";
+import { useRequestStore } from "@/store/requestStore";
+import { useAdminStore } from "@/store/adminStore";
 import { useAuth } from "@clerk/nextjs";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
 
 const AcceptedSongsColumn = () => {
-  const { requests: songRequests, setRequests } = useRequestStore();
-  const { loadingStates, setLoadingState, playedRequest } = useAdminStore();
+  const requestStore = useRequestStore();
+  const adminStore = useAdminStore();
   const { getToken } = useAuth();
   const { toast } = useToast();
   const [noAcceptedRequests, setNoAcceptedRequests] = useState(false);
 
   // Check if there are any accepted requests
   useEffect(() => {
-    const acceptedRequests = songRequests.filter(
+    const acceptedRequests = requestStore.requests.filter(
       req => req.accepted && !req.played && req.status === "accepted"
     );
     setNoAcceptedRequests(acceptedRequests.length === 0);
-  }, [songRequests]);
+  }, [requestStore.requests]);
 
   const handlePlayedRequest = async (requestId: string) => {
     try {
       // Set loading state for this specific request
-      setLoadingState(requestId, true);
+      adminStore.setLoadingState(requestId, true);
       
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
       
       // Find the request to update
-      const requestToPlay = songRequests.find(
+      const requestToPlay = requestStore.requests.find(
         (req) => req.requestId === requestId
       );
       if (!requestToPlay) return;
 
       // Optimistic UI update - immediately update the request status
-      const optimisticRequests = songRequests.map((req) =>
+      const optimisticRequests = requestStore.requests.map((req) =>
         req.requestId === requestId
           ? { ...req, played: true, status: "played" }
           : req
       );
 
       // Update the request store with our optimistic data
-      setRequests(optimisticRequests);
+      requestStore.setRequests(optimisticRequests);
 
       // Now make the actual API call
-      const success = await playedRequest(requestId, accesstoken, songRequests);
+      const success = await adminStore.playedRequest(requestId, accesstoken, requestStore.requests);
 
       // Clear loading state regardless of outcome
-      setLoadingState(requestId, false);
+      adminStore.setLoadingState(requestId, false);
 
       toast({
         title: "Success",
@@ -66,7 +66,7 @@ const AcceptedSongsColumn = () => {
       }
     } catch (error) {
       // Clear loading state in case of error
-      setLoadingState(requestId, false);
+      adminStore.setLoadingState(requestId, false);
 
       console.error("Error processing payment:", error);
       toast({
@@ -133,7 +133,7 @@ const AcceptedSongsColumn = () => {
             animate="show"
           >
             <AnimatePresence>
-              {songRequests
+              {requestStore.requests
                 .filter(
                   (req) =>
                     req.accepted && !req.played && req.status === "accepted"
@@ -143,7 +143,7 @@ const AcceptedSongsColumn = () => {
                     key={request.requestId}
                     className={`bg-gray-700 rounded-lg p-4 relative group 
                       transition-all duration-300 ease-in-out
-                      ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
+                      ${adminStore.loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
                     variants={itemVariants}
                     initial="hidden"
                     animate="show"
@@ -162,9 +162,9 @@ const AcceptedSongsColumn = () => {
                       <button
                         onClick={() => handlePlayedRequest(request.requestId)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
-                        disabled={loadingStates[request.requestId]}
+                        disabled={adminStore.loadingStates[request.requestId]}
                       >
-                        {loadingStates[request.requestId] ? (
+                        {adminStore.loadingStates[request.requestId] ? (
                           <Loader2 className="w-6 h-6 text-white animate-spin" />
                         ) : (
                           <FaCheck className="w-6 h-6 text-white" />

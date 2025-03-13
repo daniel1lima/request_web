@@ -1,4 +1,3 @@
-import { create } from 'zustand';
 import { 
   fetchAllEvents, 
   fetchEventById, 
@@ -30,105 +29,165 @@ export interface Event {
   }[];
 }
 
-interface EventState {
+export class EventStore {
   // State
-  events: Event[];
-  currentEvent: Event | null;
-  currentDjId: string | null;
-  isLoading: boolean;
-  imagesLoaded: boolean;
-  error: string | null;
+  private _events: Event[] = [];
+  private _currentEvent: Event | null = null;
+  private _currentDjId: string | null = null;
+  private _isLoading: boolean = true;
+  private _imagesLoaded: boolean = false;
+  private _error: string | null = null;
+  private _listeners: Array<() => void> = [];
+  
+  // Getters
+  get events() { return this._events; }
+  get currentEvent() { return this._currentEvent; }
+  get currentDjId() { return this._currentDjId; }
+  get isLoading() { return this._isLoading; }
+  get imagesLoaded() { return this._imagesLoaded; }
+  get error() { return this._error; }
+  
+  // Subscribe to state changes
+  subscribe(listener: () => void) {
+    this._listeners.push(listener);
+    return () => {
+      this._listeners = this._listeners.filter(l => l !== listener);
+    };
+  }
+  
+  // Notify listeners of state changes
+  private notifyListeners() {
+    this._listeners.forEach(listener => listener());
+  }
+  
+  // Update state
+  private setState(newState: Partial<{
+    events: Event[];
+    currentEvent: Event | null;
+    currentDjId: string | null;
+    isLoading: boolean;
+    imagesLoaded: boolean;
+    error: string | null;
+  }>) {
+    if (newState.events !== undefined) this._events = newState.events;
+    if (newState.currentEvent !== undefined) this._currentEvent = newState.currentEvent;
+    if (newState.currentDjId !== undefined) this._currentDjId = newState.currentDjId;
+    if (newState.isLoading !== undefined) this._isLoading = newState.isLoading;
+    if (newState.imagesLoaded !== undefined) this._imagesLoaded = newState.imagesLoaded;
+    if (newState.error !== undefined) this._error = newState.error;
+    
+    this.notifyListeners();
+  }
   
   // Actions
-  fetchEvents: () => Promise<void>;
-  fetchEvent: (eventId: string) => Promise<Event | null>;
-  addEvent: (eventData: EventData, accessToken: string) => Promise<void>;
-  editEvent: (eventId: string, eventData: Partial<EventData>, accessToken: string) => Promise<void>;
-  removeEvent: (eventId: string, accessToken: string) => Promise<void>;
-  setImagesLoaded: (loaded: boolean) => void;
-  clearError: () => void;
-}
-
-const useEventStore = create<EventState>((set) => ({
-  // Initial state
-  events: [],
-  currentEvent: null,
-  currentDjId: null,
-  isLoading: true, // Start with loading true
-  imagesLoaded: false,
-  error: null,
-  
-  // Actions
-  fetchEvents: async () => {
-    set({ isLoading: true });
+  async fetchEvents(): Promise<void> {
+    this.setState({ isLoading: true });
     try {
       const events = await fetchAllEvents();
-      set({ events, isLoading: false });
+      this.setState({ events, isLoading: false });
     } catch (error) {
-      set({ 
+      this.setState({ 
         error: error instanceof Error ? error.message : 'Failed to fetch events', 
         isLoading: false 
       });
     }
-  },
+  }
   
-  fetchEvent: async (eventId: string) => {
-    set({ isLoading: true });
+  async fetchEvent(eventId: string): Promise<Event | null> {
+    this.setState({ isLoading: true });
     try {
       const event = await fetchEventById(eventId);
-      set({ currentEvent: event, isLoading: false });
+      this.setState({ currentEvent: event, isLoading: false });
       return event;
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to fetch event', isLoading: false });
+      this.setState({ 
+        error: error instanceof Error ? error.message : 'Failed to fetch event', 
+        isLoading: false 
+      });
       return null;
     }
-  },
+  }
   
-  addEvent: async (eventData: EventData, accessToken: string) => {
-    set({ isLoading: true });
+  async addEvent(eventData: EventData, accessToken: string): Promise<void> {
+    this.setState({ isLoading: true });
     try {
       const newEvent = await createEvent(eventData, accessToken);
-      set((state) => ({ 
-        events: [...state.events, newEvent],
+      this.setState({ 
+        events: [...this._events, newEvent],
         isLoading: false 
-      }));
+      });
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to create event', isLoading: false });
+      this.setState({ 
+        error: error instanceof Error ? error.message : 'Failed to create event', 
+        isLoading: false 
+      });
     }
-  },
+  }
   
-  editEvent: async (eventId: string, eventData: Partial<EventData>, accessToken: string) => {
-    set({ isLoading: true });
+  async editEvent(eventId: string, eventData: Partial<EventData>, accessToken: string): Promise<void> {
+    this.setState({ isLoading: true });
     try {
       const updatedEvent = await updateEvent(eventId, eventData, accessToken);
-      set((state) => ({
-        events: state.events.map(event => 
+      this.setState({
+        events: this._events.map(event => 
           event.eventId === eventId ? updatedEvent : event
         ),
-        currentEvent: state.currentEvent?.eventId === eventId ? updatedEvent : state.currentEvent,
+        currentEvent: this._currentEvent?.eventId === eventId ? updatedEvent : this._currentEvent,
         isLoading: false
-      }));
+      });
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to update event', isLoading: false });
+      this.setState({ 
+        error: error instanceof Error ? error.message : 'Failed to update event', 
+        isLoading: false 
+      });
     }
-  },
+  }
   
-  removeEvent: async (eventId: string, accessToken: string) => {
-    set({ isLoading: true });
+  async removeEvent(eventId: string, accessToken: string): Promise<void> {
+    this.setState({ isLoading: true });
     try {
       await deleteEvent(eventId, accessToken);
-      set((state) => ({
-        events: state.events.filter(event => event.eventId !== eventId),
-        currentEvent: state.currentEvent?.eventId === eventId ? null : state.currentEvent,
+      this.setState({
+        events: this._events.filter(event => event.eventId !== eventId),
+        currentEvent: this._currentEvent?.eventId === eventId ? null : this._currentEvent,
         isLoading: false
-      }));
+      });
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to delete event', isLoading: false });
+      this.setState({ 
+        error: error instanceof Error ? error.message : 'Failed to delete event', 
+        isLoading: false 
+      });
     }
-  },
+  }
   
-  setImagesLoaded: (loaded) => set({ imagesLoaded: loaded }),
-  clearError: () => set({ error: null }),
-}));
+  setImagesLoaded(loaded: boolean): void {
+    this.setState({ imagesLoaded: loaded });
+  }
+  
+  clearError(): void {
+    this.setState({ error: null });
+  }
+}
 
-export default useEventStore;
+// Create a hook to use the store in React components
+import { useState, useEffect } from 'react';
+
+export function useEventStore() {
+  // Create a new store instance for this component
+  const [store] = useState(() => new EventStore());
+  
+  // Force re-render when store changes
+  const [, setForceUpdate] = useState({});
+  
+  useEffect(() => {
+    // Subscribe to store changes
+    const unsubscribe = store.subscribe(() => {
+      setForceUpdate({});
+    });
+    
+    // Cleanup subscription on unmount
+    return unsubscribe;
+  }, [store]);
+  
+  return store;
+}

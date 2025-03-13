@@ -3,62 +3,136 @@ import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { FaCheck, FaTimes } from "react-icons/fa";
 import SongCard from "@/components/event/SongCard";
-import useRequestStore from "@/store/requestStore";
-import useAdminStore from "@/store/adminStore";
+// Import the new class-based store hooks
+import { useRequestStore } from "@/store/requestStore";
+import { useAdminStore } from "@/store/adminStore"; 
 import { useAuth } from "@clerk/nextjs";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
+// Import WebSocketService
+import WebSocketService from "@/services/websocketService";
 
 const NewRequestsColumn = () => {
-  const { requests: songRequests, setRequests } = useRequestStore();
-  const { loadingStates, setLoadingState, acceptRequestFunc, declineRequest } = useAdminStore();
+  // Use the class-based stores
+  const requestStore = useRequestStore();
+  const adminStore = useAdminStore();
   const { getToken } = useAuth();
   const { toast } = useToast();
   const [noNewRequests, setNoNewRequests] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [socketConnected, setSocketConnected] = useState(false);
+
+  // Fetch requests and set up WebSocket on component mount
+  useEffect(() => {
+    const eventId = localStorage.getItem("eventId");
+    if (!eventId) {
+      console.error("No eventId found in localStorage");
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        // Fetch requests for this event
+        await requestStore.fetchRequests(eventId, true);
+        setIsLoading(false);
+      } catch (error) {
+        console.error("Error fetching requests:", error);
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+
+    // Set up WebSocket connection
+    const wsService = WebSocketService.getInstance();
+    wsService.connect(eventId);
+    setSocketConnected(wsService.isConnected());
+
+    // Subscribe to request updates
+    const unsubscribeNewRequest = wsService.subscribe("new_request", (data) => {
+      console.log("New request received via WebSocket:", data);
+      requestStore.fetchRequests(eventId, true);
+    });
+
+    const unsubscribeRequestUpdate = wsService.subscribe("request_update", (data) => {
+      console.log("Request update received via WebSocket:", data);
+      requestStore.fetchRequests(eventId, true);
+    });
+
+    // Check connection status periodically
+    const connectionCheckInterval = setInterval(() => {
+      const connected = wsService.isConnected();
+      setSocketConnected(connected);
+      
+      if (!connected) {
+        console.log("WebSocket disconnected, attempting to reconnect...");
+        wsService.connect(eventId);
+      }
+    }, 5000);
+
+    // Fallback polling for requests in case WebSocket fails
+    const pollingInterval = setInterval(() => {
+      if (!wsService.isConnected()) {
+        console.log("Polling for requests as WebSocket is disconnected");
+        requestStore.fetchRequests(eventId, true);
+      }
+    }, 10000);
+
+    return () => {
+      // Clean up subscriptions and intervals
+      unsubscribeNewRequest();
+      unsubscribeRequestUpdate();
+      clearInterval(connectionCheckInterval);
+      clearInterval(pollingInterval);
+    };
+  }, []);
 
   // Check if there are any new requests
   useEffect(() => {
-    const pendingRequests = songRequests.filter(
+    
+    const pendingRequests = requestStore.requests.filter(
       req => req.status === "pending" || req.status === "declining"
     );
+    
     setNoNewRequests(pendingRequests.length === 0);
-  }, [songRequests]);
+  }, [requestStore.requests]);
 
   const handleAcceptRequest = async (requestId: string) => {
     try {
       // Set loading state for this specific request
-      setLoadingState(requestId, true);
+      adminStore.setLoadingState(requestId, true);
 
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
       // Find the request to update
-      const requestToAccept = songRequests.find(
+      const requestToAccept = requestStore.requests.find(
         (req) => req.requestId === requestId
       );
 
       if (!requestToAccept) return;
 
       // Optimistic UI update - immediately update the request status
-      const optimisticRequests = songRequests.map((req) =>
+      const optimisticRequests = requestStore.requests.map((req) =>
         req.requestId === requestId
           ? { ...req, accepted: true, status: "accepted" }
           : req
       );
-      setRequests(optimisticRequests);
+      requestStore.setRequests(optimisticRequests);
 
       // Now make the actual API call
-      const success = await acceptRequestFunc(requestId, accesstoken);
+      const success = await adminStore.acceptRequestFunc(requestId, accesstoken);
 
       // Clear loading state regardless of outcome
-      setLoadingState(requestId, false);
+      adminStore.setLoadingState(requestId, false);
 
       if (!success) {
         throw new Error("Failed to accept request");
       }
     } catch (error) {
       // Clear loading state in case of error
-      setLoadingState(requestId, false);
+      adminStore.setLoadingState(requestId, false);
 
       console.error("Error accepting request:", error);
       toast({
@@ -70,35 +144,35 @@ const NewRequestsColumn = () => {
   };
 
   const handleDeclineRequest = async (requestId: string) => {
-    setLoadingState(requestId, true);
+    adminStore.setLoadingState(requestId, true);
 
     const accesstoken = await getToken();
     if (!accesstoken) throw new Error("Authentication token is missing.");
 
     // Find the request to decline
-    const requestToDecline = songRequests.find(
+    const requestToDecline = requestStore.requests.find(
       (req) => req.requestId === requestId
     );
 
     if (!requestToDecline?.paymentId) return;
 
     // Optimistic UI update - immediately remove the request from the displayed list
-    const optimisticRequests = songRequests.map((req) =>
+    const optimisticRequests = requestStore.requests.map((req) =>
       req.requestId === requestId
         ? { ...req, status: "declined" }
         : req
     );
 
     // Update the request store with our optimistic data
-    setRequests(optimisticRequests);
+    requestStore.setRequests(optimisticRequests);
 
-    const success = await declineRequest(
+    const success = await adminStore.declineRequest(
       requestId,
       accesstoken,
       requestToDecline.paymentId
     );
 
-    setLoadingState(requestId, false);
+    adminStore.setLoadingState(requestId, false);
 
     if (success) {
       toast({
@@ -147,11 +221,25 @@ const NewRequestsColumn = () => {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="bg-gray-800 rounded-xl p-6 shadow-xl overflow-y-auto h-full flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="bg-gray-800 rounded-xl p-6 shadow-xl overflow-y-auto h-full">
-      <h2 className="text-2xl font-bold text-white mb-6 border-b border-gray-700 pb-4">
-        New Requests
-      </h2>
+      <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
+        <h2 className="text-2xl font-bold text-white">
+          New Requests {requestStore.requests.filter(req => req.status === "pending").length > 0 && 
+            `(${requestStore.requests.filter(req => req.status === "pending").length})`}
+        </h2>
+        
+        {/* WebSocket connection indicator */}
+        
+      </div>
       
       <AnimatePresence>
         {noNewRequests ? (
@@ -171,14 +259,14 @@ const NewRequestsColumn = () => {
             animate="show"
           >
             <AnimatePresence>
-              {songRequests
+              {requestStore.requests
                 .filter((req) => req.status === "pending")
                 .map((request) => (
                   <motion.div
                     key={request.requestId}
                     className={`bg-gray-700 rounded-lg p-4 relative group 
                       transition-all duration-300 ease-in-out
-                      ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
+                      ${adminStore.loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
                     variants={itemVariants}
                     initial="hidden"
                     animate="show"
@@ -198,11 +286,11 @@ const NewRequestsColumn = () => {
                         <motion.button
                           onClick={() => handleAcceptRequest(request.requestId)}
                           className="bg-gray-600 group-hover:bg-green-500 hover:!bg-green-600 p-3 rounded-full transition-colors"
-                          disabled={loadingStates[request.requestId]}
+                          disabled={adminStore.loadingStates[request.requestId]}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          {loadingStates[request.requestId] ? (
+                          {adminStore.loadingStates[request.requestId] ? (
                             <Loader2 className="w-6 h-6 text-white animate-spin" />
                           ) : (
                             <FaCheck className="w-6 h-6 text-white" />
@@ -211,11 +299,11 @@ const NewRequestsColumn = () => {
                         <motion.button
                           onClick={() => handleDeclineRequest(request.requestId)}
                           className="bg-gray-600 group-hover:bg-red-500 hover:!bg-red-600 p-3 rounded-full transition-colors"
-                          disabled={loadingStates[request.requestId]}
+                          disabled={adminStore.loadingStates[request.requestId]}
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.95 }}
                         >
-                          {loadingStates[request.requestId] ? (
+                          {adminStore.loadingStates[request.requestId] ? (
                             <Loader2 className="w-6 h-6 text-white animate-spin" />
                           ) : (
                             <FaTimes className="w-6 h-6 text-white" />
@@ -227,14 +315,14 @@ const NewRequestsColumn = () => {
                 ))}
               
               {/* Also show requests that are in the process of being declined */}
-              {songRequests
+              {requestStore.requests
                 .filter((req) => req.status === "declining")
                 .map((request) => (
                   <motion.div
                     key={request.requestId}
                     className={`bg-gray-700 rounded-lg p-4 relative group 
                       transition-all duration-300 ease-in-out
-                      ${loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
+                      ${adminStore.loadingStates[request.requestId] ? "opacity-70" : "hover:shadow-lg"}`}
                     variants={itemVariants}
                     initial="hidden"
                     animate="show"
