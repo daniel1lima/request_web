@@ -2,7 +2,7 @@
 import React, { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import SongCard from "@/components/event/SongCard";
-import useRequestStore from "@/store/requestStore";
+import { useRequestStore } from "@/store/requestStore";
 
 // Connection status indicator component
 const ConnectionStatus = ({ connected }: { connected: boolean }) => (
@@ -19,21 +19,21 @@ const ConnectionStatus = ({ connected }: { connected: boolean }) => (
 );
 
 const AcceptedSongQueue = () => {
-  const { requests, wsConnected, refreshRequests } = useRequestStore();
+  const requestStore = useRequestStore();
   
   // Set up auto-refresh interval
   useEffect(() => {
     // Initial refresh
-    refreshRequests();
+    requestStore.refreshRequests();
     
-    // Set up interval for every 30 seconds
+    // Set up interval for every 10 seconds
     const intervalId = setInterval(() => {
-      refreshRequests();
+      requestStore.refreshRequests();
     }, 10000);
     
     // Clean up interval on component unmount
     return () => clearInterval(intervalId);
-  }, [refreshRequests]);
+  }, [requestStore]);
   
   // Animation variants for song cards
   const containerVariants = {
@@ -79,7 +79,7 @@ const AcceptedSongQueue = () => {
         animate="show"
       >
         <AnimatePresence>
-          {requests
+          {requestStore.requests
             .filter(
               (request) =>
                 !request.played && request.status === "accepted"

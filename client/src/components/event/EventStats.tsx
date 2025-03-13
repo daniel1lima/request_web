@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
-import useRequestStore from "@/store/requestStore";
+import { useRequestStore } from "@/store/requestStore";
 import { motion, AnimatePresence } from "framer-motion";
 
 const EventStats = () => {
-  const { requests: songRequests } = useRequestStore();
+  const requestStore = useRequestStore();
   const [stats, setStats] = useState({
     totalRequests: 0,
     playedRequests: 0,
@@ -13,13 +13,13 @@ const EventStats = () => {
 
   useEffect(() => {
     setStats({
-      totalRequests: songRequests.length,
-      playedRequests: songRequests.filter(req => req.played).length,
-      earnings: songRequests
+      totalRequests: requestStore.requests.length,
+      playedRequests: requestStore.requests.filter(req => req.played).length,
+      earnings: requestStore.requests
         .filter(req => req.played)
         .reduce((total, req) => total + (req.Payment?.amount || 0), 0) / 100,
     });
-  }, [songRequests]);
+  }, [requestStore.requests]);
 
   // Animation variants
   const cardVariants = {
