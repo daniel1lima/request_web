@@ -190,7 +190,7 @@ const EventPage = () => {
             insta={
               eventStore.currentEvent?.currentDjId
                 ? eventStore.currentEvent?.DJs.find(dj => dj.djId === eventStore.currentEvent?.currentDjId)?.djInsta
-                  ? `https://www.instagram.com/${eventStore.currentEvent.DJs.find(dj => dj.djId === eventStore.currentEvent.currentDjId)?.djInsta}`
+                  ? `https://www.instagram.com/${eventStore.currentEvent?.DJs.find(dj => dj.djId === eventStore.currentEvent?.currentDjId)?.djInsta}`
                   : ""
                 : eventStore.currentEvent?.DJs[0]?.djInsta
                   ? `https://www.instagram.com/${eventStore.currentEvent?.DJs[0].djInsta}`
