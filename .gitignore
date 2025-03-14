@@ -21,3 +21,5 @@ Thumbs.db
 *.lnk
 
 .env
+
+server/config/config.json
