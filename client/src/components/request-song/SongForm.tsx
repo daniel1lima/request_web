@@ -178,7 +178,7 @@ export const SongForm: React.FC<SongFormProps> = ({
 
       // 5. If we get here without redirect, payment succeeded
       setTimeout(() => {
-        redirect(`/success`); // Navigate to the success page
+        redirect(`/paid-success`); // Navigate to the success page
       }, 1000);
     } catch (error) {
       console.error("Error confirming payment:", error);
@@ -234,7 +234,7 @@ export const SongForm: React.FC<SongFormProps> = ({
       // For example: setRequestError("Something went wrong. Please try again.");
     } finally {
       // Always reset loading state, even if there's an error
-      redirect(`/success`);
+      redirect(`/free-success`);
     }
   };
 
@@ -310,7 +310,7 @@ export const SongForm: React.FC<SongFormProps> = ({
       setTimeout(() => {
         setEmailLoading(false);
         setEmailSuccess(true);
-        redirect(`/success`);
+        redirect(`/phone-success`); // WE ARE NOT USING EMAILS SO I DINDT MAKE AN EMAIL PAGE
       }, 2000);
     } catch (error) {
       console.error("Error:", error);
@@ -390,7 +390,7 @@ export const SongForm: React.FC<SongFormProps> = ({
         await freeOrderConfirm(`${phoneWithCountryCode}`, freePaymentId);
         setPhoneSuccess(true);
         setPhoneLoading(false);
-        router.push(`/success`);
+        router.push(`/phone-success`);  // HERE
       } else {
         throw new Error("Failed to create request");
       }

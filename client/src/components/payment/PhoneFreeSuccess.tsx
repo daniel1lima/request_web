@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { FaCheckCircle } from "react-icons/fa";
 
-const PaymentSuccess: React.FC = () => {
+const PhoneFreeSuccess: React.FC = () => {
   const [eventId, setEventId] = useState("");
 
   useEffect(() => {
@@ -22,7 +22,7 @@ const PaymentSuccess: React.FC = () => {
         Congratulations!
       </h1>
       <h1 className="text-7xl text-white mb-4 mt-2">🥳</h1>
-      <p className="text-gray-300 text-sm mb-6 text-center">
+      <p className="text-gray-300 text-md mb-6 text-center">
         Your song request has been received.
       </p>
 
@@ -32,15 +32,14 @@ const PaymentSuccess: React.FC = () => {
         </h2>
         <ul className="flex flex-col  text-gray-300 text-md p-3 gap-4">
           <li className="mb-2 text-center">
-            <strong>You will not be charged</strong> until your song request is
-            played.
-          </li>
-          <li className="mb-2 text-center">
             Your song will not show up on the song queue{" "}
             <strong>until the DJ accepts</strong> the request.
           </li>
+          <li className="mb-2 text-center">
+          <strong>We reserve the right to deny your request</strong> if you approach the DJ.
+          </li>
           <li className="mb-2 text-center text-red-400">
-            To <strong>cancel your request</strong> check your email
+            To <strong>cancel your request</strong> check your text message
             confirmation
           </li>
         </ul>
@@ -50,10 +49,10 @@ const PaymentSuccess: React.FC = () => {
         href={`/event?eventId=${eventId}`} // Direct link to the event page
         className="mt-6 bg-blue-500 text-white px-6 py-2 rounded-lg transition duration-200 hover:bg-blue-600 text-lg"
       >
-        Return to Event
+        <span className="font-semibold">Return to Event</span>
       </a>
     </div>
   );
 };
 
-export default PaymentSuccess;
+export default PhoneFreeSuccess;
