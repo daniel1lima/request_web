@@ -122,7 +122,7 @@ const EventPage = () => {
 
       // If we still don't have an event after trying to fetch it
       if (!eventStore.currentEvent) {
-        router.push("/404");
+        router.push("/");
         return;
       }
 
@@ -139,7 +139,7 @@ const EventPage = () => {
       console.error("Error fetching data:", error);
       setRefreshing(false);
       setIsEventLoading(false);
-      router.push("/404");
+      router.push("/");
     }
   };
 
