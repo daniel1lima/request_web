@@ -31,9 +31,9 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { toast, useToast } from "@/hooks/use-toast";
-import useEventStore, { Event } from "../store/eventStore";
-import useUIStore from "../store/uiStore";
-import {uploadFileApi } from "../api/apiService";
+import { useEventStore, Event } from "../store/eventStore";
+import { useUIStore } from "../store/uiStore";
+import { uploadFileApi } from "../api/apiService";
 import Loader from "@/components/loader";
 
 const createFuseInstance = (events: Event[]) => {
@@ -75,7 +75,7 @@ const ExploreView = ({
             See All
           </button>
         </div>
-        <div className="mt-4 p-4 pb-4 bg-white bg-opacity-5 rounded-lg shadow-md h-48 overflow-hidden whitespace-nowrap ">
+        <div className="mt-4 p-4 pb-4 bg-white bg-opacity-5 rounded-lg shadow-md h-48 overflow-x-auto overflow-y-hidden whitespace-nowrap ">
           <div className="flex gap-4">
             {filteredEvents.length > 0 ? (
               filteredEvents.map((event) => (
@@ -175,11 +175,11 @@ const AllEventsView = ({
 
 const UserView = () => {
   const { isSignedIn } = useUser();
-  const { setCurrentView } = useUIStore();
+  const uiStore = useUIStore();
 
   useEffect(() => {
-    if (isSignedIn) setCurrentView("explore");
-  }, [isSignedIn]);
+    if (isSignedIn) uiStore.setCurrentView("explore");
+  }, [isSignedIn, uiStore]);
 
   return (
     <div className="h-full flex flex-col items-center justify-center">
@@ -228,22 +228,15 @@ const Index = () => {
 
   const { toast } = useToast();
 
-  // Get state and actions from stores
-  const { events, isLoading, error, fetchEvents, addEvent } = useEventStore();
-  const { currentView, searchQuery, setCurrentView, setSearchQuery } =
-    useUIStore();
+  const eventStore = useEventStore();
+  const uiStore = useUIStore();
   const { isSignedIn } = useUser();
 
-
-  // Fetch events when component mounts
   useEffect(() => {
-    // Track if we've already attempted to fetch events
     const controller = new AbortController();
     
-    // Only fetch events once on initial mount
-    fetchEvents();
+    eventStore.fetchEvents();
 
-    // Simulate images loaded after a delay (replace with actual image loading logic)
     const timer = setTimeout(() => {
       setImagesLoaded(true);
     }, 2000);
@@ -252,7 +245,7 @@ const Index = () => {
       clearTimeout(timer);
       controller.abort();
     };
-  }, [fetchEvents]);
+  }, [eventStore]);
 
   const uploadFile = async () => {
     try {
@@ -262,18 +255,18 @@ const Index = () => {
           title: "Missing Event Image!",
           description: `No file selected for Event Image`,
         });
-        return; // Early return if no file is selected
+        return;
       }
 
       const data = new FormData();
-      data.append("file", selectedFile); // Fix: Ensure "file" matches backend key
+      data.append("file", selectedFile);
 
       console.log(selectedFile);
 
-      const s3response = await uploadFileApi(data); // Await file upload
+      const s3response = await uploadFileApi(data);
 
       if (s3response && s3response.url) {
-        setEventImage(s3response.url); // Set the event image URL once uploaded
+        setEventImage(s3response.url);
       }
 
       return s3response.url;
@@ -296,17 +289,13 @@ const Index = () => {
 
   const handleSubmit = async () => {
     try {
-      // Ensure the file is uploaded before continuing
-      const imageUrl = await uploadFile(); // This waits for the image upload to complete
-
-      // Check if eventImage is set (meaning upload succeeded)
+      const imageUrl = await uploadFile();
 
       setEventNameError(!eventName);
       setEventLocationError(!eventLocation);
       setRequestFeeError(requestFee <= 50);
       setEventDateError(!date);
 
-      // Make sure all required fields are filled
       if (!eventName || !eventLocation || requestFee <= 50 || !date) return;
 
       const eventData = {
@@ -321,9 +310,8 @@ const Index = () => {
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      await addEvent(eventData, accesstoken);
+      await eventStore.addEvent(eventData, accesstoken);
 
-      // Reset form after successful creation
       setEventName("");
       setEventImage("");
       setEventLocation("");
@@ -337,7 +325,7 @@ const Index = () => {
         description: "Your event has been created successfully.",
       });
 
-        setCurrentView("explore");
+      uiStore.setCurrentView("explore");
     } catch (error) {
       console.error("Error in handleSubmit:", error);
       toast({
@@ -367,9 +355,7 @@ const Index = () => {
     event.preventDefault();
   };
 
-  // Debug logs to help identify issues
-
-  if (isLoading || !imagesLoaded) {
+  if (eventStore.isLoading || !imagesLoaded) {
     return (
       <div className={``}>
         <Loader />
@@ -567,7 +553,7 @@ const Index = () => {
           </DialogContent>
         </Dialog>
       )}
-      {!(currentView == "user") && (
+      {!(uiStore.currentView == "user") && (
         <div className="fixed top-0 left-0 right-0 z-10 bg-gray-900">
           <header className="bg-gray-900 dark:bg-gray-900 w-full py-1 px-4 flex justify-center h-14 mb-3 mt-2">
             <div className="flex items-center">
@@ -608,23 +594,23 @@ const Index = () => {
                 placeholder="Search..."
                 className="w-full bg-transparent outline-none text-sm text-gray-200 ml-2"
                 style={{ fontSize: "16px" }}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onClick={() => setCurrentView("events")}
+                value={uiStore.searchQuery}
+                onChange={(e) => uiStore.setSearchQuery(e.target.value)}
+                onClick={() => uiStore.setCurrentView("events")}
               />
             </div>
           </div>
         </div>
       )}
       <div className="absolute inset-0 pt-32 pb-16">
-        {isLoading ? (
+        {eventStore.isLoading ? (
           <Loader />
-        ) : error ? (
+        ) : eventStore.error ? (
           <div className="flex-1 flex items-center justify-center">
             <div className="text-red-500">
-              Error loading events: {error}
+              Error loading events: {eventStore.error}
               <button
-                onClick={() => fetchEvents()}
+                onClick={() => eventStore.fetchEvents()}
                 className="ml-2 text-blue-500 underline"
               >
                 Retry
@@ -633,31 +619,34 @@ const Index = () => {
           </div>
         ) : (
           <>
-            {currentView === "explore" ? (
+            {uiStore.currentView === "explore" ? (
               <ExploreView
-                allEvents={events}
-                searchQuery={searchQuery}
-                setCurrentView={setCurrentView}
+                allEvents={eventStore.events}
+                searchQuery={uiStore.searchQuery}
+                setCurrentView={uiStore.setCurrentView.bind(uiStore)}
               />
-            ) : currentView === "user" ? (
+            ) : uiStore.currentView === "user" ? (
               <UserView />
             ) : (
-              <AllEventsView allEvents={events} searchQuery={searchQuery} />
+              <AllEventsView 
+                allEvents={eventStore.events} 
+                searchQuery={uiStore.searchQuery} 
+              />
             )}
           </>
         )}
       </div>
       <nav className="fixed bottom-0 w-full bg-gray-900 border-t border-gray-800 py-2 flex justify-around items-center">
         <button
-          className={`flex flex-col items-center text-xs ${currentView === "explore" ? "text-white" : "text-gray-400"}`}
-          onClick={() => setCurrentView("explore")}
+          className={`flex flex-col items-center text-xs ${uiStore.currentView === "explore" ? "text-white" : "text-gray-400"}`}
+          onClick={() => uiStore.setCurrentView("explore")}
         >
           <FaHome className="h-5 w-5 mb-1" />
           Explore
         </button>
         <button
-          className={`flex flex-col items-center text-xs ${currentView === "events" ? "text-white" : "text-gray-400"}`}
-          onClick={() => setCurrentView("events")}
+          className={`flex flex-col items-center text-xs ${uiStore.currentView === "events" ? "text-white" : "text-gray-400"}`}
+          onClick={() => uiStore.setCurrentView("events")}
         >
           <FaMusic className="h-5 w-5 mb-1" />
           Events
@@ -667,7 +656,7 @@ const Index = () => {
         ) : (
           <button
             className="flex flex-col items-center text-xs text-gray-400"
-            onClick={() => (isSignedIn ? null : setCurrentView("user"))}
+            onClick={() => (isSignedIn ? null : uiStore.setCurrentView("user"))}
           >
             <FaUser className="h-5 w-5 mb-1" />
           </button>

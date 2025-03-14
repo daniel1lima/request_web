@@ -8,6 +8,7 @@ class WebSocketService {
   private reconnectAttempts = 0;
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private isConnecting = false;
+  private storeUpdateCallbacks: Map<string, (data: any) => void> = new Map();
 
   private constructor() {
     // Private constructor for singleton
@@ -18,6 +19,18 @@ class WebSocketService {
       WebSocketService.instance = new WebSocketService();
     }
     return WebSocketService.instance;
+  }
+
+  // Method to register store update callbacks
+  public registerStoreCallback(storeId: string, callback: (data: any) => void): void {
+    this.storeUpdateCallbacks.set(storeId, callback);
+    console.log(`Registered store callback for ${storeId}`);
+  }
+
+  // Method to unregister store callbacks
+  public unregisterStoreCallback(storeId: string): void {
+    this.storeUpdateCallbacks.delete(storeId);
+    console.log(`Unregistered store callback for ${storeId}`);
   }
 
   public connect(eventId: string): void {
@@ -64,7 +77,11 @@ class WebSocketService {
     this.socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
+        console.log("WebSocket message received:", data);
         this.handleMessage(data);
+        
+        // Also notify registered stores about the update
+        this.notifyStores(data);
       } catch (error) {
         console.error("Failed to parse WebSocket message:", error);
       }
@@ -83,6 +100,19 @@ class WebSocketService {
       console.error("WebSocket error:", error);
       this.isConnecting = false;
     };
+  }
+
+  // Method to notify registered stores about updates
+  private notifyStores(data: any): void {
+    // Notify all registered store callbacks
+    this.storeUpdateCallbacks.forEach((callback, storeId) => {
+      try {
+        callback(data);
+        console.log(`Notified store ${storeId} about update`);
+      } catch (error) {
+        console.error(`Error notifying store ${storeId}:`, error);
+      }
+    });
   }
 
   public disconnect(): void {

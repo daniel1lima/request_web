@@ -1,4 +1,3 @@
-import { create } from 'zustand';
 import {
   acceptRequest,
   capturePaymentIntent,
@@ -11,8 +10,7 @@ import {
   updateEvent,
   uploadFileApi,
 } from '@/api/apiService';
-import { Request } from '@/app/event-admin/page';
-import { DJ } from '@/app/event-admin/page';
+import { Request, DJ } from '@/app/event-admin/page';
 import WebSocketService from '@/services/websocketService';
 
 interface AdminSettings {
@@ -24,128 +22,186 @@ interface AdminSettings {
   freeEmailRequests: boolean;
 }
 
-interface AdminState {
+export class AdminStore {
   // State
-  djData: DJ | null;
-  currentEvent: Event | null;
-  eventTitle: string;
-  eventImage: string;
-  settings: AdminSettings;
-  sliderValue: number[];
-  selectedFile: File | null;
-  imagePreview: string | null;
-  loadingStates: Record<string, boolean>;
-  isAuthorized: boolean;
-  loading: boolean;
-  error: string | null;
-  wsConnected: boolean;
-  
-  // Actions
-  setDjData: (data: DJ) => void;
-  setEventTitle: (title: string) => void;
-  setEventImage: (image: string) => void;
-  setSettings: (settings: Partial<AdminSettings>) => void;
-  setSliderValue: (value: number[]) => void;
-  setSelectedFile: (file: File | null) => void;
-  setImagePreview: (preview: string | null) => void;
-  setLoadingState: (requestId: string, loading: boolean) => void;
-  setIsAuthorized: (authorized: boolean) => void;
-  setLoading: (loading: boolean) => void;
-  clearError: () => void;
-  
-  // API Actions
-  fetchDj: (djId: string) => Promise<DJ | null>;
-//   fetchEvent: (eventId: string) => Promise<Event | null>;
-  checkAuthorization: (userId: string, eventId: string) => Promise<boolean>;
-  acceptRequestFunc: (requestId: string, accessToken: string) => Promise<boolean>;
-  playedRequest: (requestId: string, accessToken: string, requests: Request[]) => Promise<boolean>;
-  declineRequest: (requestId: string, accessToken: string, paymentId: string) => Promise<boolean>;
-  handleDeleteEvent: (eventId: string, accessToken: string) => Promise<boolean>;
-  updateEventSettings: (eventId: string, data: any, accessToken: string) => Promise<boolean>;
-  uploadFile: (file: File) => Promise<string | null>;
-  
-  // WebSocket Actions
-  connectToEventSocket: (eventId: string) => void;
-  disconnectFromEventSocket: () => void;
-}
-
-const useAdminStore = create<AdminState>((set, get) => ({
-  // Initial state
-  djData: null,
-  currentEvent: null,
-  eventTitle: "",
-  eventImage: "",
-  settings: {
+  private _djData: DJ | null = null;
+  private _currentEvent: Event | null = null;
+  private _eventTitle: string = "";
+  private _eventImage: string = "";
+  private _eventId: string = "";
+  private _settings: AdminSettings = {
     eventName: "",
     requestFee: 0,
     eventImage: "",
     acceptRequests: false,
     freeRequests: false,
     freeEmailRequests: false,
-  },
-  sliderValue: [99],
-  selectedFile: null,
-  imagePreview: null,
-  loadingStates: {},
-  isAuthorized: false,
-  loading: true,
-  error: null,
-  wsConnected: false,
+  };
+  private _sliderValue: number[] = [99];
+  private _selectedFile: File | null = null;
+  private _imagePreview: string | null = null;
+  private _loadingStates: Record<string, boolean> = {};
+  private _isAuthorized: boolean = false;
+  private _loading: boolean = true;
+  private _error: string | null = null;
+  private _wsConnected: boolean = false;
+  private _listeners: Array<() => void> = [];
+  
+  // Getters
+  get djData() { return this._djData; }
+  get currentEvent() { return this._currentEvent; }
+  get eventTitle() { return this._eventTitle; }
+  get eventImage() { return this._eventImage; }
+  get eventId() { return this._eventId; }
+  get settings() { return this._settings; }
+  get sliderValue() { return this._sliderValue; }
+  get selectedFile() { return this._selectedFile; }
+  get imagePreview() { return this._imagePreview; }
+  get loadingStates() { return this._loadingStates; }
+  get isAuthorized() { return this._isAuthorized; }
+  get loading() { return this._loading; }
+  get error() { return this._error; }
+  get wsConnected() { return this._wsConnected; }
+  
+  // Subscribe to state changes
+  subscribe(listener: () => void) {
+    this._listeners.push(listener);
+    return () => {
+      this._listeners = this._listeners.filter(l => l !== listener);
+    };
+  }
+  
+  // Notify listeners of state changes
+  private notifyListeners() {
+    this._listeners.forEach(listener => listener());
+  }
+  
+  // Update state
+  private setState(newState: Partial<{
+    djData: DJ | null;
+    currentEvent: Event | null;
+    eventTitle: string;
+    eventImage: string;
+    eventId: string;
+    settings: AdminSettings;
+    sliderValue: number[];
+    selectedFile: File | null;
+    imagePreview: string | null;
+    loadingStates: Record<string, boolean>;
+    isAuthorized: boolean;
+    loading: boolean;
+    error: string | null;
+    wsConnected: boolean;
+  }>) {
+    if (newState.djData !== undefined) this._djData = newState.djData;
+    if (newState.currentEvent !== undefined) this._currentEvent = newState.currentEvent;
+    if (newState.eventTitle !== undefined) this._eventTitle = newState.eventTitle;
+    if (newState.eventImage !== undefined) this._eventImage = newState.eventImage;
+    if (newState.eventId !== undefined) this._eventId = newState.eventId;
+    if (newState.settings !== undefined) this._settings = newState.settings;
+    if (newState.sliderValue !== undefined) this._sliderValue = newState.sliderValue;
+    if (newState.selectedFile !== undefined) this._selectedFile = newState.selectedFile;
+    if (newState.imagePreview !== undefined) this._imagePreview = newState.imagePreview;
+    if (newState.loadingStates !== undefined) this._loadingStates = newState.loadingStates;
+    if (newState.isAuthorized !== undefined) this._isAuthorized = newState.isAuthorized;
+    if (newState.loading !== undefined) this._loading = newState.loading;
+    if (newState.error !== undefined) this._error = newState.error;
+    if (newState.wsConnected !== undefined) this._wsConnected = newState.wsConnected;
+    
+    this.notifyListeners();
+  }
   
   // Basic actions
-  setDjData: (data) => set({ djData: data }),
-  setEventTitle: (title) => set({ eventTitle: title }),
-  setEventImage: (image) => set({ eventImage: image }),
-  setSettings: (settings) => set((state) => ({ 
-    settings: { ...state.settings, ...settings } 
-  })),
-  setSliderValue: (value) => set({ sliderValue: value }),
-  setSelectedFile: (file) => set({ selectedFile: file }),
-  setImagePreview: (preview) => set({ imagePreview: preview }),
-  setLoadingState: (requestId, loading) => set((state) => ({ 
-    loadingStates: { ...state.loadingStates, [requestId]: loading } 
-  })),
-  setIsAuthorized: (authorized) => set({ isAuthorized: authorized }),
-  setLoading: (loading) => set({ loading }),
-  clearError: () => set({ error: null }),
+  setDjData(data: DJ): void {
+    this.setState({ djData: data });
+  }
+  
+  setEventTitle(title: string): void {
+    this.setState({ eventTitle: title });
+  }
+  
+  setEventImage(image: string): void {
+    this.setState({ eventImage: image });
+  }
+  
+  setSettings(settings: Partial<AdminSettings>): void {
+    this.setState({ 
+      settings: { ...this._settings, ...settings } 
+    });
+  }
+  
+  setSliderValue(value: number[]): void {
+    this.setState({ sliderValue: value });
+  }
+  
+  setSelectedFile(file: File | null): void {
+    this.setState({ selectedFile: file });
+  }
+  
+  setImagePreview(preview: string | null): void {
+    this.setState({ imagePreview: preview });
+  }
+  
+  setLoadingState(requestId: string, loading: boolean): void {
+    this.setState({ 
+      loadingStates: { ...this._loadingStates, [requestId]: loading } 
+    });
+  }
+  
+  setIsAuthorized(authorized: boolean): void {
+    this.setState({ isAuthorized: authorized });
+  }
+  
+  setLoading(loading: boolean): void {
+    this.setState({ loading });
+  }
+  
+  clearError(): void {
+    this.setState({ error: null });
+  }
+  
+  // Add a setter for eventId
+  setEventId(id: string): void {
+    this.setState({ eventId: id });
+  }
   
   // API Actions
-  fetchDj: async (djId) => {
-    set({ loading: true });
+  async fetchDj(djId: string): Promise<DJ | null> {
+    this.setState({ loading: true });
     try {
       const djData = await fetchDjById(djId);
       if (!djData.error) {
-        set({ djData, loading: false });
+        this.setState({ djData, loading: false });
         return djData;
       }
-      set({ loading: false, error: "Failed to fetch DJ data" });
+      this.setState({ loading: false, error: "Failed to fetch DJ data" });
       return null;
     } catch (error) {
       console.error("Error fetching DJ data:", error);
-      set({ 
+      this.setState({ 
         loading: false, 
         error: error instanceof Error ? error.message : "Failed to fetch DJ data" 
       });
       return null;
     }
-  },
+  }
   
-  checkAuthorization: async (userId, eventId) => {
-    set({ loading: true });
+  async checkAuthorization(userId: string, eventId: string): Promise<boolean> {
+    this.setState({ loading: true });
     try {
       const eventData = await fetchEventById(eventId);
       
       if (eventData?.djId) {
         // If event has a DJ ID, check if it matches the user
         if (userId === eventData.djId) {
-          set({ isAuthorized: true, loading: false });
+          this.setState({ isAuthorized: true, loading: false });
           return true;
         }
         
         // If not, fetch the DJ data to double-check
         const djData = await fetchDjById(eventData.djId);
         if (djData && userId === djData.djId) {
-          set({ djData, isAuthorized: true, loading: false });
+          this.setState({ djData, isAuthorized: true, loading: false });
           return true;
         }
       } else {
@@ -154,49 +210,43 @@ const useAdminStore = create<AdminState>((set, get) => ({
         if (storedDjId) {
           const djData = await fetchDjById(storedDjId);
           if (djData && userId === djData.djId) {
-            set({ djData, isAuthorized: true, loading: false });
+            this.setState({ djData, isAuthorized: true, loading: false });
             return true;
           }
         }
       }
       
-      set({ isAuthorized: false, loading: false });
+      this.setState({ isAuthorized: false, loading: false });
       return false;
     } catch (error) {
       console.error("Error checking authorization:", error);
-      set({ 
+      this.setState({ 
         isAuthorized: false, 
         loading: false,
         error: error instanceof Error ? error.message : "Failed to check authorization" 
       });
       return false;
     }
-  },
+  }
   
-  acceptRequestFunc: async (requestId, accessToken) => {
-    set((state) => ({ 
-      loadingStates: { ...state.loadingStates, [requestId]: true } 
-    }));
+  async acceptRequestFunc(requestId: string, accessToken: string): Promise<boolean> {
+    this.setLoadingState(requestId, true);
     try {
       await acceptRequest(requestId, accessToken);
-      set((state) => ({ 
-        loadingStates: { ...state.loadingStates, [requestId]: false } 
-      }));
+      this.setLoadingState(requestId, false);
       return true;
     } catch (error) {
       console.error("Error accepting request:", error);
-      set((state) => ({ 
-        loadingStates: { ...state.loadingStates, [requestId]: false },
+      this.setLoadingState(requestId, false);
+      this.setState({
         error: error instanceof Error ? error.message : "Failed to accept request"
-      }));
+      });
       return false;
     }
-  },
+  }
   
-  playedRequest: async (requestId, accessToken, requests) => {
-    set((state) => ({ 
-      loadingStates: { ...state.loadingStates, [requestId]: true } 
-    }));
+  async playedRequest(requestId: string, accessToken: string, requests: Request[]): Promise<boolean> {
+    this.setLoadingState(requestId, true);
     
     try {
       const request = requests.find(req => req.requestId === requestId);
@@ -206,119 +256,128 @@ const useAdminStore = create<AdminState>((set, get) => ({
       await capturePaymentIntent(request.paymentId, paymentData.amount);
       await markRequestAsPlayed(requestId, accessToken);
       
-      set((state) => ({ 
-        loadingStates: { ...state.loadingStates, [requestId]: false } 
-      }));
+      this.setLoadingState(requestId, false);
       return true;
     } catch (error) {
       console.error("Error processing payment:", error);
-      set((state) => ({ 
-        loadingStates: { ...state.loadingStates, [requestId]: false },
+      this.setLoadingState(requestId, false);
+      this.setState({
         error: error instanceof Error ? error.message : "Failed to mark request as played"
-      }));
+      });
       return false;
     }
-  },
+  }
   
-  declineRequest: async (requestId, accessToken, paymentId) => {
-    set((state) => ({ 
-      loadingStates: { ...state.loadingStates, [requestId]: true } 
-    }));
+  async declineRequest(requestId: string, accessToken: string, paymentId: string): Promise<boolean> {
+    this.setLoadingState(requestId, true);
     
     try {
       await declineRequestAPI(requestId, accessToken, paymentId);
-      set((state) => ({ 
-        loadingStates: { ...state.loadingStates, [requestId]: false } 
-      }));
+      this.setLoadingState(requestId, false);
       return true;
     } catch (error) {
       console.error("Error declining request:", error);
-      set((state) => ({ 
-        loadingStates: { ...state.loadingStates, [requestId]: false },
+      this.setLoadingState(requestId, false);
+      this.setState({
         error: error instanceof Error ? error.message : "Failed to decline request"
-      }));
+      });
       return false;
     }
-  },
+  }
   
-  handleDeleteEvent: async (eventId, accessToken) => {
-    set({ loading: true });
+  async handleDeleteEvent(eventId: string, accessToken: string): Promise<boolean> {
+    this.setState({ loading: true });
     try {
       await deleteEvent(eventId, accessToken);
-      set({ loading: false });
+      this.setState({ loading: false });
       return true;
     } catch (error) {
       console.error("Error deleting event:", error);
-      set({ 
+      this.setState({ 
         loading: false,
         error: error instanceof Error ? error.message : "Failed to delete event"
       });
       return false;
     }
-  },
+  }
   
-  updateEventSettings: async (eventId, data, accessToken) => {
-    // set({ loading: true });
+  async updateEventSettings(eventId: string, data: any, accessToken: string): Promise<boolean> {
     try {
       const response = await updateEvent(eventId, data, accessToken);
       if (response?.eventId) {
-        // set({ loading: false });
         return true;
       }
-      set({ 
+      this.setState({ 
         loading: false,
         error: "Failed to update event settings"
       });
       return false;
     } catch (error) {
       console.error("Error updating event settings:", error);
-      set({ 
+      this.setState({ 
         loading: false,
         error: error instanceof Error ? error.message : "Failed to update event settings"
       });
       return false;
     }
-  },
+  }
   
-  uploadFile: async (file) => {
-    // set({ loading: true });
+  async uploadFile(file: File): Promise<string | null> {
     try {
       const data = new FormData();
       data.append("file", file);
       const s3response = await uploadFileApi(data);
       
       if (s3response?.url) {
-        set({ loading: false });
+        this.setState({ loading: false });
         return s3response.url;
       }
-      set({ 
+      this.setState({ 
         loading: false,
         error: "Failed to upload file"
       });
       return null;
     } catch (error) {
       console.error("Error uploading file:", error);
-      set({ 
+      this.setState({ 
         loading: false,
         error: error instanceof Error ? error.message : "Failed to upload file"
       });
       return null;
     }
-  },
+  }
   
-  connectToEventSocket: (eventId: string) => {
+  connectToEventSocket(eventId: string): void {
     const wsService = WebSocketService.getInstance();
     wsService.connect(eventId);
-    set({ wsConnected: true });
-    
-    // Note: We don't set up handlers here because the request store will handle the messages
-    // This is just to make sure the connection is established
-  },
+    this.setState({ wsConnected: true });
+  }
   
-  disconnectFromEventSocket: () => {
+  disconnectFromEventSocket(): void {
     WebSocketService.getInstance().disconnect();
-    set({ wsConnected: false });
-  },
-}));
+    this.setState({ wsConnected: false });
+  }
+}
 
-export default useAdminStore;
+// Create a hook to use the store in React components
+import { useState, useEffect } from 'react';
+
+export function useAdminStore() {
+  // Create a new store instance for this component
+  const [store] = useState(() => new AdminStore());
+  
+  // Force re-render when store changes
+  const [, setForceUpdate] = useState({});
+  
+  useEffect(() => {
+    // Subscribe to store changes
+    const unsubscribe = store.subscribe(() => {
+      setForceUpdate({});
+    });
+    
+    // Cleanup subscription on unmount
+    return unsubscribe;
+  }, [store]);
+  
+  return store;
+}

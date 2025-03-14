@@ -39,9 +39,10 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { notFound, redirect } from "next/navigation";
-import useEventStore from "@/store/eventStore";
-import useRequestStore from "@/store/requestStore";
-import useAdminStore from "@/store/adminStore";
+// Import the new class-based store hooks
+import { useEventStore } from "@/store/eventStore";
+import { useRequestStore } from "@/store/requestStore";
+import { useAdminStore } from "@/store/adminStore";
 import { useRouter } from "next/navigation";
 import WebSocketService from "@/services/websocketService";
 import AcceptedSongsColumn from "@/components/event/AcceptedSongsColumn";
@@ -114,41 +115,10 @@ const EventAdminPage = () => {
   const { getToken } = useAuth();
   const router = useRouter();
 
-  // Get data and actions from stores
-  const {
-    requests: songRequests,
-    fetchRequests,
-    isLoading: requestsLoading,
-    setRequests,
-    connectToEventSocket,
-    disconnectFromEventSocket,
-    wsConnected,
-  } = useRequestStore();
-  const { currentEvent, fetchEvent } = useEventStore();
-  const {
-    settings,
-    sliderValue,
-    selectedFile,
-    imagePreview,
-    loadingStates,
-    isAuthorized,
-    loading,
-
-    setSettings,
-    setSliderValue,
-    setSelectedFile,
-    setImagePreview,
-    setLoadingState,
-    setIsAuthorized,
-    setLoading,
-
-    acceptRequestFunc,
-    playedRequest,
-    declineRequest,
-    handleDeleteEvent,
-    updateEventSettings,
-    uploadFile,
-  } = useAdminStore();
+  // Use the class-based stores
+  const requestStore = useRequestStore();
+  const eventStore = useEventStore();
+  const adminStore = useAdminStore();
 
   // Local state
   const [isMobile, setIsMobile] = useState(false);
@@ -181,7 +151,7 @@ const EventAdminPage = () => {
   const form = useForm<z.infer<typeof FormSchema>>({
     resolver: zodResolver(FormSchema),
     defaultValues: {
-      eventName: settings.eventName || "",
+      eventName: adminStore.settings.eventName || "",
     },
   });
 
@@ -196,35 +166,35 @@ const EventAdminPage = () => {
 
   // Settings handlers
   const handleSliderChange = (value: number[]) => {
-    setSliderValue(value);
-    setSettings({ requestFee: value[0] });
+    adminStore.setSliderValue(value);
+    adminStore.setSettings({ requestFee: value[0] });
   };
 
   const handleAcceptRequestsChange = (value: boolean) => {
-    setSettings({ acceptRequests: value });
+    adminStore.setSettings({ acceptRequests: value });
   };
 
   const handleFreeRequestsChange = (value: boolean) => {
-    setSettings({
+    adminStore.setSettings({
       freeRequests: value,
-      freeEmailRequests: value ? false : settings.freeEmailRequests,
+      freeEmailRequests: value ? false : adminStore.settings.freeEmailRequests,
     });
   };
 
   const handleFreeEmailRequestsChange = (value: boolean) => {
-    setSettings({
+    adminStore.setSettings({
       freeEmailRequests: value,
-      freeRequests: value ? false : settings.freeRequests,
+      freeRequests: value ? false : adminStore.settings.freeRequests,
     });
   };
 
   // File handling
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
-    setSelectedFile(file);
+    adminStore.setSelectedFile(file);
     if (file) {
       const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
+      adminStore.setImagePreview(previewUrl);
     }
   };
 
@@ -238,15 +208,15 @@ const EventAdminPage = () => {
     event.stopPropagation();
     const file = event.dataTransfer.files[0];
     if (file) {
-      setSelectedFile(file);
+      adminStore.setSelectedFile(file);
       const previewUrl = URL.createObjectURL(file);
-      setImagePreview(previewUrl);
+      adminStore.setImagePreview(previewUrl);
     }
   };
 
   const uploadFileHandler = async () => {
     try {
-      if (!selectedFile) {
+      if (!adminStore.selectedFile) {
         toast({
           variant: "destructive",
           title: "Missing Event Image!",
@@ -255,9 +225,9 @@ const EventAdminPage = () => {
         return null;
       }
 
-      const url = await uploadFile(selectedFile);
+      const url = await adminStore.uploadFile(adminStore.selectedFile);
       if (url) {
-        setSettings({ eventImage: url });
+        adminStore.setSettings({ eventImage: url });
         return url;
       }
       return null;
@@ -272,22 +242,20 @@ const EventAdminPage = () => {
   };
 
   // Request management functions
-
-
   useEffect(() => {
-    console.log("loading", loading);
-  }, [loading]);
+    console.log("loading", adminStore.loading);
+  }, [adminStore.loading]);
 
   // Event management functions
   const deleteEventHandler = async () => {
     try {
-      const eventId = localStorage.getItem("eventId");
+      const eventId = adminStore.eventId;
       if (!eventId) return;
 
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      const success = await handleDeleteEvent(eventId, accesstoken);
+      const success = await adminStore.handleDeleteEvent(eventId, accesstoken);
       if (success) {
         // Use router.push instead of window.location.href
         router.push("/");
@@ -306,32 +274,32 @@ const EventAdminPage = () => {
 
   const onSubmit = async (data: z.infer<typeof FormSchema>) => {
     try {
-      const eventId = localStorage.getItem("eventId");
+      const eventId = adminStore.eventId;
       if (!eventId) return;
 
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
       // Update settings with the new event name first
-      setSettings({ eventName: data.eventName });
+      adminStore.setSettings({ eventName: data.eventName });
 
       const updatedEventData = {
         eventId,
         eventName: data.eventName,
-        eventImage: settings.eventImage,
+        eventImage: adminStore.settings.eventImage,
         eventLocation: "",
-        requestFee: settings.requestFee,
+        requestFee: adminStore.settings.requestFee,
         djId: user?.id || "",
       };
 
-      const success = await updateEventSettings(
+      const success = await adminStore.updateEventSettings(
         eventId,
         updatedEventData,
         accesstoken
       );
       if (success) {
         // Refresh event data to ensure all components have the latest data
-        await fetchEvent(eventId);
+        await eventStore.fetchEvent(eventId);
 
         toast({
           title: "Event updated!",
@@ -351,15 +319,13 @@ const EventAdminPage = () => {
 
   const handleSettingsSubmit = async () => {
     try {
-      const eventId = localStorage.getItem("eventId");
-      if (!eventId) return notFound();
 
       let imageUrl;
-      if (selectedFile) {
+      if (adminStore.selectedFile) {
         imageUrl = await uploadFileHandler();
         if (imageUrl) {
           // Update settings with the new image URL
-          setSettings({ eventImage: imageUrl });
+          adminStore.setSettings({ eventImage: imageUrl });
         }
       }
 
@@ -367,22 +333,22 @@ const EventAdminPage = () => {
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
       const updatedEventData = {
-        eventImage: imageUrl || settings.eventImage,
-        requestFee: settings.requestFee,
-        acceptRequests: settings.acceptRequests,
-        acceptFreeRequests: settings.freeRequests,
-        acceptEmailRequests: settings.freeEmailRequests,
+        eventImage: imageUrl || adminStore.settings.eventImage,
+        requestFee: adminStore.settings.requestFee,
+        acceptRequests: adminStore.settings.acceptRequests,
+        acceptFreeRequests: adminStore.settings.freeRequests,
+        acceptEmailRequests: adminStore.settings.freeEmailRequests,
       };
 
-      const success = await updateEventSettings(
-        eventId,
+      const success = await adminStore.updateEventSettings(
+        adminStore.eventId,
         updatedEventData,
         accesstoken
       );
 
       if (success) {
         // Refresh event data to ensure all components have the latest data
-        // await fetchEvent(eventId);
+        // await eventStore.fetchEvent(eventId);
 
         toast({
           title: "Settings updated!",
@@ -390,9 +356,9 @@ const EventAdminPage = () => {
           duration: 2000,
         });
 
-        if (selectedFile) {
-          setSelectedFile(null);
-          setImagePreview(null);
+        if (adminStore.selectedFile) {
+          adminStore.setSelectedFile(null);
+          adminStore.setImagePreview(null);
         }
       } else {
         throw new Error("Failed to update settings");
@@ -408,12 +374,6 @@ const EventAdminPage = () => {
   };
 
   // Effects
-  // useEffect(() => {
-  //   if (settings.eventImage) {
-  //     setEventImage(settings.eventImage);
-  //   }
-  // }, [settings.eventImage]);
-
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth <= 768);
@@ -428,42 +388,43 @@ const EventAdminPage = () => {
     const eventId = new URL(window.location.href).searchParams.get("eventId");
     if (!eventId || !user) return;
 
-    localStorage.setItem("eventId", eventId);
+    // Set eventId in the store instead of localStorage
+    adminStore.setEventId(eventId);
     setMounting(true);
 
     const fetchInitialData = async () => {
       try {
         // Fetch event data
-        await fetchEvent(eventId);
-        const { currentEvent: storeEvent } = useEventStore.getState();
-        if (!storeEvent) {
+        await eventStore.fetchEvent(eventId);
+        
+        // Check if we have the event
+        if (!eventStore.currentEvent) {
           window.location.href = "/404";
           return;
         }
 
         // Set up settings
-        setSettings({
-          eventName: storeEvent.eventName,
-          eventImage: storeEvent.eventImage,
-          requestFee: storeEvent.requestFee,
-          acceptRequests: storeEvent.acceptRequests,
-          freeRequests: storeEvent.acceptFreeRequests,
-          freeEmailRequests: storeEvent.acceptEmailRequests,
+        adminStore.setSettings({
+          eventName: eventStore.currentEvent.eventName,
+          eventImage: eventStore.currentEvent.eventImage,
+          requestFee: eventStore.currentEvent.requestFee,
+          acceptRequests: eventStore.currentEvent.acceptRequests,
+          freeRequests: eventStore.currentEvent.acceptFreeRequests,
+          freeEmailRequests: eventStore.currentEvent.acceptEmailRequests,
         });
-        setSliderValue([storeEvent.requestFee]);
+        adminStore.setSliderValue([eventStore.currentEvent.requestFee]);
 
         // Fetch requests for this event
-        await fetchRequests(eventId, true);
+        await requestStore.fetchRequests(eventId, true);
 
         // Fetch all DJs for this event - this will include the main DJ
         await fetchEventDJs();
 
         // Check if the user is authorized to view this page (they should be the DJ)
-        if (user?.id === storeEvent.djId) {
-          setIsAuthorized(true);
+        if (user?.id === eventStore.currentEvent.djId) {
+          adminStore.setIsAuthorized(true);
           // Initial check for no requests
-          const { requests } = useRequestStore.getState();
-          setNoRequests(requests.length === 0);
+          setNoRequests(requestStore.requests.length === 0);
         } else {
           // If not authorized, redirect to the event page
           window.location.href = `/event?eventId=${eventId}`;
@@ -478,17 +439,17 @@ const EventAdminPage = () => {
     };
 
     fetchInitialData();
-  }, [user, fetchEvent, fetchRequests, setMounting, setIsAuthorized]);
+  }, [user, eventStore, requestStore, adminStore]);
 
   // Add effect to connect to WebSocket
   useEffect(() => {
-    if (!isAuthorized) return;
+    if (!adminStore.isAuthorized) return;
 
-    const eventId = localStorage.getItem("eventId");
+    const eventId = adminStore.eventId;
     if (!eventId) return;
 
     // Connect to WebSocket for real-time updates
-    connectToEventSocket(eventId);
+    requestStore.connectToEventSocket(eventId);
     setSocketConnected(true);
 
     // Check connection status periodically
@@ -500,30 +461,29 @@ const EventAdminPage = () => {
     // Cleanup function
     return () => {
       clearInterval(intervalId);
-      disconnectFromEventSocket();
+      requestStore.disconnectFromEventSocket();
     };
-  }, [isAuthorized, connectToEventSocket, disconnectFromEventSocket]);
+  }, [adminStore.isAuthorized, requestStore]);
 
   // Function to fetch DJs for this event
   const fetchEventDJs = async () => {
     try {
-      const eventId = localStorage.getItem("eventId");
+      const eventId = adminStore.eventId;
       if (!eventId) return;
 
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      setLoadingState("fetchingDJs", true);
+      adminStore.setLoadingState("fetchingDJs", true);
 
       // Use the existing API function from apiService
-      const data = useEventStore.getState().currentEvent?.DJs;
+      const data = eventStore.currentEvent?.DJs;
       if (!data) return;
       setEventDJs(data as DJ[]);
 
       // If we have a currentEvent with currentDjId, find and set the active DJ
-      const { currentEvent } = useEventStore.getState();
-      if (currentEvent) {
-        const djIdToUse = currentEvent.currentDjId || currentEvent.djId;
+      if (eventStore.currentEvent) {
+        const djIdToUse = eventStore.currentEvent.currentDjId || eventStore.currentEvent.djId;
         if (djIdToUse) {
           const foundDj = data.find((dj) => dj.djId === djIdToUse);
           if (foundDj) {
@@ -540,7 +500,7 @@ const EventAdminPage = () => {
         variant: "destructive",
       });
     } finally {
-      setLoadingState("fetchingDJs", false);
+      adminStore.setLoadingState("fetchingDJs", false);
     }
   };
 
@@ -557,12 +517,12 @@ const EventAdminPage = () => {
   // Update the handleCreateDJ function to include image upload
   const handleCreateDJ = async (values: z.infer<typeof DJFormSchema>) => {
     try {
-      setLoadingState("creatingDJ", true);
+      adminStore.setLoadingState("creatingDJ", true);
 
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      const eventId = localStorage.getItem("eventId");
+      const eventId = adminStore.eventId;
       if (!eventId) return;
 
       // Generate a unique ID for the new DJ
@@ -572,7 +532,7 @@ const EventAdminPage = () => {
       let djImageUrl = "";
       if (djImageFile) {
         try {
-          const uploadResult = await uploadFile(djImageFile);
+          const uploadResult = await adminStore.uploadFile(djImageFile);
           djImageUrl = uploadResult || ""; // Ensure we always have a string
         } catch (error) {
           console.error("Error uploading DJ image:", error);
@@ -622,37 +582,35 @@ const EventAdminPage = () => {
         variant: "destructive",
       });
     } finally {
-      setLoadingState("creatingDJ", false);
+      adminStore.setLoadingState("creatingDJ", false);
     }
   };
 
   // Add this to your useEffect that initializes loading states or wherever appropriate
   useEffect(() => {
     // Make sure creatingDJ is included in loadingStates
-    if (!("creatingDJ" in loadingStates)) {
-      setLoadingState("creatingDJ", false);
+    if (!("creatingDJ" in adminStore.loadingStates)) {
+      adminStore.setLoadingState("creatingDJ", false);
     }
-  }, [loadingStates, setLoadingState]);
-
-  // Add effect to set the initial active DJ when the component mounts
+  }, [adminStore.loadingStates]);
 
   // Add effect to fetch event DJs when the component mounts
   useEffect(() => {
-    if (isAuthorized) {
+    if (adminStore.isAuthorized) {
       fetchEventDJs();
     }
-  }, [isAuthorized]);
+  }, [adminStore.isAuthorized]);
 
   // Update the setActiveDj function to use the store
   const handleSetActiveDj = async (djId: string) => {
     try {
-      const eventId = localStorage.getItem("eventId");
+      const eventId = adminStore.eventId;
       if (!eventId) return;
 
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      setLoadingState("changingDJ", true);
+      adminStore.setLoadingState("changingDJ", true);
 
       // Call the API to set the active DJ
       await setEventActiveDJ(eventId, djId, accesstoken);
@@ -673,7 +631,7 @@ const EventAdminPage = () => {
       });
 
       // Refresh event data to get the updated event info
-      await fetchEvent(eventId);
+      await eventStore.fetchEvent(eventId);
     } catch (error) {
       console.error("Error setting active DJ:", error);
       toast({
@@ -682,7 +640,7 @@ const EventAdminPage = () => {
         variant: "destructive",
       });
     } finally {
-      setLoadingState("changingDJ", false);
+      adminStore.setLoadingState("changingDJ", false);
     }
   };
 
@@ -699,7 +657,7 @@ const EventAdminPage = () => {
         return;
       }
 
-      if (djId === currentEvent?.djId) {
+      if (djId === eventStore.currentEvent?.djId) {
         toast({
           title: "Cannot Delete Main DJ",
           description: "The main DJ for this event cannot be removed.",
@@ -708,13 +666,13 @@ const EventAdminPage = () => {
         return;
       }
 
-      const eventId = localStorage.getItem("eventId");
+      const eventId = adminStore.eventId;
       if (!eventId) return;
 
       const accesstoken = await getToken();
       if (!accesstoken) throw new Error("Authentication token is missing.");
 
-      setLoadingState("deletingDJ", true);
+      adminStore.setLoadingState("deletingDJ", true);
 
       // First, remove the DJ from the event using the existing endpoint
       await removeDJFromEvent(eventId, djId, accesstoken);
@@ -732,7 +690,7 @@ const EventAdminPage = () => {
         variant: "destructive",
       });
     } finally {
-      setLoadingState("deletingDJ", false);
+      adminStore.setLoadingState("deletingDJ", false);
     }
   };
 
@@ -743,7 +701,7 @@ const EventAdminPage = () => {
       <div className="bg-gradient-to-r from-violet-500 to-fuchsia-500 p-[1px] rounded-full overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/25 mt-3">
         <div className="px-6 py-2 rounded-full bg-gray-900/90 backdrop-blur-xl">
           <p className="text-transparent bg-clip-text bg-gradient-to-r from-violet-200 to-fuchsia-200 text-lg md:text-xl lg:text-2xl font-medium">
-            ${(sliderValue[0] / 100).toFixed(2)}
+            ${(adminStore.sliderValue[0] / 100).toFixed(2)}
           </p>
         </div>
       </div>
@@ -758,7 +716,7 @@ const EventAdminPage = () => {
 
       <div className="flex flex-col  gap-2 items-center">
         <Slider
-          value={sliderValue}
+          value={adminStore.sliderValue}
           min={99}
           max={2499}
           step={50}
@@ -776,7 +734,7 @@ const EventAdminPage = () => {
         <label className="text-lg font-medium text-center">Event Image</label>
         <div className=" rounded-lg p-3">
           <div className="flex items-center justify-center w-full">
-            {!selectedFile && (
+            {!adminStore.selectedFile && (
               <label
                 htmlFor="dropzone-file"
                 className="flex flex-col items-center justify-center w-full h-25 border-2 border-gray-300  rounded-lg cursor-pointer bg-gray-50  dark:bg-gray-700 hover:bg-gray-300 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-600"
@@ -818,17 +776,17 @@ const EventAdminPage = () => {
             )}
           </div>
           {/* Display the name of the selected file */}
-          {selectedFile && imagePreview && (
+          {adminStore.selectedFile && adminStore.imagePreview && (
             <div className="mb-4 items-center justify-center flex flex-col gap-5">
               <Image
-                src={imagePreview || "/placeholder.svg"}
+                src={adminStore.imagePreview || "/placeholder.svg"}
                 alt="Image Preview"
                 width={100} // Set desired width
                 height={100} // Set desired height
                 className="rounded-lg" // Optional styling
               />
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                <span className="font-semibold">{selectedFile.name}</span>
+                <span className="font-semibold">{adminStore.selectedFile.name}</span>
               </p>
             </div>
           )}
@@ -842,21 +800,21 @@ const EventAdminPage = () => {
       <div className="flex flex-col mb-5 gap-5 text-center items-center justify-center">
         <Label>Accept Requests</Label>
         <Switch
-          checked={settings.acceptRequests}
+          checked={adminStore.settings.acceptRequests}
           onCheckedChange={handleAcceptRequestsChange}
         />
       </div>
       <div className="flex flex-col mb-5 gap-5 text-center items-center justify-center">
         <Label>First Request Free</Label>
         <Switch
-          checked={settings.freeEmailRequests}
+          checked={adminStore.settings.freeEmailRequests}
           onCheckedChange={handleFreeEmailRequestsChange}
         />
       </div>
       <div className="flex flex-col mb-5 gap-5 text-center items-center justify-center">
         <Label>Free Requests</Label>
         <Switch
-          checked={settings.freeRequests}
+          checked={adminStore.settings.freeRequests}
           onCheckedChange={handleFreeRequestsChange}
         />
       </div>
@@ -921,7 +879,7 @@ const EventAdminPage = () => {
                     <FormLabel>Event Name</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder={settings.eventName || ""}
+                        placeholder={adminStore.settings.eventName || ""}
                         {...field}
                       />
                     </FormControl>
@@ -957,7 +915,7 @@ const EventAdminPage = () => {
       <div
         className="relative bg-cover bg-center h-48"
         style={{
-          backgroundImage: `url(${settings.eventImage || currentEvent?.eventImage})`,
+          backgroundImage: `url(${adminStore.settings.eventImage || eventStore.currentEvent?.eventImage})`,
         }}
       >
         {/* Dark overlay */}
@@ -979,8 +937,16 @@ const EventAdminPage = () => {
             {/* Title content */}
             <div>
               <div className="flex flex-row gap-5 items-center">
-                <h1 className="text-6xl font-bold text-white mb-2">
-                  {settings.eventName}
+                <h1
+                  className={`font-bold text-white mb-2  ${
+                    adminStore.settings.eventName?.length > 20
+                      ? "text-3xl"
+                      : adminStore.settings.eventName?.length > 10 
+                        ? "text-6xl"
+                        : "text-7xl"
+                  }`}
+                >
+                  {adminStore.settings.eventName}
                 </h1>
                 {/* Add connection status indicator */}
                 <ConnectionStatus />
@@ -1117,10 +1083,10 @@ const EventAdminPage = () => {
                                 <div className="flex gap-2">
                                   <Button
                                     type="submit"
-                                    disabled={loadingStates.creatingDJ}
+                                    disabled={adminStore.loadingStates.creatingDJ}
                                     className="bg-[rgba(86,105,255,1)] hover:bg-[rgba(86,105,255,0.8)] text-white flex-1"
                                   >
-                                    {loadingStates.creatingDJ ? (
+                                    {adminStore.loadingStates.creatingDJ ? (
                                       <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
                                       "Create"
@@ -1144,7 +1110,7 @@ const EventAdminPage = () => {
                             </Form>
                           </motion.div>
                         </AnimatePresence>
-                      ) : loadingStates.fetchingDJs ? (
+                      ) : adminStore.loadingStates.fetchingDJs ? (
                         <div className="flex justify-center py-4">
                           <Loader2 className="h-6 w-6 animate-spin text-white" />
                         </div>
@@ -1179,7 +1145,7 @@ const EventAdminPage = () => {
                                       <p className="text-white font-medium">
                                         {dj.djName}
                                       </p>
-                                      {dj.djId === currentEvent?.djId && (
+                                      {dj.djId === eventStore.currentEvent?.djId && (
                                         <p className="text-slate-500 font-light text-xs">
                                           Main DJ
                                         </p>

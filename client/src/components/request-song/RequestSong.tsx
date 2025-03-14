@@ -7,8 +7,7 @@ import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe, StripeElementsOptions } from "@stripe/stripe-js";
 import { Loader2 } from "lucide-react";
 import { fetchEventById, spotifyAuth } from "../../api/apiService";
-import useEventStore from "@/store/eventStore";
-
+import { useEventStore } from "@/store/eventStore";
 
 // Initialize Stripe
 const stripePromise = loadStripe(
@@ -23,7 +22,6 @@ type CustomStripeElementsOptions = StripeElementsOptions & {
 export const RequestSong = () => {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [showHeader, setShowHeader] = useState(true);
-  // const [eventData, setEventData] = useState<any>(null);
   const [loading, setLoading] = useState(true); // State to track loading
   const [options, setOptions] = useState<CustomStripeElementsOptions>({
     mode: "payment" as const,
@@ -32,19 +30,18 @@ export const RequestSong = () => {
     capture_method: "manual",
   });
   
-  const [freeReq, setFreeReq] = useState(true)
-  const [freeEmailReq, setFreeEmailReq] = useState(true)
-  const { currentEvent } = useEventStore()
-
-  const router = useRouter()
-
+  const [freeReq, setFreeReq] = useState(true);
+  const [freeEmailReq, setFreeEmailReq] = useState(true);
+  
+  // Use the class-based store
+  const eventStore = useEventStore();
+  const router = useRouter();
 
   useEffect(() => {
     // Disable scrolling on body when component mounts
-
     document.ontouchmove = function(event){
       event.preventDefault();
-  }
+    }
   
     document.body.style.overflow = 'hidden';
     
@@ -56,8 +53,8 @@ export const RequestSong = () => {
 
   const getSpotifyToken = async () => {
     try {
-      const response = await spotifyAuth()
-      const data = response
+      const response = await spotifyAuth();
+      const data = response;
 
       if (data.error) {
         console.error("Error from backend:", data.error);
@@ -71,42 +68,78 @@ export const RequestSong = () => {
   };
 
   const fetchEventData = async () => {
-
-    if (!currentEvent) {
+    // Get eventId from URL or localStorage instead of relying on the store
+    const eventId = new URL(window.location.href).searchParams.get("eventId") || 
+    localStorage.getItem("eventId");
+    
+    if (!eventId) {
+      console.error("No eventId found in URL or localStorage");
       router.push("/404");
+      return;
     }
 
-    
-
     try {
-      const data = await fetchEventById(currentEvent?.eventId || "");
+      // First, ensure we have the event data in the store
+      if (!eventStore.currentEvent) {
+        await eventStore.fetchEvent(eventId);
+      }
+      
+      // If still no event after fetching, redirect
+      if (!eventStore.currentEvent) {
+        console.error("Failed to fetch event data");
+        router.push("/404");
+        return;
+      }
 
+      // Now fetch the event data directly to get the latest settings
+      const data = await fetchEventById(eventId);
+
+      if (!data || data.error) {
+        console.error("Error fetching event data:", data?.error || "No data returned");
+        router.push("/404");
+        return;
+      }
+
+      // Check if requests are accepted
       if (!(data.acceptRequests)) {
-        router.push(`/event?eventId=${currentEvent?.eventId}`)
+        console.log("Event is not accepting requests");
+        router.push(`/event?eventId=${eventId}`);
+        return;
       }
 
-      setFreeReq(data?.acceptFreeRequests || false)
-      setFreeEmailReq(data?.acceptEmailRequests || false)
-
-      if (data.error) {
-        console.error("Error fetching event data:", data.error);
-        notFound();
-      }
+      // Set the request options based on event settings
+      setFreeReq(data.acceptFreeRequests || false);
+      setFreeEmailReq(data.acceptEmailRequests || false);
 
       setOptions((prevOptions) => ({
         ...prevOptions,
         amount: data.requestFee,
       }));
-      setLoading(false); // Set loading to false after fetching event data
+      
+      // Store the eventId for later use
+      localStorage.setItem("eventId", eventId);
+      
+      setLoading(false);
     } catch (error) {
-      console.log("Error fetching event data:", error);
-      notFound();
+      console.error("Error in fetchEventData:", error);
+      router.push("/404");
     }
   };
 
   useEffect(() => {
-    getSpotifyToken();
-    fetchEventData();
+    const initializeData = async () => {
+      try {
+        await Promise.all([
+          getSpotifyToken(),
+          fetchEventData()
+        ]);
+      } catch (error) {
+        console.error("Error initializing data:", error);
+        router.push("/404");
+      }
+    };
+
+    initializeData();
   }, []);
 
   const handleSongSelect = (selected: boolean) => {
@@ -115,7 +148,11 @@ export const RequestSong = () => {
   };
 
   if (loading) {
-    return <Loader2 className="text-white animate-spin" />; // Show loader while loading
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-900">
+        <Loader2 className="text-white animate-spin w-8 h-8" />
+      </div>
+    );
   }
 
   return (

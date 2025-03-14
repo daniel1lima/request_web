@@ -1,59 +1,109 @@
-import { create } from 'zustand';
 import { fetchDjById } from '../api/apiService';
 
-
 export interface DJ {
-    djId: string;
-    djName: string;
-    djInsta?: string;
-    djImageUrl: string;
-  }
-
-interface DJState {
-  // State
-  currentDj: DJ | null;
-  activeDj: DJ | null;
-  isLoading: boolean;
-  error: string | null;
-  
-  // Actions
-  fetchDj: (djId: string) => Promise<void>;
-  fetchActiveDj: (djId: string) => Promise<void>;
-  clearError: () => void;
-  setActiveDj: (dj: DJ | null) => void;
+  djId: string;
+  djName: string;
+  djInsta?: string;
+  djImageUrl: string;
 }
 
-const useDjStore = create<DJState>((set) => ({
-  // Initial state
-  currentDj: null,
-  activeDj: null,
-  isLoading: false,
-  error: null,
+export class DJStore {
+  // State
+  private _currentDj: DJ | null = null;
+  private _activeDj: DJ | null = null;
+  private _isLoading: boolean = false;
+  private _error: string | null = null;
+  private _listeners: Array<() => void> = [];
+  
+  // Getters
+  get currentDj() { return this._currentDj; }
+  get activeDj() { return this._activeDj; }
+  get isLoading() { return this._isLoading; }
+  get error() { return this._error; }
+  
+  // Subscribe to state changes
+  subscribe(listener: () => void) {
+    this._listeners.push(listener);
+    return () => {
+      this._listeners = this._listeners.filter(l => l !== listener);
+    };
+  }
+  
+  // Notify listeners of state changes
+  private notifyListeners() {
+    this._listeners.forEach(listener => listener());
+  }
+  
+  // Update state
+  private setState(newState: Partial<{
+    currentDj: DJ | null;
+    activeDj: DJ | null;
+    isLoading: boolean;
+    error: string | null;
+  }>) {
+    if (newState.currentDj !== undefined) this._currentDj = newState.currentDj;
+    if (newState.activeDj !== undefined) this._activeDj = newState.activeDj;
+    if (newState.isLoading !== undefined) this._isLoading = newState.isLoading;
+    if (newState.error !== undefined) this._error = newState.error;
+    
+    this.notifyListeners();
+  }
   
   // Actions
-  fetchDj: async (djId: string) => {
-    set({ isLoading: true });
+  async fetchDj(djId: string): Promise<void> {
+    this.setState({ isLoading: true });
     try {
       const dj = await fetchDjById(djId);
-      set({ currentDj: dj, isLoading: false });
+      this.setState({ currentDj: dj, isLoading: false });
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to fetch DJ', isLoading: false });
+      this.setState({ 
+        error: error instanceof Error ? error.message : 'Failed to fetch DJ', 
+        isLoading: false 
+      });
     }
-  },
+  }
   
-  fetchActiveDj: async (djId: string) => {
-    set({ isLoading: true });
+  async fetchActiveDj(djId: string): Promise<void> {
+    this.setState({ isLoading: true });
     try {
       const dj = await fetchDjById(djId);
-      set({ activeDj: dj, isLoading: false });
+      this.setState({ activeDj: dj, isLoading: false });
     } catch (error) {
-      set({ error: error instanceof Error ? error.message : 'Failed to fetch active DJ', isLoading: false });
+      this.setState({ 
+        error: error instanceof Error ? error.message : 'Failed to fetch active DJ', 
+        isLoading: false 
+      });
     }
-  },
+  }
   
-  setActiveDj: (dj) => set({ activeDj: dj }),
+  setActiveDj(dj: DJ | null): void {
+    this.setState({ activeDj: dj });
+  }
   
-  clearError: () => set({ error: null }),
-}));
+  clearError(): void {
+    this.setState({ error: null });
+  }
+}
 
-export default useDjStore;
+// Create a hook to use the store in React components
+import { useState, useEffect } from 'react';
+
+export function useDJStore() {
+  // Create a new store instance for this component
+  const [store] = useState(() => new DJStore());
+  
+  // Force re-render when store changes
+  const [, setForceUpdate] = useState({});
+  
+  useEffect(() => {
+    // Subscribe to store changes
+    const unsubscribe = store.subscribe(() => {
+      setForceUpdate({});
+    });
+    
+    // Cleanup subscription on unmount
+    return unsubscribe;
+  }, [store]);
+  
+  return store;
+}
