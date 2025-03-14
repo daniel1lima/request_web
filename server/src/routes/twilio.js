@@ -33,9 +33,9 @@ async function sendConfirmationSMS(customerName, songName, phoneNumber, orderId,
     const message = await client.messages.create({
       body: `Hi ${customerName}! 🎶 Your request for "${songName}" has been confirmed.\n\n` +
             `Order ID: ${orderId}\n\n` +
-            `🔹 Your song will only appear in the queue *once the DJ accepts* your request.\n\n` +
-            `🔹 To cancel, reply with "1" or check your confirmation message.\n\n` +
-            `🔹 You will *not* be charged until your request is played, *if this is a paid request, don't worry if not.*.\n\n` +
+            `🔹 Your song will only appear in the queue once the DJ accepts your request.\n\n` +
+            `🔹 You will not be charged until your request is played.\n\n` +
+            `🔹 Reply with "1" to cancel at any point before your request is played.\n\n` +
             `📌 By submitting a request, you agree to our Terms of Service & Refund Policy.\n\n` +
             `Questions? Contact help.request.van@gmail.com`,
       messagingServiceSid: messagingServiceSid,
@@ -244,7 +244,7 @@ router.post("/sms-webhook", async (req, res) => {
     
     // If no payments found
     if (!payments || payments.length === 0) {
-      twiml.message("We couldn't find any requests associated with your phone number. Please contact customer support at damorosolima@gmail.com for assistance.");
+      twiml.message("We couldn't find any requests associated with your phone number. Please contact customer support at help.request.van@gmail.com for assistance.");
       res.type('text/xml').send(twiml.toString());
       return;
     }
@@ -273,7 +273,7 @@ router.post("/sms-webhook", async (req, res) => {
     // STEP 1: User sends "1" to initiate cancellation
     if (incomingMessage === "1") {
       if (activeRequests.length === 0) {
-        twiml.message("You don't have any active requests to cancel. If you need assistance, please contact customer support at damorosolima@gmail.com.");
+        twiml.message("You don't have any active requests to cancel. If you need assistance, please contact customer support at help.request.van@gmail.com.");
       } 
       else if (activeRequests.length === 1) {
         // If there's only one request, confirm cancellation directly
@@ -299,12 +299,12 @@ router.post("/sms-webhook", async (req, res) => {
             
             twiml.message(`Your request for "${item.request.songName}" has been cancelled. Your payment authorization will be released within 5-7 business days.`);
           } else {
-            twiml.message(`We encountered an issue cancelling your request. Please contact customer support at damorosolima@gmail.com for assistance.`);
+            twiml.message(`We encountered an issue cancelling your request. Please contact customer support at help.request.van@gmail.com for assistance.`);
             console.error("Unexpected response from cancel endpoint:", cancelResponse.data);
           }
         } catch (cancelError) {
           console.error("Error calling cancel endpoint:", cancelError);
-          twiml.message(`We encountered an issue cancelling your request. Please contact customer support at damorosolima@gmail.com for assistance.`);
+          twiml.message(`We encountered an issue cancelling your request. Please contact customer support at help.request.van@gmail.com for assistance.`);
         }
       } 
       else {
@@ -345,17 +345,17 @@ router.post("/sms-webhook", async (req, res) => {
             
             twiml.message(`Your request for "${selectedItem.request.songName}" has been cancelled. Your payment authorization will be released within 5-7 business days.`);
           } else {
-            twiml.message(`We encountered an issue cancelling your request. Please contact customer support at damorosolima@gmail.com for assistance.`);
+            twiml.message(`We encountered an issue cancelling your request. Please contact customer support at help.request.van@gmail.com for assistance.`);
             console.error("Unexpected response from cancel endpoint:", cancelResponse.data);
           }
         } catch (cancelError) {
           console.error("Error calling cancel endpoint:", cancelError);
-          twiml.message(`We encountered an issue cancelling your request. Please contact customer support at damorosolima@gmail.com for assistance.`);
+          twiml.message(`We encountered an issue cancelling your request. Please contact customer support at help.request.van@gmail.com for assistance.`);
         }
       } else {
         // Invalid selection number
         if (activeRequests.length === 0) {
-          twiml.message("You don't have any active requests to cancel. If you need assistance, please contact customer support at damorosolima@gmail.com.");
+          twiml.message("You don't have any active requests to cancel. If you need assistance, please contact customer support at help.request.van@gmail.com.");
         } else {
           // Show the list of requests again
           let message = `Invalid selection. Reply with a number between 2 and ${activeRequests.length + 1}:\n\n`;
@@ -369,7 +369,7 @@ router.post("/sms-webhook", async (req, res) => {
     }
     // For any other reply
     else {
-      twiml.message("To cancel a request, reply with \"1\". For other assistance, contact damorosolima@gmail.com.");
+      twiml.message("To cancel a request, reply with \"1\". For other assistance, contact help.request.van@gmail.com.");
     }
     
     // Send the response in the format Twilio expects
@@ -377,7 +377,7 @@ router.post("/sms-webhook", async (req, res) => {
   } catch (error) {
     console.error("Error handling SMS reply:", error);
     // Even in case of error, send a TwiML response
-    twiml.message("Sorry, we encountered an error processing your request. Please contact customer support at damorosolima@gmail.com.");
+    twiml.message("Sorry, we encountered an error processing your request. Please contact customer support at help.request.van@gmail.com.");
     res.type('text/xml').send(twiml.toString());
   }
 });

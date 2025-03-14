@@ -37,7 +37,8 @@ const FreeSuccess: React.FC = () => {
           </li>
 
           <li className="mb-2 text-center">
-          <strong>Do not approach the DJ</strong> about your request, doing so will automatically reject your request.
+            <strong>We reserve the right to deny your request</strong> if you
+            approach the DJ.
           </li>
         </ul>
       </div>
