@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 // Import WebSocketService
 import WebSocketService from "@/services/websocketService";
 
-const NewRequestsColumn = () => {
+const NewRequestsColumn = ({ eventId }: { eventId: string }) => {
   // Use the class-based stores
   const requestStore = useRequestStore();
   const adminStore = useAdminStore();
@@ -21,24 +21,28 @@ const NewRequestsColumn = () => {
   const [noNewRequests, setNoNewRequests] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [socketConnected, setSocketConnected] = useState(false);
+  // Add refresh state
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fetch requests and set up WebSocket on component mount
   useEffect(() => {
-    const eventId = localStorage.getItem("eventId");
     if (!eventId) {
-      console.error("No eventId found in localStorage");
+      console.error("No eventId found");
       setIsLoading(false);
       return;
     }
 
+    let isMounted = true; // Add mounted flag
+
     const fetchData = async () => {
       try {
+        if (!isMounted) return; // Check if component is still mounted
         // Fetch requests for this event
         await requestStore.fetchRequests(eventId, true);
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       } catch (error) {
         console.error("Error fetching requests:", error);
-        setIsLoading(false);
+        if (isMounted) setIsLoading(false);
       }
     };
 
@@ -49,16 +53,21 @@ const NewRequestsColumn = () => {
     wsService.connect(eventId);
     setSocketConnected(wsService.isConnected());
 
-    // Subscribe to request updates
-    const unsubscribeNewRequest = wsService.subscribe("new_request", (data) => {
-      console.log("New request received via WebSocket:", data);
-      requestStore.fetchRequests(eventId, true);
-    });
+    // Debounce the fetch requests to prevent multiple rapid updates
+    let fetchTimeout: NodeJS.Timeout;
+    
+    // Subscribe to request updates with debouncing
+    const handleRequestUpdate = () => {
+      clearTimeout(fetchTimeout);
+      fetchTimeout = setTimeout(() => {
+        if (isMounted) {
+          requestStore.fetchRequests(eventId, true);
+        }
+      }, 500); // 500ms debounce
+    };
 
-    const unsubscribeRequestUpdate = wsService.subscribe("request_update", (data) => {
-      console.log("Request update received via WebSocket:", data);
-      requestStore.fetchRequests(eventId, true);
-    });
+    const unsubscribeNewRequest = wsService.subscribe("new_request", handleRequestUpdate);
+    const unsubscribeRequestUpdate = wsService.subscribe("request_update", handleRequestUpdate);
 
     // Check connection status periodically
     const connectionCheckInterval = setInterval(() => {
@@ -79,14 +88,29 @@ const NewRequestsColumn = () => {
       }
     }, 10000);
 
+    // Add a regular refresh every 60 seconds regardless of WebSocket status
+    const refreshInterval = setInterval(async () => {
+      try {
+        // console.log("Performing 60-second refresh");
+        setIsRefreshing(true);
+        await requestStore.fetchRequests(eventId, true);
+      } catch (error) {
+        console.error("Error during scheduled refresh:", error);
+      } finally {
+        setIsRefreshing(false);
+      }
+    }, 60000); // 60 seconds
+
     return () => {
-      // Clean up subscriptions and intervals
+      isMounted = false; // Set mounted flag to false on cleanup
+      clearTimeout(fetchTimeout);
       unsubscribeNewRequest();
       unsubscribeRequestUpdate();
       clearInterval(connectionCheckInterval);
       clearInterval(pollingInterval);
+      clearInterval(refreshInterval);
     };
-  }, []);
+  }, [eventId]); // Add eventId to dependency array
 
   // Check if there are any new requests
   useEffect(() => {
@@ -232,9 +256,10 @@ const NewRequestsColumn = () => {
   return (
     <div className="bg-gray-800 rounded-xl p-6 shadow-xl overflow-y-auto h-full">
       <div className="flex justify-between items-center mb-6 border-b border-gray-700 pb-4">
-        <h2 className="text-2xl font-bold text-white">
+        <h2 className="text-2xl font-bold text-white flex items-center">
           New Requests {requestStore.requests.filter(req => req.status === "pending").length > 0 && 
             `(${requestStore.requests.filter(req => req.status === "pending").length})`}
+          {isRefreshing && <Loader2 className="w-4 h-4 text-gray-400 animate-spin ml-2" />}
         </h2>
         
         {/* WebSocket connection indicator */}

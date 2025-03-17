@@ -77,7 +77,7 @@ class WebSocketService {
     this.socket.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        console.log("WebSocket message received:", data);
+        // console.log("WebSocket message received:", data);
         this.handleMessage(data);
         
         // Also notify registered stores about the update
@@ -108,7 +108,7 @@ class WebSocketService {
     this.storeUpdateCallbacks.forEach((callback, storeId) => {
       try {
         callback(data);
-        console.log(`Notified store ${storeId} about update`);
+        // console.log(`Notified store ${storeId} about update`);
       } catch (error) {
         console.error(`Error notifying store ${storeId}:`, error);
       }

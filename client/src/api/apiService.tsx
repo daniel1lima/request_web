@@ -334,7 +334,7 @@ export const declineRequest = async (
 ) => {
   // await sendDeclinedRequestEmail(requestId, paymentId);
 
-  const response = await fetch(`/api/requests/declined?requestId=${requestId}`, {
+  const response = await fetch(`/api/requests/declined?requestId=${requestId}&pi=${paymentId}`, {
     method: "PUT",
     headers: {
       Authorization: `Bearer ${accessToken}`,
