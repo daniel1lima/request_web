@@ -454,12 +454,24 @@ router.put("/update-status", async (req, res) => {
 // Mark request as declined
 router.put("/declined", ClerkExpressRequireAuth(), async (req, res) => {
   try {
-    const { requestId } = req.query;
+    const { requestId, pi } = req.query;
 
     if (!requestId) {
       return res.status(400).json({
         error: "Missing request ID",
         details: "requestId query parameter is required",
+      });
+    }
+
+    try {
+      if (!pi.startsWith("FREE_")) {
+        await stripe.paymentIntents.cancel(`${pi}`);
+      }
+    } catch (error) {
+      console.error("Error cancelling payment intent:", error);
+      res.status(500).json({
+        error: "Failed to cancelling payment intent",
+        details: error.message,
       });
     }
 

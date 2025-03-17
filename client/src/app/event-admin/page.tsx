@@ -241,11 +241,6 @@ const EventAdminPage = () => {
     }
   };
 
-  // Request management functions
-  useEffect(() => {
-    console.log("loading", adminStore.loading);
-  }, [adminStore.loading]);
-
   // Event management functions
   const deleteEventHandler = async () => {
     try {
@@ -1201,16 +1196,7 @@ const EventAdminPage = () => {
         </div>
       </div>
 
-      {noRequests ? (
-        <div className="flex items-center justify-center h-[80vh] mb-20">
-          <div className="text-center">
-            <h2 className="text-4xl font-bold">No requests yet</h2>
-            <p className="text-2xl text-gray-500">
-              Check back later for song requests
-            </p>
-          </div>
-        </div>
-      ) : (
+      
         <div className="max-w-7xl mx-auto p-8">
           {/* Use the EventStats component */}
           <EventStats />
@@ -1222,11 +1208,10 @@ const EventAdminPage = () => {
             </div>
             {/* New requests column - can have different width than accepted songs */}
             <div className="w-[50%]">
-              <NewRequestsColumn />
+              <NewRequestsColumn eventId={adminStore.eventId} />
             </div>
           </div>
         </div>
-      )}
     </div>
   );
 };

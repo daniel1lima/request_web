@@ -333,11 +333,11 @@ export class RequestStore {
 
   // Method to handle WebSocket updates
   handleWebSocketUpdate(data: any): void {
-    console.log("RequestStore received WebSocket update:", data);
+    // console.log("RequestStore received WebSocket update:", data);
     
     // Handle different types of updates
     if (data.type === "new_request" || data.type === "request_update") {
-      const eventId = localStorage.getItem("eventId");
+      const eventId = this._currentEventId;
       if (eventId) {
         this.fetchRequests(eventId, true);
       }
