@@ -666,16 +666,16 @@ export const SongForm: React.FC<SongFormProps> = ({
         {/* Selected Song Display */}
         {selectedTrack && (
           <div
-            className="flex flex-col items-center mt-6 mb-32"
+            className="flex flex-col items-center justify-center mt-6 mb-30"
             suppressHydrationWarning
           >
             <img
               loading="lazy"
               src={selectedTrack.album.images[1]?.url || "/RequestLogoDark.png"}
-              className="w-28 h-28 md:w-48 md:h-48 lg:w-64 lg:h-64 rounded-lg object-cover shadow-lg"
+              className={`mt-20 rounded-lg object-cover shadow-lg ${
+                freeReq ? "w-48 h-48" : "w-28 h-28"
+              }`}
               alt={selectedTrack.name}
-              width={256}
-              height={256}
               fetchPriority="high"
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
