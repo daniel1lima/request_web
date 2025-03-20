@@ -15,6 +15,7 @@ import { useEventStore } from "@/store/eventStore";
 import { useRequestStore } from "@/store/requestStore";
 import WebSocketService from "@/services/websocketService";
 import { motion } from "framer-motion";
+import { createDonationSession } from "@/api/apiService";
 
 // Define interfaces for requests, events, and DJs
 // Update the Request interface to match the API response
@@ -45,11 +46,27 @@ export interface Request {
 
 
 // Event ownership disclaimer component
-const EventOwnershipDisclaimer = ({ djId }: { djId: string }) => {
+const EventOwnershipDisclaimer = ({ djId, eventId, eventName }: { djId: string, eventId: string, eventName: string }) => {
   const { user } = useUser();
   const isOwner = user?.id === djId;
   const router = useRouter();
- 
+
+  const handleDonation = async () => {
+    try {
+      const { url } = await createDonationSession({
+        eventId: eventId || '',
+        djId: djId,
+        eventName: eventName || '',
+      });
+      
+      if (url) {
+        router.push(url);
+      }
+    } catch (error) {
+      console.error('Error creating donation session:', error);
+    }
+  };
+
   return (
     <div className="text-gray-200 dark:text-gray-200 text-sm mt-6">
       {isOwner ? (
@@ -67,11 +84,7 @@ const EventOwnershipDisclaimer = ({ djId }: { djId: string }) => {
       ) : (
         <Button
           className="relative group overflow-hidden rounded-full bg-gradient-to-r from-purple-600 to-blue-500 px-8 py-3 text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/30 hover:scale-105"
-          onClick={() =>
-            router.push(
-              `https://donate.stripe.com/fZe5nJ6VOfGV4Ug28a`
-            )
-          }
+          onClick={handleDonation}
         >
           <span className="relative z-10 flex items-center gap-2">
             <BiDonateHeart className="transition-transform group-hover:scale-125" />
@@ -216,7 +229,7 @@ const EventPage = () => {
           
           <div className="flex flex-col items-center w-full px-4 pb-20 mt-[-20] overflow-y-auto flex-1">
             
-              <EventOwnershipDisclaimer djId={eventStore.currentEvent?.djId || ""} />
+              <EventOwnershipDisclaimer djId={eventStore.currentEvent?.djId || ""} eventId={eventStore.currentEvent?.eventId || ""} eventName={eventStore.currentEvent?.eventName || ""} />
             {/* Use the imported AcceptedSongQueue component */}
             <AcceptedSongQueue />
             

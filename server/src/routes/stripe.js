@@ -7,6 +7,7 @@ if (!stripeSecretKey) {
   throw new Error("Stripe secret key is not defined in environment variables");
 }
 const stripe = require("stripe")(stripeSecretKey); // Initialize Stripe with the secret key
+const bodyParser = require('body-parser');
 
 router.get("/status", async (req, res) => {
   try {
@@ -104,6 +105,84 @@ router.post("/cancelPaymentIntent", async (req, res) => {
         details: error.message,
       });
   }
+});
+
+router.post("/create-donation-session", async (req, res) => {
+  const { eventId, djId, eventName } = req.body;
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      line_items: [
+          {
+            price: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID,
+            quantity: 1,
+          },
+      ],
+      mode: 'payment',
+      success_url: `${process.env.API_BASE_URL}/event?eventId=${eventId}`,
+      metadata: {
+        eventId,
+        djId,
+        eventName
+      },
+    });
+
+    res.status(200).json({ url: session.url });
+  } catch (error) {
+    console.error("Error creating donation session:", error);
+    res.status(500).json({ 
+      error: "Failed to create donation session", 
+      details: error.message 
+    });
+  }
+});
+
+// Webhook endpoint for handling Stripe events
+router.post("/checkout-session-completed", 
+  bodyParser.raw({type: 'application/json'}), 
+  async (req, res) => {
+    
+
+    console.log("checkout-session-completed", req.body)
+
+    const event = req.body;
+
+    // Handle specific event types
+    switch (event.type) {
+      case 'checkout.session.completed':
+        const session = event.data.object;
+        
+        // Extract metadata from the session
+        const { eventId, djId, eventName } = session.metadata;
+        
+        // Log the successful donation
+        console.log('Donation successful:', {
+          paymentIntent: session.payment_intent,
+          amount: session.amount_total,
+          eventId,
+          djId,
+          eventName,
+          customer: session.customer,
+          customerEmail: session.customer_details?.email
+        });
+
+        // TODO: Add your database logic here to record the donation
+        // For example: await saveDonationToDatabase({...})
+
+        // TODO: Update the event to have the donation amount
+        // TODO: Update the DJ to have the donation amount
+        // TODO: Update the event to have the donation status
+        // TODO: Update the DJ to have the donation status
+        
+
+        break;
+        
+      default:
+        console.log(`Unhandled event type: ${event.type}`);
+    }
+
+    // Return a 200 response to acknowledge receipt of the event
+    res.json({received: true});
 });
 
 module.exports = router;

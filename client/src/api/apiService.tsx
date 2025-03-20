@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from "next/server";
+
 
 // ==================== TYPES ====================
 
@@ -544,6 +544,28 @@ export const submitEmailToWaitlist = async (emailData: {
   });
 
   if (!response.ok) throw new Error("Failed to submit email to waitlist");
+  return response.json();
+};
+
+// ==================== DONATION MANAGEMENT ====================
+
+// Create a donation session
+export const createDonationSession = async (donationData: {
+  eventId: string;
+  djId: string;
+  eventName: string;
+}) => {
+  const response = await fetch('/api/stripe/create-donation-session', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(donationData),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to create donation session');
+  }
   return response.json();
 };
 
