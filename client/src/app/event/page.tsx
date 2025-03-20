@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
+import { BiDonateHeart } from "react-icons/bi";
 import EventHeader from "@/components/event/EventHeader";
 import DJProfile from "@/components/event/DJprofile";
 import AcceptedSongQueue from "@/components/event/AcceptedSongQueue";
@@ -51,7 +52,7 @@ const EventOwnershipDisclaimer = ({ djId }: { djId: string }) => {
  
   return (
     <div className="text-gray-200 dark:text-gray-200 text-sm mt-6">
-      {isOwner && (
+      {isOwner ? (
         <Button
           className="outline"
           variant={"outline"}
@@ -62,6 +63,21 @@ const EventOwnershipDisclaimer = ({ djId }: { djId: string }) => {
           }
         >
           Admin Dashboard
+        </Button>
+      ) : (
+        <Button
+          className="relative group overflow-hidden rounded-full bg-gradient-to-r from-purple-600 to-blue-500 px-8 py-3 text-white font-semibold transition-all duration-300 hover:shadow-lg hover:shadow-purple-500/30 hover:scale-105"
+          onClick={() =>
+            router.push(
+              `https://donate.stripe.com/fZe5nJ6VOfGV4Ug28a`
+            )
+          }
+        >
+          <span className="relative z-10 flex items-center gap-2">
+            <BiDonateHeart className="transition-transform group-hover:scale-125" />
+            Tip your DJ!
+          </span>
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </Button>
       )}
     </div>
@@ -199,10 +215,8 @@ const EventPage = () => {
           />
           
           <div className="flex flex-col items-center w-full px-4 pb-20 mt-[-20] overflow-y-auto flex-1">
-            {eventStore.currentEvent?.djId && user?.id === eventStore.currentEvent?.djId && (
-              <EventOwnershipDisclaimer djId={eventStore.currentEvent?.djId} />
-            )}
             
+              <EventOwnershipDisclaimer djId={eventStore.currentEvent?.djId || ""} />
             {/* Use the imported AcceptedSongQueue component */}
             <AcceptedSongQueue />
             
